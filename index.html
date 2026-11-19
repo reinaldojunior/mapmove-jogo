@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0b1d3a">
+  <title>Mapmove Run</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <main id="palco">
+    <div id="hud" hidden>
+      <div class="hud-esq">
+        <div class="pilula"><span class="ico">📍</span><b id="hudKm">0,00 km</b></div>
+        <div class="pilula"><span class="ico">🏃</span><b id="hudPace">--:--</b><small>/km</small></div>
+        <div class="pilula"><span class="ico">❤️</span><b id="hudBpm">--</b><small>bpm</small></div>
+        <div class="pilula agua"><span class="ico">💧</span><span class="barra"><i id="hudAgua"></i></span><b id="hudAguaTxt">100%</b></div>
+      </div>
+      <div class="hud-dir">
+        <div class="pilula"><span class="ico">🏆</span><b id="hudPontos">0</b></div>
+        <button id="btnPausa" class="pilula botao" aria-label="Pausar">❚❚</button>
+      </div>
+    </div>
+
+    <div id="aviso" hidden></div>
+
+    <section id="telaInicio" class="tela">
+      <h1>Mapmove<br><span>Run</span></h1>
+      <p>Corra a prova, pule os obstáculos, desvie de cachorro, bike e carro e não esqueça de se hidratar.</p>
+      <ul class="comandos">
+        <li><b>Deslize</b> para os lados ou use <kbd>←</kbd> <kbd>→</kbd> para trocar de faixa</li>
+        <li><b>Deslize para cima</b> ou use <kbd>↑</kbd> / <kbd>espaço</kbd> para pular</li>
+        <li>Pegue 💧 nos pontos de hidratação: se a água acabar, você para</li>
+      </ul>
+      <button id="btnCorrer" class="cta">Correr</button>
+      <p class="recorde" id="recordeInicio"></p>
+    </section>
+
+    <section id="telaPausa" class="tela" hidden>
+      <h2>Pausado</h2>
+      <button id="btnContinuar" class="cta">Continuar</button>
+    </section>
+
+    <section id="telaFim" class="tela" hidden>
+      <h2 id="fimMotivo">Fim de prova</h2>
+      <div class="placar">
+        <div><small>Distância</small><b id="fimKm">0,00 km</b></div>
+        <div><small>Pontos</small><b id="fimPontos">0</b></div>
+        <div><small>Recorde</small><b id="fimRecorde">0</b></div>
+      </div>
+      <button id="btnDeNovo" class="cta">Correr de novo</button>
+    </section>
+  </main>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

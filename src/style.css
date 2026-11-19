@@ -1,0 +1,189 @@
+:root {
+  --fundo: #0b1d3a;
+  --amarelo: #ffd21f;
+  --verde: #1fae5b;
+  --azul: #1e88ff;
+  --vidro: rgba(10, 22, 44, 0.62);
+  --texto: #ffffff;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: 'Baloo 2', system-ui, sans-serif;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+}
+
+/* no computador o jogo mantém o formato de celular */
+#palco {
+  position: relative;
+  height: 100dvh;
+  width: min(100vw, calc(100dvh * 0.5));
+  margin: 0 auto;
+  overflow: hidden;
+  background: #9fd6ff;
+}
+
+#palco canvas { display: block; width: 100%; height: 100%; }
+
+#hud {
+  position: absolute;
+  inset: 0 0 auto 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: max(10px, env(safe-area-inset-top)) 10px 0;
+  pointer-events: none;
+}
+
+.hud-esq, .hud-dir { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.hud-dir { flex-direction: row; }
+
+.pilula {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px 3px 8px;
+  border-radius: 999px;
+  background: var(--vidro);
+  backdrop-filter: blur(4px);
+  font-size: 16px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.pilula small { opacity: 0.8; font-size: 12px; }
+.pilula .ico { font-size: 15px; }
+.pilula.botao {
+  pointer-events: auto;
+  border: 0;
+  color: var(--texto);
+  font: inherit;
+  font-weight: 800;
+  padding: 3px 12px;
+  cursor: pointer;
+}
+
+.barra {
+  display: block;
+  width: 64px;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+}
+.barra i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #4fc3ff, var(--azul));
+  border-radius: inherit;
+  transition: width 0.2s linear;
+}
+.pilula.agua.baixa .barra i { background: linear-gradient(90deg, #ff7a59, #ff3b3b); }
+
+#aviso {
+  position: absolute;
+  top: 31%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2aa8ff, #0d6efd);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85), 0 8px 24px rgba(0, 60, 160, 0.45);
+  font-size: 20px;
+  font-weight: 800;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: aviso 1.5s ease-out forwards;
+}
+#aviso.km { background: linear-gradient(180deg, #ffd21f, #f59e0b); color: #2a1a00; }
+
+@keyframes aviso {
+  0% { opacity: 0; transform: translate(-50%, 12px) scale(0.8); }
+  15% { opacity: 1; transform: translate(-50%, 0) scale(1.05); }
+  25% { transform: translate(-50%, 0) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -16px); }
+}
+
+.tela {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(11, 29, 58, 0.25), rgba(11, 29, 58, 0.88) 55%);
+}
+.tela[hidden], #hud[hidden], #aviso[hidden] { display: none; }
+
+h1 {
+  margin: 0;
+  font-size: 54px;
+  line-height: 0.95;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-shadow: 0 4px 0 #0d4fb3, 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+h1 span { color: var(--amarelo); }
+h2 { margin: 0; font-size: 34px; font-weight: 800; }
+
+.tela p { margin: 0; max-width: 320px; font-size: 17px; line-height: 1.35; }
+
+.comandos {
+  list-style: none;
+  margin: 0;
+  padding: 12px 14px;
+  max-width: 330px;
+  border-radius: 16px;
+  background: var(--vidro);
+  font-size: 15px;
+  line-height: 1.4;
+  text-align: left;
+}
+.comandos li + li { margin-top: 6px; }
+kbd {
+  padding: 0 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.18);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.cta {
+  margin-top: 6px;
+  padding: 12px 42px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffe04d, #f5b400);
+  color: #2a1a00;
+  font: inherit;
+  font-size: 24px;
+  font-weight: 800;
+  box-shadow: 0 5px 0 #b37f00, 0 10px 22px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.cta:active { transform: translateY(3px); box-shadow: 0 2px 0 #b37f00; }
+.cta:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+.recorde { opacity: 0.85; font-size: 15px; }
+
+.placar { display: flex; gap: 10px; }
+.placar div {
+  min-width: 92px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: var(--vidro);
+}
+.placar small { display: block; opacity: 0.8; font-size: 13px; }
+.placar b { font-size: 20px; white-space: nowrap; }
