@@ -15,13 +15,13 @@
         <div class="pilula"><span class="ico">📍</span><b id="hudKm">0,00</b><small id="hudKmTotal">km</small></div>
         <div class="pilula"><span class="ico">⏱️</span><b id="hudTempo">0:00</b></div>
         <div class="pilula"><span class="ico">🏃</span><b id="hudPace">--:--</b><small>/km</small></div>
-        <div class="pilula"><span class="ico">❤️</span><b id="hudBpm">--</b><small>bpm</small></div>
         <div class="pilula agua"><span class="ico">💧</span><span class="barra"><i id="hudAgua"></i></span><b id="hudAguaTxt">100%</b></div>
         <div class="pilula inclinacao" id="hudInc"><span class="ico">⛰️</span><b id="hudIncTxt">plano</b></div>
       </div>
       <div class="hud-dir">
         <div class="linha">
           <div class="pilula"><span class="ico">🏆</span><b id="hudPontos">0</b></div>
+          <button id="btnCamera" class="pilula botao" aria-label="Trocar câmera">🎥</button>
           <button id="btnPausa" class="pilula botao" aria-label="Pausar">❚❚</button>
         </div>
         <div class="pilula" id="hudPenal"><span class="ico">⚠️</span><b id="hudPenalTxt">0/3</b></div>
@@ -34,14 +34,18 @@
 
     <div id="aviso" hidden></div>
 
+    <div id="contagem" hidden></div>
+
     <div id="controles" hidden>
-      <div id="joy" class="joy" aria-label="Arraste para virar e para cima para acelerar">
-        <span class="seta s-cima">▲</span><span class="seta s-esq">◀</span><span class="seta s-dir">▶</span>
-        <div class="knob"></div>
-      </div>
-      <div id="botaoAcao" class="acao" aria-label="Para cima pula, para baixo abaixa, para os lados pega água">
-        <span class="g g-cima">⤴</span><span class="g g-baixo">⤵</span><span class="g g-esq">💧</span><span class="g g-dir">💧</span>
-        <div class="miolo"></div>
+      <button id="btnGel" class="botao-jogo gel" aria-label="Usar gel de carboidrato">
+        <span class="ico">⚡</span><b id="gelQtd">0</b><i id="gelAnel"></i>
+      </button>
+      <button id="btnAgua" class="botao-jogo gota" aria-label="Pegar água no tempo certo" hidden>
+        <span class="anel"></span><span class="ico">💧</span>
+      </button>
+      <div class="dica-gestos" id="dicaGestos">
+        <span>⬅️ toque ou arraste ➡️ para virar</span>
+        <span>⬆️ deslize para pular · ⬇️ para abaixar</span>
       </div>
     </div>
 
@@ -61,10 +65,13 @@
       <details class="ajuda">
         <summary>Como jogar</summary>
         <ul>
-          <li><b>Analógico (esquerda):</b> arraste para cima para acelerar até 6:30/km; solte e ele volta a 7:30/km. Arraste para os lados para virar.</li>
-          <li><b>Botão (direita):</b> para cima pula, para baixo abaixa (galhos), para os lados pega água no ponto de hidratação.</li>
+          <li>O corredor corre sozinho a 7:30/km.</li>
+          <li><b>Virar:</b> arraste o dedo para os lados ou dê toques rápidos no lado esquerdo/direito da tela.</li>
+          <li><b>Pular / abaixar:</b> deslize para cima / para baixo.</li>
+          <li><b>⚡ Gel:</b> pegue os géis nos trechos difíceis; eles ficam guardados. Toque no botão para correr a 6:30/km por 15 s.</li>
+          <li><b>💧 Água:</b> encoste do lado da mesa e toque na gota quando o anel ficar verde.</li>
           <li>Na calçada você perde velocidade. Passou dela, leva penalidade: 3 penalidades desclassificam.</li>
-          <li>Teclado: ← → viram, ↑ acelera, espaço pula, ↓ abaixa, E pega água.</li>
+          <li>Teclado: ← → viram, ↑/espaço pula, ↓ abaixa, G gel, E água, C câmera.</li>
         </ul>
       </details>
     </section>

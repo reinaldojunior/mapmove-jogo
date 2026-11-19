@@ -4,6 +4,7 @@ import './style.css';
 import { PistaReal, PistaReta, frente, direita, difAngulo } from './pista.js';
 import * as R from './regras.js';
 import { criarControles } from './controles.js';
+import { encontrarTravessas, travessasGenericas, buscarVias } from './travessas.js';
 
 const SUPABASE_URL = 'https://ssfsxdmzbubvygctdjgf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_s2yoUApfYl_ZvSUkqYYrVw_uXwKsybM';
@@ -121,9 +122,27 @@ const texFaixaPedestre = textura(256, 64, (g, w, h) => {
   for (let x = 6; x < w; x += 32) g.fillRect(x, 0, 18, h);
 });
 
-const texPlaca = texTexto('CORRIDA DE RUA', { w: 512, h: 96, fundo: '#1356c9', cor: '#ffd21f', tam: 58 });
 const texNumero = texTexto('1273', { w: 256, h: 192, fundo: '#ffffff', cor: '#111', tam: 96, borda: '#1e88ff' });
 const texHidratacao = texTexto('💧 HIDRATAÇÃO', { w: 512, h: 128, fundo: '#1e88ff', cor: '#fff', tam: 64 });
+
+// faixas da grade da torcida: nome da prova alternando com frases motivacionais
+const FRASES = ['CADA KM É UMA VITÓRIA!', 'RESPIRA E VAI QUE VOCÊ CONSEGUE!', 'A DOR PASSA, A MEDALHA FICA!', 'SEU ÚNICO ADVERSÁRIO É VOCÊ!'];
+function texFaixa(txt) {
+  return textura(1024, 128, (g, w, h) => {
+    g.fillStyle = '#1356c9'; g.fillRect(0, 0, w, h);
+    let tam = 76;
+    const fonte = () => { g.font = `800 ${tam}px "Baloo 2", system-ui, sans-serif`; };
+    fonte();
+    while (g.measureText(txt).width > w - 60 && tam > 30) { tam -= 4; fonte(); }
+    g.fillStyle = '#ffd21f'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(txt, w / 2, h / 2 + 4);
+  });
+}
+let matsFaixa = [];
+function definirFaixas(nome) {
+  for (const m of matsFaixa) { m.map.dispose(); m.dispose(); }
+  matsFaixa = [nome.toUpperCase(), ...FRASES].map((t) => new THREE.MeshStandardMaterial({ map: texFaixa(t) }));
+}
 
 // ─── MATERIAIS E GEOMETRIAS COMPARTILHADAS ────────────────────────────────────
 
@@ -142,7 +161,10 @@ const G = {
   capsula: new THREE.CapsuleGeometry(0.5, 1, 6, 12),
   cone: new THREE.ConeGeometry(1, 1, 18),
   roda: new THREE.TorusGeometry(0.42, 0.06, 8, 24),
-  moeda: new THREE.CylinderGeometry(0.42, 0.42, 0.1, 24)
+  moeda: new THREE.CylinderGeometry(0.42, 0.42, 0.1, 24),
+  tronco: new THREE.CylinderGeometry(0.12, 0.2, 1, 8),
+  // copa facetada (estilo low poly): normais por face
+  copa: (() => { const g = new THREE.IcosahedronGeometry(1, 1).toNonIndexed(); g.computeVertexNormals(); return g; })()
 };
 const PELES = [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0x5c3a1e];
 const CAMISAS = [0xff4d4d, 0x1e88ff, 0x2ecc71, 0xffd21f, 0xff8c1a, 0xb05cff, 0xffffff, 0x14b8a6];
@@ -269,7 +291,7 @@ function torcedor() {
 // grade da torcida no limite da calçada; o grupo fica na borda (d = ±7,7) e as pessoas atrás
 function segmentoTorcida(lado) {
   const g = new THREE.Group();
-  const placa = new THREE.Mesh(new THREE.PlaneGeometry(6.6, 0.9), new THREE.MeshStandardMaterial({ map: texPlaca }));
+  const placa = new THREE.Mesh(new THREE.PlaneGeometry(6.6, 0.9), escolher(matsFaixa));
   placa.position.set(0, 0.7, 0); placa.rotation.y = -lado * Math.PI / 2; g.add(placa);
   const topo = malha(G.caixa, mat(0xdfe6ee), 0, 1.2, 0); topo.scale.set(0.08, 0.08, 6.6); g.add(topo);
   for (let i = 0; i < 4; i++) {
@@ -281,14 +303,20 @@ function segmentoTorcida(lado) {
   return g;
 }
 
-function arvore() {
+const VERDES = [0x2f9e44, 0x3cb371, 0x4caf50, 0x2e7d32, 0x5bbf4a];
+function arvore(escala = 1) {
   const g = new THREE.Group();
-  const tronco = malha(G.cilindro, mat(0x7a4a24), 0, 1.5, 0); tronco.scale.set(0.22, 3, 0.22); g.add(tronco);
-  const verde = mat(Math.random() < 0.5 ? 0x2f9e44 : 0x3cb371);
-  for (let i = 0; i < 3; i++) {
-    const copa = malha(G.esfera, verde, aleat(-0.7, 0.7), aleat(3.6, 4.5), aleat(-0.7, 0.7));
-    copa.scale.setScalar(aleat(1.3, 1.8)); g.add(copa);
+  const madeira = mat(0x8a5a2b);
+  const tronco = malha(G.tronco, madeira, 0, 1.3, 0); tronco.scale.set(1, 2.6, 1); g.add(tronco);
+  for (const lado of [-1, 1]) {
+    const ramo = malha(G.tronco, madeira, lado * 0.32, 2.35, 0); ramo.scale.set(0.5, 0.9, 0.5); ramo.rotation.z = -lado * 0.7; g.add(ramo);
   }
+  const base = escolher(VERDES);
+  for (const [x, y, z, r] of [[0, 3.0, 0, 1.2], [0.75, 2.65, 0.2, 0.82], [-0.7, 2.7, -0.15, 0.88], [0.1, 3.65, 0.1, 0.8], [0, 2.55, -0.65, 0.75], [-0.15, 2.6, 0.7, 0.72]]) {
+    const c = malha(G.copa, mat(Math.random() < 0.6 ? base : escolher(VERDES)), x, y, z);
+    c.scale.setScalar(r * aleat(0.9, 1.1)); c.rotation.set(aleat(0, 3), aleat(0, 3), 0); g.add(c);
+  }
+  g.scale.setScalar(escala);
   return g;
 }
 
@@ -412,9 +440,9 @@ function construirVisual() {
 const JANELA = 300;
 let cenario = [];
 const MOLDES = [
-  { passo: 7, lados: [-1, 1], d: 7.75, criar: (lado) => segmentoTorcida(lado), folga: 7.4 },
-  { passo: 13, lados: [-1, 1], d: () => aleat(10.5, 12.5), criar: () => (Math.random() < 0.4 ? palmeira() : arvore()), folga: 9.5 },
-  { passo: 17, lados: [-1, 1], d: () => aleat(19, 24), criar: () => predio(), folga: 14 }
+  { passo: 7, lados: [-1, 1], d: 7.75, criar: (lado) => segmentoTorcida(lado), folga: 7.4, vao: 8 },
+  { passo: 13, lados: [-1, 1], d: () => aleat(10.5, 12.5), criar: () => (Math.random() < 0.3 ? palmeira() : arvore(aleat(0.75, 0.95))), folga: 9.5, vao: 7 },
+  { passo: 17, lados: [-1, 1], d: () => aleat(19, 24), criar: () => predio(), folga: 14, vao: 13 }
 ];
 
 function posicionarCenario(item, s) {
@@ -426,7 +454,9 @@ function posicionarCenario(item, s) {
   // nas esquinas o objeto pode cair em cima de outro trecho da rua: esconde
   let invade = false;
   if (!fora && Number.isFinite(pista.total)) invade = Math.abs(pista.projetar(x, z, Math.max(0, s), 60, 60).d) < item.folga;
-  item.obj.visible = !fora && !invade;
+  // abre espaço na grade, nas árvores e nos prédios onde chega uma travessa
+  const naTravessa = travessas.some((t) => Math.abs(t.s - s) < item.vao && t.lados.includes(Math.sign(item.d)));
+  item.obj.visible = !fora && !invade && !naTravessa;
   item.obj.position.set(x, p.y, z);
   item.obj.rotation.y = -p.ang;
 }
@@ -440,7 +470,7 @@ function construirCenario() {
       for (let i = 0; i < n; i++) {
         const obj = achatar(m.criar(lado));
         scene.add(obj);
-        const it = { obj, d: lado * (typeof m.d === 'function' ? m.d() : m.d), folga: m.folga, ciclo: n * m.passo };
+        const it = { obj, d: lado * (typeof m.d === 'function' ? m.d() : m.d), folga: m.folga, vao: m.vao, ciclo: n * m.passo };
         posicionarCenario(it, -30 + i * m.passo + aleat(0, m.passo * 0.3));
         cenario.push(it);
       }
@@ -456,6 +486,7 @@ function atualizarCenario(sCorredor) {
 
 let entidades = [];
 let postos = [];
+let travessas = [];
 
 function addEntidade(e) {
   e.rot = e.rot || 0;
@@ -493,13 +524,14 @@ function barreira(s, d) {
 
 function galho(s, lado) {
   const g = new THREE.Group();
-  const tronco = malha(G.cilindro, mat(0x7a4a24), lado * 5.0, 2.2, 0); tronco.scale.set(0.35, 4.4, 0.35); g.add(tronco);
-  const ramo = malha(G.cilindro, mat(0x7a4a24), lado * 2.1, 1.85, 0); ramo.scale.set(0.16, 5.9, 0.16); ramo.rotation.z = Math.PI / 2 + lado * 0.06; g.add(ramo);
-  const verde = mat(0x2f9e44);
-  for (let i = 0; i < 7; i++) { const f = malha(G.esfera, verde, lado * (4.4 - i * 0.85), 2.1 + aleat(-0.1, 0.25), aleat(-0.3, 0.3)); f.scale.set(0.7, 0.45, 0.7); g.add(f); }
-  const copa = malha(G.esfera, verde, lado * 5.0, 4.6, 0); copa.scale.setScalar(2); g.add(copa);
-  // o galho vai da calçada até passar do meio da rua: abaixe ou desvie pelo outro lado
-  return addEntidade({ tipo: 'galho', motivo: 'Bateu no galho', obj: achatar(g), s, d: lado * 2.0, larg: 5.6, prof: 0.7, h: 3.2, base: 1.45 });
+  const arv = arvore(1.1); arv.position.x = lado * 5.3; g.add(arv);
+  const ramo = malha(G.tronco, mat(0x7a4a24), lado * 3.4, 1.85, 0); ramo.scale.set(0.75, 3.8, 0.75); ramo.rotation.z = lado * (Math.PI / 2 - 0.1); g.add(ramo);
+  for (let i = 0; i < 4; i++) {
+    const f = malha(G.copa, mat(escolher(VERDES)), lado * (1.9 + i * 0.85), 2.0 + aleat(-0.05, 0.15), aleat(-0.25, 0.25));
+    f.scale.set(0.5, 0.36, 0.5); g.add(f);
+  }
+  // galho baixo do lado da calçada até um pouco antes do meio: abaixe ou passe pelo meio
+  return addEntidade({ tipo: 'galho', motivo: 'Bateu no galho', obj: achatar(g), s, d: lado * 2.9, larg: 3.0, prof: 0.7, h: 3.2, base: 1.45 });
 }
 
 function cachorro(s) {
@@ -549,7 +581,7 @@ function ciclista(s, d) {
   });
 }
 
-function carro(s) {
+function carro(s, lado) {
   const g = new THREE.Group();
   const cor = mat(escolher([0xd9d9d9, 0xe63946, 0x1d4ed8, 0xfacc15, 0x111827]), { roughness: 0.35, metalness: 0.3 });
   const base = malha(G.caixa, cor, 0, 0.6, 0); base.scale.set(3.1, 0.7, 1.6); g.add(base);
@@ -558,11 +590,7 @@ function carro(s) {
   for (const px of [-0.95, 0.95]) for (const pz of [-0.78, 0.78]) {
     const r = malha(G.cilindro, mat(0x111111), px, 0.36, pz); r.scale.set(0.36, 0.22, 0.36); r.rotation.x = Math.PI / 2; g.add(r);
   }
-  const faixaPedestre = new THREE.Mesh(new THREE.PlaneGeometry(8, 2.6), new THREE.MeshBasicMaterial({ map: texFaixaPedestre, transparent: true }));
-  faixaPedestre.rotation.x = -Math.PI / 2;
-  addEntidade({ tipo: 'decor', obj: faixaPedestre, s, d: 0, dy: 0.03 });
-  const lado = Math.random() < 0.5 ? -1 : 1;
-  return addEntidade({ tipo: 'carro', motivo: 'Bateu no carro', obj: achatar(g), s, d: lado * 13, larg: 3.1, prof: 1.6, h: 2.2, gatilho: 52 });
+  return addEntidade({ tipo: 'carro', motivo: 'Bateu no carro', obj: achatar(g), s, d: lado * 16, rot: lado > 0 ? Math.PI : 0, larg: 3.1, prof: 1.6, h: 2.2, gatilho: 55 });
 }
 
 function moeda(s, d) {
@@ -580,25 +608,31 @@ function gel(s, d) {
   return addEntidade({ tipo: 'gel', item: true, pontos: 50, obj: g, s, d, anima(t) { this.obj.children[0].rotation.y = t * 3; } });
 }
 
-function postoHidratacao(s) {
+// posto como nas provas: mesas com copos dentro da rua, encostadas numa lateral
+function postoHidratacao(s, lado) {
   const g = new THREE.Group();
-  for (const lado of [-1, 1]) {
-    const x = lado * 6.1;
-    const mesa = malha(G.caixa, mat(0xffffff), x, 0.8, 0); mesa.scale.set(0.9, 0.08, 9); g.add(mesa);
-    const toalha = malha(G.caixa, mat(0x1e88ff), x, 0.55, 0); toalha.scale.set(0.92, 0.5, 9.02); g.add(toalha);
-    for (let i = 0; i < 14; i++) { const c = malha(G.cilindro, mat(0x7fd4ff), x - lado * 0.15, 0.98, -4 + i * 0.6); c.scale.set(0.09, 0.22, 0.09); g.add(c); }
-    for (let i = 0; i < 3; i++) {
-      const v = torcedor(); v.children[0].material = mat(0xff8c1a);
-      v.position.set(x + lado * 0.9, 0, -3 + i * 3); v.rotation.y = -lado * Math.PI / 2; g.add(v);
-    }
-    const tenda = malha(G.cone, mat(0x1e88ff), x + lado * 0.4, 3.2, 0); tenda.scale.set(2.2, 1, 5); tenda.rotation.y = Math.PI / 4; g.add(tenda);
-    for (const pz of [-3.5, 3.5]) { const haste = malha(G.cilindro, mat(0xdddddd), x - lado * 0.6, 1.4, pz); haste.scale.set(0.05, 2.8, 0.05); g.add(haste); }
-    const faixa = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: texHidratacao }));
-    faixa.position.set(x - lado * 0.6, 2.5, -4.6); g.add(faixa);
+  for (let i = 0; i < 3; i++) {
+    const v = torcedor(); v.children[0].material = mat(0xff8c1a);
+    v.position.set(lado * 4.6, 0, -2 - i * 5); v.rotation.y = -lado * Math.PI / 2; g.add(v);
   }
-  const p = { s, goles: 0, avisado: false };
-  postos.push(p);
-  return addEntidade({ tipo: 'decor', fixo: true, obj: achatar(g), s, d: 0 });
+  const haste = malha(G.cilindro, mat(0xdddddd), lado * 5.6, 1.4, 4); haste.scale.set(0.06, 2.8, 0.06); g.add(haste);
+  const placa = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: texHidratacao, side: THREE.DoubleSide }));
+  placa.position.set(lado * 5.6, 2.9, 4); g.add(placa);
+  addEntidade({ tipo: 'decor', fixo: !!prova, obj: achatar(g), s, d: 0 });
+  for (const ds of [0, 9]) mesaAgua(s + ds, lado);
+  postos.push({ s, lado, avisado: false });
+}
+
+function mesaAgua(s, lado) {
+  const g = new THREE.Group();
+  const azul = mat(0x2a7de1), branco = mat(0xf5f9ff);
+  const tina = malha(G.caixa, azul, 0, 0.72, 0); tina.scale.set(1.1, 0.42, 3.6); g.add(tina);
+  for (const px of [-0.45, 0.45]) for (const pz of [-1.6, 1.6]) { const p = malha(G.caixa, mat(0x9aa4b2), px, 0.25, pz); p.scale.set(0.06, 0.5, 0.06); g.add(p); }
+  for (let i = 0; i < 18; i++) {
+    const c = malha(G.cilindro, i % 3 ? branco : mat(0x8fd3ff), aleat(-0.4, 0.4), 0.98, -1.6 + (i / 17) * 3.2);
+    c.scale.set(0.11, 0.14, 0.11); g.add(c);
+  }
+  return addEntidade({ tipo: 'mesa', mesa: true, motivo: 'Bateu na mesa de água', obj: achatar(g), s, d: lado * 3.35, lado, larg: 1.15, prof: 3.7, h: 1.0, fixo: !!prova, tentada: false });
 }
 
 function portico(s, texto, { cor = '#ffd21f', corTexto = '#0b1d3a' } = {}) {
@@ -618,19 +652,18 @@ const livre = (s, margem) => !postos.some((p) => Math.abs(p.s - s) < margem);
 function gerarPadrao(s, nivel) {
   const r = Math.random();
   const ladoQualquer = () => (Math.random() < 0.5 ? -1 : 1);
-  if (r < 0.16) {
-    const n = Math.random() < 0.4 + nivel * 0.4 ? 2 : 1;
+  if (r < 0.2) {
+    const n = Math.random() < 0.3 + nivel * 0.3 ? 2 : 1;
     const usados = [];
     for (let i = 0; i < n; i++) {
       let d; do { d = aleat(-3.2, 3.2); } while (usados.some((u) => Math.abs(u - d) < 2.2));
       usados.push(d); cone(s + i * aleat(0, 3), d);
     }
-  } else if (r < 0.28) barreira(s, ladoQualquer() * 1.9);
-  else if (r < 0.4) galho(s, ladoQualquer());
-  else if (r < 0.52) cachorro(s);
-  else if (r < 0.63) ciclista(s, aleat(-2.6, 2.6));
-  else if (r < 0.72) carro(s);
-  else if (r < 0.84) { const d = aleat(-2.8, 2.8); for (let i = 0; i < 6; i++) moeda(s + i * 2.6, d); }
+  } else if (r < 0.35) barreira(s, ladoQualquer() * 1.9);
+  else if (r < 0.5) galho(s, ladoQualquer());
+  else if (r < 0.65) cachorro(s);
+  else if (r < 0.78) ciclista(s, aleat(-2.6, 2.6));
+  else if (r < 0.9) { const d = aleat(-2.8, 2.8); for (let i = 0; i < 6; i++) moeda(s + i * 2.6, d); }
   else {
     // trecho difícil: obstáculos em sequência com um gel de prêmio no meio
     const lado = ladoQualquer();
@@ -639,9 +672,72 @@ function gerarPadrao(s, nivel) {
     galho(s + 18, -lado);
     gel(s + 13, lado * 2.4);
     cone(s + 26, aleat(-1, 1));
-    return 34;
+    return 40;
   }
   return 0;
+}
+
+// ─── TRAVESSAS (RUAS QUE CRUZAM O PERCURSO) ───────────────────────────────────
+
+const matTravessa = new THREE.MeshStandardMaterial({ color: 0x6a6e76, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -5, polygonOffsetUnits: -5 });
+const matZebra = new THREE.MeshBasicMaterial({ map: texFaixaPedestre, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -8 });
+let grupoTravessas = new THREE.Group();
+scene.add(grupoTravessas);
+
+// plano deitado no chão; o grupo de fora gira (rumo) e inclina (subida) sem o plano "levantar"
+function planoChao(w, h, material) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), material);
+  m.rotation.x = -Math.PI / 2;
+  const g = new THREE.Group(); g.rotation.order = 'YXZ'; g.add(m);
+  return g;
+}
+
+function inclinacaoVisual(s) {
+  return Math.atan2(emEst(s + 2).y - emEst(s - 2).y, 4);
+}
+
+function adicionarTravessa(t) {
+  const p = emEst(t.s);
+  const [rx, rz] = direita(p.ang);
+  t.objs = [];
+  for (const lado of t.lados) {
+    const rua = planoChao(7, 34, matTravessa);
+    rua.position.set(p.x + rx * lado * 21, p.y + 0.02, p.z + rz * lado * 21);
+    rua.rotation.y = Math.PI / 2 - p.ang;
+    const zebra = planoChao(7, 2.6, matZebra);
+    zebra.position.set(p.x + rx * lado * 9.2, p.y + 0.05, p.z + rz * lado * 9.2);
+    zebra.rotation.y = Math.PI / 2 - p.ang;
+    t.objs.push(rua, zebra);
+  }
+  if (t.principal) {
+    // faixa de pedestre atravessando a rua da prova, colada no asfalto
+    const zebra = planoChao(8, 2.6, matZebra);
+    zebra.position.set(p.x, p.y + 0.05, p.z);
+    zebra.rotation.y = -p.ang;
+    zebra.rotation.x = inclinacaoVisual(t.s);
+    t.objs.push(zebra);
+  }
+  for (const o of t.objs) grupoTravessas.add(o);
+}
+
+function definirTravessas(lista) {
+  scene.remove(grupoTravessas);
+  grupoTravessas = new THREE.Group();
+  scene.add(grupoTravessas);
+  travessas = lista;
+  for (const t of travessas) adicionarTravessa(t);
+  for (const it of cenario) posicionarCenario(it, it.s);
+}
+
+async function carregarTravessas(distancia, pistaAlvo) {
+  const chave = `mapmove-travessas-v1-${PROVA_SLUG}-${distancia.rotulo}`;
+  let lista = lerRecorde(chave);
+  if (!lista) {
+    const vias = await buscarVias(distancia.percurso);
+    if (vias) { lista = encontrarTravessas(pistaAlvo, vias); salvarRecorde(chave, lista); }
+  }
+  if (pista !== pistaAlvo) return;
+  definirTravessas((lista || travessasGenericas(pistaAlvo.total)).map((t) => ({ ...t, carro: false })));
 }
 
 // ─── ESTADO ───────────────────────────────────────────────────────────────────
@@ -649,15 +745,30 @@ function gerarPadrao(s, nivel) {
 const corredor = criarCorredor();
 const estado = {
   modo: 'inicio', t: 0, tempoReal: 0, x: 0, z: 0, ang: 0, camAng: 0, s: 0, sMax: 0, d: 0, v: 0,
-  y: 0, vy: 0, agachado: 0, gel: 0, parado: 0, voltar: false, fase: 0, agua: 100, pontos: 0,
-  penal: 0, proximoSpawn: 70, proximoPosto: 1000, proximoKm: 1000, tremor: 0
+  y: 0, vy: 0, agachado: 0, geis: 0, gelAtivo: 0, giroPend: 0, parado: 0, voltar: false, fase: 0,
+  agua: 100, pontos: 0, penal: 0, proximoSpawn: 70, proximoPosto: 1000, proximoKm: 1000,
+  proximaTravessa: 140, tremor: 0, contagem: 0, kmAvisado: 0
 };
 let ultimaEscolha = { tipo: 'treino' };
+let dadosProva = null;
 
 function limparEntidades() {
   for (const e of entidades) scene.remove(e.obj);
   entidades = [];
   postos = [];
+}
+
+// pontos de hidratação marcados no KML/GPX da prova (H1, H2…); sem marcação, a cada 2 km
+function postosDaProva(rotulo) {
+  const marcados = (dadosProva?.marcadores?.[rotulo] || [])
+    .filter((m) => /^H\d+/i.test(m.orig || '') || /hidrat/i.test(m.name || ''))
+    .map((m, i) => { const q = pista.localizar(m.la, m.lo); return { s: q.s, lado: Math.abs(q.d) > 2 ? Math.sign(q.d) : (i % 2 ? -1 : 1) }; })
+    .filter((m) => m.s > 60 && m.s < pista.total - 60)
+    .sort((a, b) => a.s - b.s);
+  if (marcados.length) return marcados;
+  const lista = [];
+  for (let s = R.POSTO_PADRAO_M, i = 0; s < pista.total - 300; s += R.POSTO_PADRAO_M, i++) lista.push({ s, lado: i % 2 ? -1 : 1 });
+  return lista;
 }
 
 function prepararPercurso(escolha) {
@@ -670,14 +781,17 @@ function prepararPercurso(escolha) {
     pista = new PistaReta();
     prova = null;
   }
+  definirFaixas(prova ? prova.nome : 'CORRIDA DE RUA');
   construirVisual();
+  definirTravessas([]);
   construirCenario();
   if (prova) {
     portico(6, 'LARGADA', { cor: '#1fae5b', corTexto: '#ffffff' });
     for (let km = 1; km * 1000 < pista.total - 150; km++) portico(km * 1000, `${km} KM`);
     portico(pista.total, 'CHEGADA', { cor: '#e63946', corTexto: '#ffffff' });
-    for (let s = 2000; s < pista.total - 300; s += 2000) postoHidratacao(s);
+    for (const p of postosDaProva(prova.rotulo)) postoHidratacao(p.s, p.lado);
     desenharMapaBase();
+    carregarTravessas(escolha.distancia, pista);
   }
   $('#mapa').hidden = !prova;
 }
@@ -687,19 +801,36 @@ function reiniciar() {
   const p = emEst(0);
   Object.assign(estado, {
     t: 0, tempoReal: 0, x: p.x, z: p.z, ang: p.ang, camAng: p.ang, s: 0, sMax: 0, d: 0, v: 0, y: 0, vy: 0,
-    agachado: 0, gel: 0, parado: 0, voltar: false, fase: 0, agua: 100, pontos: 0, penal: 0,
-    proximoSpawn: 70, proximoPosto: 1000, proximoKm: 1000, tremor: 0, kmAvisado: 0
+    agachado: 0, geis: 0, gelAtivo: 0, giroPend: 0, parado: 0, voltar: false, fase: 0, agua: 100, pontos: 0,
+    penal: 0, proximoSpawn: 70, proximoPosto: 1000, proximoKm: 1000, proximaTravessa: 140, tremor: 0, kmAvisado: 0
   });
   fundo.position.z = 0;
   controles.reset();
 }
 
+// ─── SOM (BIPES DA LARGADA) ───────────────────────────────────────────────────
+
+let audio = null;
+function bip(freq, dur, volume = 0.18) {
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === 'suspended') audio.resume();
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = 'square'; o.frequency.value = freq;
+    g.gain.setValueAtTime(volume, audio.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + dur);
+    o.connect(g).connect(audio.destination);
+    o.start(); o.stop(audio.currentTime + dur);
+  } catch { /* sem áudio */ }
+}
+
 // ─── HUD, MINIMAPA E TELAS ────────────────────────────────────────────────────
 
 const hud = {
-  km: $('#hudKm'), kmTotal: $('#hudKmTotal'), tempo: $('#hudTempo'), pace: $('#hudPace'), bpm: $('#hudBpm'),
+  km: $('#hudKm'), kmTotal: $('#hudKmTotal'), tempo: $('#hudTempo'), pace: $('#hudPace'),
   agua: $('#hudAgua'), aguaTxt: $('#hudAguaTxt'), aguaBox: $('.pilula.agua'), pontos: $('#hudPontos'),
-  inc: $('#hudInc'), incTxt: $('#hudIncTxt'), penal: $('#hudPenalTxt')
+  inc: $('#hudInc'), incTxt: $('#hudIncTxt'), penal: $('#hudPenalTxt'),
+  gel: $('#btnGel'), gelQtd: $('#gelQtd'), gota: $('#btnAgua'), dica: $('#dicaGestos'), contagem: $('#contagem')
 };
 
 const mapaBase = document.createElement('canvas');
@@ -718,6 +849,9 @@ function desenharMapaBase() {
   g.beginPath();
   for (let i = 0; i < xs.length; i += 2) { const [a, b] = mapaEscala(xs[i], zs[i]); i ? g.lineTo(a, b) : g.moveTo(a, b); }
   g.stroke();
+  // postos de hidratação
+  g.fillStyle = '#4fc3ff';
+  for (const p of postos) { const q = pista.em(p.s); const [a, b] = mapaEscala(q.x, q.z); g.beginPath(); g.arc(a, b, 7, 0, Math.PI * 2); g.fill(); }
 }
 
 function desenharMinimapa() {
@@ -743,7 +877,7 @@ function desenharMinimapa() {
     const s = (k / n) * pista.total, p = pista.em(s);
     const h = 8 + ((p.y - minY) / alt) * 44;
     pf.fillStyle = p.inclinacao > 0.01 ? '#ff7a45' : p.inclinacao < -0.01 ? '#4fa3ff' : '#d8e2ee';
-    if (s > estado.sMax) pf.globalAlpha = 0.45; else pf.globalAlpha = 1;
+    pf.globalAlpha = s > estado.sMax ? 0.45 : 1;
     pf.fillRect(k * 2, 56 - h, 2, h);
   }
   pf.globalAlpha = 1;
@@ -759,7 +893,6 @@ function atualizarHud() {
   hud.tempo.textContent = R.formatarTempo(s.tempoReal);
   hud.pace.textContent = R.formatarPace(s.v);
   const inc = emEst(s.s).inclinacao;
-  hud.bpm.textContent = R.bpm(s.v, inc);
   hud.agua.style.width = `${s.agua}%`;
   hud.aguaTxt.textContent = `${Math.round(s.agua)}%`;
   hud.aguaBox.classList.toggle('baixa', s.agua < 25);
@@ -769,7 +902,36 @@ function atualizarHud() {
   hud.inc.classList.toggle('desce', pct <= -1);
   hud.incTxt.textContent = pct >= 1 ? `subida ${pct}%` : pct <= -1 ? `descida ${-pct}%` : 'plano';
   hud.penal.textContent = `${s.penal}/${R.PENALIDADES_MAX}`;
+  hud.gelQtd.textContent = s.geis;
+  hud.gel.disabled = !s.geis || s.gelAtivo > 0;
+  hud.gel.style.setProperty('--gel', `${(s.gelAtivo / R.GEL_DURACAO) * 360}deg`);
+  hud.dica.classList.toggle('some', s.t > 7);
   desenharMinimapa();
+}
+
+// gota de água: aparece perto da mesa; anel vermelho piscando e verde na hora certa
+function mesaDaVez() {
+  let melhor = null;
+  for (const e of entidades) {
+    if (!e.mesa || e.tentada) continue;
+    const dist = e.s - estado.s;
+    if (dist > -R.JANELA_AGUA_M - 1 && dist < 50 && (!melhor || e.s < melhor.s)) melhor = e;
+  }
+  return melhor;
+}
+
+let gotaFeedback = 0;
+function atualizarGota(dt) {
+  const g = hud.gota;
+  if (gotaFeedback > 0) { gotaFeedback -= dt; if (gotaFeedback > 0) return; g.className = 'botao-jogo gota'; }
+  const m = estado.modo === 'jogando' ? mesaDaVez() : null;
+  if (!m) { g.hidden = true; return; }
+  const dist = m.s - estado.s;
+  g.hidden = false;
+  g.classList.toggle('esq', m.lado < 0);
+  g.classList.toggle('dir', m.lado > 0);
+  g.classList.toggle('verde', Math.abs(dist) <= R.JANELA_AGUA_M);
+  g.style.setProperty('--pisca', `${Math.max(0.12, Math.min(0.6, dist / 70))}s`);
 }
 
 let avisoTimer;
@@ -783,18 +945,35 @@ function aviso(txt, classe = '', ms = 1500) {
 
 function mostrar(tela) {
   for (const id of ['telaInicio', 'telaPausa', 'telaFim']) $('#' + id).hidden = id !== tela;
-  const jogando = tela === null;
   $('#hud').hidden = tela === 'telaInicio';
-  $('#controles').hidden = !jogando;
+  $('#controles').hidden = tela !== null;
 }
 
 function iniciar(escolha) {
   if (escolha) ultimaEscolha = escolha;
   reiniciar();
-  estado.modo = 'jogando';
+  estado.modo = 'contagem';
+  estado.contagem = 3.999;
+  estado.ultimoNumero = 4;
   mostrar(null);
   atualizarHud();
-  aviso(prova ? `${prova.rotulo} · ${prova.nome}` : 'Treino de reta', 'km', 2200);
+  aviso(prova ? `${prova.rotulo} · ${prova.nome}` : 'Treino de reta', 'km', 2400);
+}
+
+function passoContagem(dt) {
+  const s = estado;
+  s.contagem -= dt;
+  const n = Math.ceil(s.contagem);
+  if (n !== s.ultimoNumero) {
+    s.ultimoNumero = n;
+    if (n > 0) { hud.contagem.textContent = n; hud.contagem.className = ''; bip(520, 0.18); }
+    else {
+      hud.contagem.textContent = 'VAI!'; hud.contagem.className = 'vai'; bip(880, 0.7, 0.22);
+      setTimeout(() => { hud.contagem.hidden = true; }, 700);
+      s.modo = 'jogando';
+    }
+    hud.contagem.hidden = false;
+  }
 }
 
 function pausar() {
@@ -816,6 +995,7 @@ function terminar(titulo, concluiu = false) {
   const s = estado;
   s.modo = 'fim';
   s.tremor = concluiu ? 0 : 0.4;
+  hud.gota.hidden = true;
   const pontos = Math.floor(s.pontos);
   const dist = prova ? Math.min(s.sMax, pista.total) : s.sMax;
   const paceMedio = dist > 10 ? s.tempoReal / (dist / 1000) : 0;
@@ -846,25 +1026,56 @@ function terminar(titulo, concluiu = false) {
 
 function beber() {
   const s = estado;
-  const posto = postos.find((p) => Math.abs(p.s - s.s) < R.ALCANCE_POSTO_M);
-  if (!posto) return aviso('Sem água por perto', '', 900);
-  if (posto.goles >= R.GOLES_POR_POSTO) return aviso('Já pegou água aqui', '', 900);
-  posto.goles++;
-  s.agua = R.hidratar(s.agua);
-  s.pontos += 20;
-  aviso(`💧 +${R.AGUA_GOLE} de água`);
+  const m = mesaDaVez();
+  if (!m || m.s - s.s > 50) return;
+  const res = R.resultadoAgua(s.s, s.d, m);
+  const g = hud.gota;
+  if (res === 'longe') return aviso(`Encoste do lado ${m.lado > 0 ? 'direito' : 'esquerdo'}, perto da mesa!`, '', 1100);
+  m.tentada = true;
+  gotaFeedback = 0.6;
+  if (res === 'pegou') {
+    s.agua = R.hidratar(s.agua);
+    s.pontos += 20;
+    g.className = `botao-jogo gota pegou ${m.lado > 0 ? 'dir' : 'esq'}`;
+    aviso(`💧 +${R.AGUA_GOLE} de água`);
+  } else {
+    g.className = `botao-jogo gota errou ${m.lado > 0 ? 'dir' : 'esq'}`;
+    aviso(res === 'cedo' ? 'Cedo demais! ⏳' : 'Tarde demais! 💨', 'alerta', 1000);
+  }
+}
+
+function usarGel() {
+  const s = estado;
+  if (!s.geis || s.gelAtivo > 0) return;
+  s.geis--;
+  s.gelAtivo = R.GEL_DURACAO;
+  aviso('⚡ Gel! 6:30/km por 15 s');
+  atualizarHud();
+}
+
+const CAMERAS = { normal: { tras: 7.6, alto: 4.3, olhar: 9 }, longe: { tras: 12, alto: 7.2, olhar: 15 } };
+let modoCamera = lerRecorde('mapmove-camera') === 'longe' ? 'longe' : 'normal';
+function trocarCamera() {
+  modoCamera = modoCamera === 'normal' ? 'longe' : 'normal';
+  salvarRecorde('mapmove-camera', modoCamera);
+  aviso(modoCamera === 'longe' ? '🎥 Câmera afastada' : '🎥 Câmera normal', '', 900);
 }
 
 function acao(tipo) {
   const s = estado;
   if (tipo === 'pausa') return s.modo === 'pausa' ? continuar() : pausar();
+  if (tipo === 'camera') return trocarCamera();
   if (s.modo !== 'jogando' || s.parado > 0) return;
   if (tipo === 'pular' && s.y === 0) { s.vy = R.PULO.velocidade; s.agachado = 0; }
   else if (tipo === 'abaixar' && s.y === 0) s.agachado = R.TEMPO_AGACHADO;
   else if (tipo === 'agua') beber();
+  else if (tipo === 'gel') usarGel();
 }
 
-const controles = criarControles({ joy: $('#joy'), botao: $('#botaoAcao'), onAcao: acao });
+const controles = criarControles({ area: palco, onAcao: acao });
+for (const [id, tipo] of [['#btnGel', 'gel'], ['#btnAgua', 'agua'], ['#btnCamera', 'camera']]) {
+  $(id).addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); acao(tipo); });
+}
 
 function penalizar() {
   const s = estado;
@@ -875,6 +1086,9 @@ function penalizar() {
 }
 
 // ─── LOOP ─────────────────────────────────────────────────────────────────────
+
+const GIRO_RAD_S = 1.8;
+const GIRO_POR_TOQUE = 0.22;
 
 function passo(dt) {
   const s = estado;
@@ -889,18 +1103,24 @@ function passo(dt) {
     if (s.parado <= 0 && s.voltar) {
       // volta para o meio da rua, virado no sentido da prova
       const q = emEst(s.s);
-      s.x = q.x; s.z = q.z; s.d = 0; s.ang = q.ang; s.voltar = false;
+      s.x = q.x; s.z = q.z; s.d = 0; s.ang = q.ang; s.giroPend = 0; s.voltar = false;
     }
+    controles.consumirToques();
   } else {
-    const ent = controles.entrada();
-    s.ang += ent.x * 1.8 * dt;
-    // sem mexer no analógico, alinha sozinho só quando já está quase reto (as esquinas são com você)
-    if (Math.abs(ent.x) < 0.1) {
+    const giro = controles.giro();
+    s.giroPend += controles.consumirToques() * GIRO_POR_TOQUE;
+    s.ang += giro * GIRO_RAD_S * dt;
+    if (s.giroPend) {
+      const passoGiro = Math.sign(s.giroPend) * Math.min(Math.abs(s.giroPend), GIRO_RAD_S * 1.2 * dt);
+      s.ang += passoGiro; s.giroPend -= passoGiro;
+    }
+    // sem comando, alinha sozinho só quando já está quase reto (as esquinas são com você)
+    if (Math.abs(giro) < 0.1 && Math.abs(s.giroPend) < 0.01) {
       const dif = difAngulo(p.ang, s.ang);
       if (Math.abs(dif) < 0.35) s.ang += dif * Math.min(1, 2.5 * dt);
     }
-    s.gel = Math.max(0, s.gel - dt);
-    const alvo = R.velocidadeAlvo({ acel: ent.acel, gel: s.gel > 0, inclinacao: p.inclinacao, naCalcada: Math.abs(s.d) > R.MEIA_RUA });
+    s.gelAtivo = Math.max(0, s.gelAtivo - dt);
+    const alvo = R.velocidadeAlvo({ gel: s.gelAtivo > 0, inclinacao: p.inclinacao, naCalcada: Math.abs(s.d) > R.MEIA_RUA });
     s.v = R.aproximarVelocidade(s.v, alvo, dt);
     const W = s.v * R.ESCALA_TEMPO;
     const [fx, fz] = frente(s.ang);
@@ -922,23 +1142,43 @@ function passo(dt) {
   }
   s.agachado = Math.max(0, s.agachado - dt);
 
-  // novos obstáculos à frente; no treino também postos e km
+  // novos obstáculos à frente; no treino também postos, travessas e km
   const sFrente = s.sMax + 160;
   if (sFrente >= s.proximoSpawn) {
     const nivel = prova ? 0.5 : Math.min(1, s.t / 150);
     const dentro = !prova || (s.proximoSpawn > 60 && s.proximoSpawn < pista.total - 60);
+    const longeDeTravessa = !travessas.some((t) => Math.abs(t.s - s.proximoSpawn) < 14);
     let extra = 0;
-    if (dentro && livre(s.proximoSpawn, 35)) extra = gerarPadrao(s.proximoSpawn, nivel);
-    s.proximoSpawn += extra + aleat(42, 70) - nivel * 14;
+    if (dentro && livre(s.proximoSpawn, 40) && longeDeTravessa) extra = gerarPadrao(s.proximoSpawn, nivel);
+    s.proximoSpawn += extra + aleat(75, 120) - nivel * 15;
   }
   if (!prova) {
-    if (sFrente >= s.proximoPosto) { postoHidratacao(s.proximoPosto); s.proximoPosto += 1000; }
+    if (sFrente >= s.proximoPosto) { postoHidratacao(s.proximoPosto, (s.proximoPosto / 1000) % 2 ? 1 : -1); s.proximoPosto += 1000; }
     if (sFrente >= s.proximoKm) { portico(s.proximoKm, `${s.proximoKm / 1000} KM`); s.proximoKm += 1000; }
+    if (sFrente >= s.proximaTravessa) {
+      if (livre(s.proximaTravessa, 25)) {
+        const [t] = travessasGenericas(s.proximaTravessa + 61, s.proximaTravessa);
+        if (t) { t.carro = false; travessas.push(t); adicionarTravessa(t); for (const it of cenario) if (Math.abs(it.s - t.s) < 15) posicionarCenario(it, it.s); }
+      }
+      s.proximaTravessa += aleat(170, 330);
+    }
+    for (const t of travessas) if (t.s < s.s - 60 && t.objs) { for (const o of t.objs) grupoTravessas.remove(o); t.objs = null; }
+    travessas = travessas.filter((t) => t.objs);
   }
 
-  // dica de água ao chegar perto do posto
+  // carros saem das vias principais quando o corredor se aproxima
+  for (const t of travessas) {
+    if (!t.principal || t.carro || t.s - s.s > 130 || t.s - s.s < 70) continue;
+    t.carro = true;
+    if (Math.random() < 0.7 && livre(t.s, 30)) carro(t.s, escolher(t.lados));
+  }
+
+  // dica ao chegar perto do posto
   for (const posto of postos) {
-    if (!posto.avisado && posto.s - s.s < 40 && posto.s > s.s) { posto.avisado = true; aviso('💧 Hidratação! Deslize o botão para o lado', 'km', 2200); }
+    if (!posto.avisado && posto.s - s.s < 70 && posto.s > s.s) {
+      posto.avisado = true;
+      aviso(`💧 Hidratação à ${posto.lado > 0 ? 'direita' : 'esquerda'}: encoste na mesa e toque na gota no verde`, 'km', 2600);
+    }
   }
 
   const c = { s: s.s, d: s.d, y: s.y, altura: s.agachado > 0 ? R.ALTURA_AGACHADO : R.ALTURA_EM_PE };
@@ -961,14 +1201,17 @@ function passo(dt) {
         e.pego = true;
         scene.remove(e.obj);
         s.pontos += e.pontos;
-        if (e.tipo === 'gel') { s.gel = 8; aviso('⚡ GEL! Energia extra'); }
+        if (e.tipo === 'gel') {
+          if (s.geis < R.GEL_MAX) { s.geis++; aviso(`⚡ Gel guardado (${s.geis})`); } else aviso('⚡ Bolso cheio de gel');
+          atualizarHud();
+        }
       }
     } else if (s.parado <= 0 && R.colide(c, e)) {
+      // tropeça e perde velocidade, mas segue correndo
       e.atingido = true;
-      if (!prova) return terminar(e.motivo);
-      // na prova, tropeçar custa tempo mas não termina a corrida
-      s.v = 0; s.parado = 0.9; s.tremor = 0.35;
-      aviso(`💥 ${e.motivo}!`, 'alerta', 1200);
+      s.v *= R.PERDA_TROPECO;
+      s.tremor = 0.35;
+      aviso(`💥 ${e.motivo}!`, 'alerta', 1100);
     }
   }
   entidades = entidades.filter((e) => {
@@ -978,7 +1221,7 @@ function passo(dt) {
 
   // aviso de km
   const km = Math.floor(s.sMax / 1000);
-  if (km > (s.kmAvisado || 0)) { s.kmAvisado = km; aviso(`${km} KM · ${R.formatarTempo(s.tempoReal)}`, 'km'); }
+  if (km > s.kmAvisado) { s.kmAvisado = km; aviso(`${km} KM · ${R.formatarTempo(s.tempoReal)}`, 'km'); }
 
   atualizarCenario(s.s);
   if (!prova) { visual.position.z = -Math.floor(s.s / 40) * 40; fundo.position.z = s.z; }
@@ -996,42 +1239,46 @@ function desenhar(dt) {
   corredor.sombra.scale.setScalar(1 - Math.min(0.5, s.y / 4));
   if (s.modo === 'jogando') animarCorredor(corredor, s.fase, { noAr: s.y > 0.05, agachado: s.agachado > 0, parado: s.v < 0.2 });
   else if (s.modo === 'inicio') { s.fase += dt * 6; animarCorredor(corredor, s.fase); }
+  else if (s.modo === 'contagem') animarCorredor(corredor, 0, { parado: true });
 
   // câmera atrás do corredor, acompanhando as viradas com suavidade
+  const cam = CAMERAS[modoCamera];
   s.camAng += difAngulo(s.ang, s.camAng) * Math.min(1, dt * 4);
   const [fx, fz] = frente(s.camAng);
-  camera.position.set(s.x - fx * 7.6, chao + s.y * 0.25 + 4.3, s.z - fz * 7.6);
+  camera.position.set(s.x - fx * cam.tras, chao + s.y * 0.25 + cam.alto, s.z - fz * cam.tras);
   if (s.tremor > 0) {
     s.tremor = Math.max(0, s.tremor - dt);
     camera.position.x += (Math.random() - 0.5) * s.tremor;
     camera.position.y += (Math.random() - 0.5) * s.tremor;
   }
-  const alvo = emEst(s.s + 9);
-  camera.lookAt(s.x + fx * 9, (alvo.y + chao) / 2 + 1.4, s.z + fz * 9);
+  const alvo = emEst(s.s + cam.olhar);
+  camera.lookAt(s.x + fx * cam.olhar, (alvo.y + chao) / 2 + 1.4, s.z + fz * cam.olhar);
   renderer.render(scene, camera);
 }
 
 const relogio = new THREE.Clock();
 function loop() {
   const dt = Math.min(0.05, relogio.getDelta());
+  if (estado.modo === 'contagem') passoContagem(dt);
   if (estado.modo === 'jogando') passo(dt);
+  atualizarGota(dt);
   desenhar(dt);
   requestAnimationFrame(loop);
 }
 
 // ─── MENU E DADOS DA PROVA ────────────────────────────────────────────────────
 
-let dadosProva = null;
-
 async function carregarProva() {
-  const url = `${SUPABASE_URL}/rest/v1/corridas?slug=eq.${PROVA_SLUG}&select=nome,cidade,corrida_distancias(rotulo,km,subida_m,percurso)`;
+  const url = `${SUPABASE_URL}/rest/v1/corridas?slug=eq.${PROVA_SLUG}&select=nome,cidade,percurso_3d,corrida_distancias(rotulo,km,subida_m,percurso)`;
   const box = $('#provaDistancias');
   try {
     const r = await fetch(url, { headers: { apikey: SUPABASE_KEY } });
     const [c] = await r.json();
     const dist = (c?.corrida_distancias || []).filter((d) => Array.isArray(d.percurso) && d.percurso.length > 10).sort((a, b) => a.km - b.km);
     if (!dist.length) throw new Error('sem percurso');
-    dadosProva = { nome: c.nome, distancias: dist };
+    const marcadores = {};
+    for (const [rot, v] of Object.entries(c.percurso_3d?.por || {})) marcadores[rot] = v.pontos || [];
+    dadosProva = { nome: c.nome, distancias: dist, marcadores };
     $('#provaNome').textContent = `🏅 ${c.nome}`;
     $('#provaInfo').textContent = `Percurso e altimetria reais de ${c.cidade}. 1 km leva 1 minuto a 6:00/km.`;
     box.innerHTML = '';
@@ -1054,6 +1301,7 @@ function mostrarInicio() {
   Object.assign(estado, { x: p.x, z: p.z, ang: p.ang, camAng: p.ang, s: 0, sMax: 0, d: 0, y: 0 });
   const rec = lerRecorde('mapmove-recorde');
   $('#recordeTreino').textContent = rec ? `Recorde: ${rec.toLocaleString('pt-BR')} pontos` : '';
+  hud.contagem.hidden = true;
   mostrar('telaInicio');
 }
 
@@ -1071,4 +1319,4 @@ carregarProva();
 loop();
 
 // ganchos para testes automatizados
-window.__jogo = { estado, entidades: () => entidades, postos: () => postos, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };
+window.__jogo = { estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };

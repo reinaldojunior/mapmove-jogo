@@ -9,11 +9,15 @@ export const direita = (ang) => [Math.cos(ang), Math.sin(ang)];
 export const anguloDe = (dx, dz) => Math.atan2(dx, -dz);
 export const difAngulo = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
-// lat/lng/altitude → metros locais (x leste, z sul), origem no primeiro ponto
-export function projetarLatLng(pontos) {
-  const [lat0, lng0] = pontos[0];
+// lat/lng → metros locais (x leste, z sul) a partir de uma origem
+export function conversorLocal(lat0, lng0) {
   const kx = M_POR_GRAU_LNG * Math.cos((lat0 * Math.PI) / 180);
-  return pontos.map(([lat, lng, e]) => ({ x: (lng - lng0) * kx, z: -(lat - lat0) * M_POR_GRAU_LAT, e: e ?? 0 }));
+  return (lat, lng) => ({ x: (lng - lng0) * kx, z: -(lat - lat0) * M_POR_GRAU_LAT });
+}
+
+export function projetarLatLng(pontos) {
+  const local = conversorLocal(pontos[0][0], pontos[0][1]);
+  return pontos.map(([lat, lng, e]) => ({ ...local(lat, lng), e: e ?? 0 }));
 }
 
 // arredonda as esquinas mantendo início e fim
@@ -42,7 +46,9 @@ function mediaMovel(valores, raio) {
 
 export class PistaReal {
   constructor(pontosLatLng, { passo = 5, exagero = 1.6 } = {}) {
-    let pts = projetarLatLng(pontosLatLng.filter((p) => Array.isArray(p) && p.length >= 2));
+    const validos = pontosLatLng.filter((p) => Array.isArray(p) && p.length >= 2);
+    this.paraLocal = conversorLocal(validos[0][0], validos[0][1]);
+    let pts = projetarLatLng(validos);
     const eSuave = mediaMovel(pts.map((p) => p.e), 1);
     pts = chaikin(pts.map((p, i) => ({ ...p, e: eSuave[i] })), 2);
 
@@ -120,6 +126,32 @@ export class PistaReal {
       }
     }
     return { s: melhor.s, d: melhor.d };
+  }
+
+  // posição de um ponto lat/lng qualquer no percurso (busca no percurso inteiro)
+  localizar(lat, lng) {
+    const { x, z } = this.paraLocal(lat, lng);
+    return this.projetar(x, z, this.total / 2, this.total, this.total);
+  }
+
+  // índices dos segmentos que passam perto de (x, z), via grade de 40 m
+  segmentosPerto(x, z) {
+    const C = 40;
+    if (!this.grade) {
+      this.grade = new Map();
+      for (let i = 0; i < this.s.length - 1; i++) {
+        const x0 = Math.floor(Math.min(this.x[i], this.x[i + 1]) / C), x1 = Math.floor(Math.max(this.x[i], this.x[i + 1]) / C);
+        const z0 = Math.floor(Math.min(this.z[i], this.z[i + 1]) / C), z1 = Math.floor(Math.max(this.z[i], this.z[i + 1]) / C);
+        for (let a = x0; a <= x1; a++) for (let b = z0; b <= z1; b++) {
+          const k = a + ',' + b;
+          if (!this.grade.has(k)) this.grade.set(k, []);
+          this.grade.get(k).push(i);
+        }
+      }
+    }
+    const cx = Math.floor(x / C), cz = Math.floor(z / C), achados = new Set();
+    for (let a = cx - 1; a <= cx + 1; a++) for (let b = cz - 1; b <= cz + 1; b++) for (const i of this.grade.get(a + ',' + b) || []) achados.add(i);
+    return achados;
   }
 }
 

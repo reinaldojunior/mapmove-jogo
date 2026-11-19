@@ -3,9 +3,10 @@
 // 1 km a 6:00/km leva 1 minuto de jogo: o tempo de jogo corre 6x mais rápido que o real
 export const ESCALA_TEMPO = 6;
 
-export const PACE_BASE = 450; // 7:30/km, ritmo estável sem acelerar
-export const PACE_ACEL = 390; // 6:30/km, segurando o acelerador
-export const PACE_GEL = 360; // 6:00/km, acelerando com gel
+export const PACE_BASE = 450; // 7:30/km: o corredor corre sozinho nesse ritmo
+export const PACE_GEL = 390; // 6:30/km enquanto o gel faz efeito
+export const GEL_DURACAO = 15; // segundos de jogo
+export const GEL_MAX = 5;
 export const mps = (paceSegKm) => 1000 / paceSegKm;
 
 export const MEIA_RUA = 4; // rua com 8 m de largura
@@ -17,14 +18,16 @@ export const ALTURA_EM_PE = 2.1;
 export const ALTURA_AGACHADO = 1.2;
 export const TEMPO_AGACHADO = 0.9;
 
-export const DESIDRATACAO_POR_S = 0.33;
+// postos reais ficam a ~2,5–3 km: dá para chegar no próximo com folga pegando os 2 copos
+export const DESIDRATACAO_POR_S = 0.26;
 export const AGUA_GOLE = 25;
-export const GOLES_POR_POSTO = 2;
-export const ALCANCE_POSTO_M = 10;
+export const POSTO_PADRAO_M = 2000; // quando o KML não marca os postos
+export const JANELA_AGUA_M = 2.5; // distância da mesa em que a gota fica verde
+export const PERTO_DA_MESA = 1.3; // quão encostado no lado da mesa precisa estar
+export const PERDA_TROPECO = 0.35; // velocidade que sobra depois de tropeçar
 
-export function velocidadeAlvo({ acel = 0, gel = false, inclinacao = 0, naCalcada = false } = {}) {
-  const base = mps(PACE_BASE), topo = mps(gel ? PACE_GEL : PACE_ACEL);
-  let v = base + (topo - base) * Math.max(0, Math.min(1, acel));
+export function velocidadeAlvo({ gel = false, inclinacao = 0, naCalcada = false } = {}) {
+  let v = mps(gel ? PACE_GEL : PACE_BASE);
   // subida deixa o pace mais lento e descida mais rápido (5% de subida ≈ 15% mais devagar)
   v *= Math.max(0.6, Math.min(1.25, 1 - 3 * inclinacao));
   if (naCalcada) v *= 0.6;
@@ -44,6 +47,15 @@ export const colide = (c, o) =>
   Math.abs(c.d - o.d) < o.larg / 2 + 0.35 &&
   c.y < o.h &&
   c.y + c.altura > (o.base || 0);
+
+// pegar água: só no verde (mesa ao lado) e encostado do lado da mesa
+export function resultadoAgua(sCorredor, dCorredor, mesa) {
+  if (dCorredor * mesa.lado < PERTO_DA_MESA) return 'longe';
+  const dist = mesa.s - sCorredor;
+  if (dist > JANELA_AGUA_M) return 'cedo';
+  if (dist < -JANELA_AGUA_M) return 'tarde';
+  return 'pegou';
+}
 
 export const coleta = (c, item) =>
   Math.abs(c.s - item.s) < 1.1 && Math.abs(c.d - item.d) < 1.1 && c.y < 2.2;
@@ -65,4 +77,3 @@ export function formatarTempo(seg) {
 
 export const formatarKm = (m) => `${(m / 1000).toFixed(2).replace('.', ',')}`;
 
-export const bpm = (v, inclinacao = 0) => Math.max(90, Math.round(118 + (v - mps(PACE_BASE)) * 55 + inclinacao * 220));

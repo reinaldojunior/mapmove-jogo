@@ -10,16 +10,20 @@ Dois modos:
 Regras:
 
 - **Tempo:** 1 km de jogo leva 1 minuto a 6:00/km (o tempo de jogo corre 6x mais rápido que o real). O placar mostra o pace e o tempo reais.
-- **Ritmo:** 7:30/km estável; segurando o acelerador vai até 6:30/km; com gel até 6:00/km por alguns segundos. Ao soltar ele freia aos poucos. Subida deixa mais lento e descida mais rápido, conforme a inclinação real.
+- **Ritmo:** o corredor corre sozinho a 7:30/km; com gel vai a 6:30/km por 15 s. Subida deixa mais lento e descida mais rápido, conforme a inclinação real.
+- **Largada:** contagem 3-2-1 com bipe.
 - **Rua e calçada:** o corredor anda livre para os lados e vira nas esquinas. Na calçada perde velocidade; passou dela, leva penalidade e volta para a rota. 3 penalidades desclassificam.
-- **Obstáculos:** cones e barreiras (pule), galhos baixos (abaixe), cachorro e carro atravessando, ciclista (desvie). Gel de carboidrato aparece nos trechos mais difíceis.
-- **Hidratação:** a água vai acabando; nos pontos de hidratação (a cada 2 km na prova) deslize o botão para o lado para pegar um copo (+25, até 2 por posto). Se a água zerar, a corrida termina.
+- **Obstáculos:** cones e barreiras (pule), galhos baixos (abaixe ou passe pelo meio), cachorro atravessando, ciclista (desvie) e carros saindo das travessas principais. Bater faz tropeçar e perder velocidade.
+- **Travessas:** cruzamentos reais lidos do OpenStreetMap (Overpass) e guardados no aparelho; se o mapa não responder, o jogo cria travessas genéricas.
+- **Gel:** aparece nos trechos mais difíceis e fica guardado (até 5) no botão ⚡ para usar quando quiser.
+- **Hidratação:** a água vai acabando. Os postos ficam nos pontos marcados no KML/GPX da prova (H1, H2…) ou a cada 2 km. As mesas ficam dentro da rua, encostadas numa lateral: encoste nelas e toque na gota 💧 quando o anel ficar verde (+25 por mesa, 2 mesas por posto). Se a água zerar, a corrida termina.
 
 ## Comandos
 
-- **Analógico (esquerda):** arraste para cima para acelerar e para os lados para virar.
-- **Botão de ação (direita):** para cima pula (ou toque), para baixo abaixa, para os lados pega água.
-- **Teclado:** `←` `→` viram, `↑` acelera, `espaço` pula, `↓` abaixa, `E` pega água, `P` pausa.
+- **Virar:** arraste o dedo para os lados ou dê toques rápidos no lado esquerdo/direito da tela.
+- **Pular / abaixar:** deslize para cima / para baixo.
+- **⚡ Gel**, **💧 água** e **🎥 câmera** (normal ou afastada) nos botões da tela.
+- **Teclado:** `←` `→` viram, `↑`/`espaço` pula, `↓` abaixa, `G` gel, `E` água, `C` câmera, `P` pausa.
 
 ## Rodar
 
@@ -44,6 +48,7 @@ Importe o repositório na Vercel; ela detecta o Vite sozinha (build `npm run bui
 
 - `src/main.js`: cena 3D (Three.js), corredor, rua seguindo o percurso, cenário, obstáculos, HUD, minimapa e telas.
 - `src/pista.js`: geometria do percurso (lat/lng → metros, esquinas arredondadas, inclinação, projeção do corredor na rua).
-- `src/controles.js`: analógico, botão de ação e teclado.
+- `src/controles.js`: gestos na tela e teclado.
+- `src/travessas.js`: cruzamentos reais (OpenStreetMap) e travessas genéricas.
 - `src/regras.js`: regras puras (ritmo, colisão, hidratação, formatos).
-- `test/`: testes de `pista.js` e `regras.js` (`npm test`).
+- `test/`: testes de `pista.js`, `regras.js` e `travessas.js` (`npm test`).
