@@ -12,44 +12,75 @@
   <main id="palco">
     <div id="hud" hidden>
       <div class="hud-esq">
-        <div class="pilula"><span class="ico">📍</span><b id="hudKm">0,00 km</b></div>
+        <div class="pilula"><span class="ico">📍</span><b id="hudKm">0,00</b><small id="hudKmTotal">km</small></div>
+        <div class="pilula"><span class="ico">⏱️</span><b id="hudTempo">0:00</b></div>
         <div class="pilula"><span class="ico">🏃</span><b id="hudPace">--:--</b><small>/km</small></div>
         <div class="pilula"><span class="ico">❤️</span><b id="hudBpm">--</b><small>bpm</small></div>
         <div class="pilula agua"><span class="ico">💧</span><span class="barra"><i id="hudAgua"></i></span><b id="hudAguaTxt">100%</b></div>
+        <div class="pilula inclinacao" id="hudInc"><span class="ico">⛰️</span><b id="hudIncTxt">plano</b></div>
       </div>
       <div class="hud-dir">
-        <div class="pilula"><span class="ico">🏆</span><b id="hudPontos">0</b></div>
-        <button id="btnPausa" class="pilula botao" aria-label="Pausar">❚❚</button>
+        <div class="linha">
+          <div class="pilula"><span class="ico">🏆</span><b id="hudPontos">0</b></div>
+          <button id="btnPausa" class="pilula botao" aria-label="Pausar">❚❚</button>
+        </div>
+        <div class="pilula" id="hudPenal"><span class="ico">⚠️</span><b id="hudPenalTxt">0/3</b></div>
+        <div id="mapa" hidden>
+          <canvas id="minimapa" width="192" height="192" aria-label="Mapa do percurso"></canvas>
+          <canvas id="perfil" width="192" height="56" aria-label="Altimetria"></canvas>
+        </div>
       </div>
     </div>
 
     <div id="aviso" hidden></div>
 
+    <div id="controles" hidden>
+      <div id="joy" class="joy" aria-label="Arraste para virar e para cima para acelerar">
+        <span class="seta s-cima">▲</span><span class="seta s-esq">◀</span><span class="seta s-dir">▶</span>
+        <div class="knob"></div>
+      </div>
+      <div id="botaoAcao" class="acao" aria-label="Para cima pula, para baixo abaixa, para os lados pega água">
+        <span class="g g-cima">⤴</span><span class="g g-baixo">⤵</span><span class="g g-esq">💧</span><span class="g g-dir">💧</span>
+        <div class="miolo"></div>
+      </div>
+    </div>
+
     <section id="telaInicio" class="tela">
       <h1>Mapmove<br><span>Run</span></h1>
-      <p>Corra a prova, pule os obstáculos, desvie de cachorro, bike e carro e não esqueça de se hidratar.</p>
-      <ul class="comandos">
-        <li><b>Deslize</b> para os lados ou use <kbd>←</kbd> <kbd>→</kbd> para trocar de faixa</li>
-        <li><b>Deslize para cima</b> ou use <kbd>↑</kbd> / <kbd>espaço</kbd> para pular</li>
-        <li>Pegue 💧 nos pontos de hidratação: se a água acabar, você para</li>
-      </ul>
-      <button id="btnCorrer" class="cta">Correr</button>
-      <p class="recorde" id="recordeInicio"></p>
+      <div class="cartao">
+        <h3>🏃 Treino de reta</h3>
+        <p>Pista reta sem fim para aprender os controles e fazer pontos.</p>
+        <button id="btnTreino" class="cta pequeno">Treinar</button>
+        <small class="recorde" id="recordeTreino"></small>
+      </div>
+      <div class="cartao">
+        <h3 id="provaNome">🏅 1ª Meia Maratona de Indaiatuba</h3>
+        <p id="provaInfo">Percurso e altimetria reais. Carregando…</p>
+        <div class="distancias" id="provaDistancias"></div>
+      </div>
+      <details class="ajuda">
+        <summary>Como jogar</summary>
+        <ul>
+          <li><b>Analógico (esquerda):</b> arraste para cima para acelerar até 6:30/km; solte e ele volta a 7:30/km. Arraste para os lados para virar.</li>
+          <li><b>Botão (direita):</b> para cima pula, para baixo abaixa (galhos), para os lados pega água no ponto de hidratação.</li>
+          <li>Na calçada você perde velocidade. Passou dela, leva penalidade: 3 penalidades desclassificam.</li>
+          <li>Teclado: ← → viram, ↑ acelera, espaço pula, ↓ abaixa, E pega água.</li>
+        </ul>
+      </details>
     </section>
 
     <section id="telaPausa" class="tela" hidden>
       <h2>Pausado</h2>
       <button id="btnContinuar" class="cta">Continuar</button>
+      <button id="btnSair" class="cta secundario">Trocar percurso</button>
     </section>
 
     <section id="telaFim" class="tela" hidden>
       <h2 id="fimMotivo">Fim de prova</h2>
-      <div class="placar">
-        <div><small>Distância</small><b id="fimKm">0,00 km</b></div>
-        <div><small>Pontos</small><b id="fimPontos">0</b></div>
-        <div><small>Recorde</small><b id="fimRecorde">0</b></div>
-      </div>
+      <div class="placar" id="fimPlacar"></div>
+      <p class="recorde" id="fimRecorde"></p>
       <button id="btnDeNovo" class="cta">Correr de novo</button>
+      <button id="btnTrocar" class="cta secundario">Trocar percurso</button>
     </section>
   </main>
   <script type="module" src="/src/main.js"></script>
