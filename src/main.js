@@ -378,7 +378,6 @@ const PROPS = {
   padaria: { arquivo: 'padaria.glb', comprimento: 10, giro: -Math.PI / 2 },
   mercado: { arquivo: 'mercado.glb', comprimento: 15, giro: 0 },
   posto: { arquivo: 'posto.glb', comprimento: 18, giro: -Math.PI / 2 },
-  // escultura da árvore: entra quando houver foto da peça real (modelo a partir da imagem)
 };
 
 async function carregarProp(nome) {
@@ -1345,8 +1344,63 @@ function letreiro() {
   return g;
 }
 
+// Árvore Espacial da Morada do Sol: torre de treliça que se abre numa copa hexagonal, com luzes de Natal
+function arvoreEspacial() {
+  const g = new THREE.Group();
+  const aco = mat(0xd9dde2, { metalness: 0.6, roughness: 0.35 });
+  const tubo = (a, b, r = 0.07, m = aco) => {
+    const va = new THREE.Vector3(...a), vb = new THREE.Vector3(...b), len = va.distanceTo(vb);
+    const t = malha(G.cilindro, m); t.scale.set(r, len, r);
+    t.position.copy(va).add(vb).multiplyScalar(0.5);
+    t.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), vb.sub(va).normalize());
+    g.add(t);
+  };
+  const luzes = [];
+  const N = 12, R0 = 1.7, H0 = 0.6, H1 = 9.5, R2 = 6.5, H2 = 13.2;
+  const ponto = (r, y, i) => [Math.cos((i / N) * Math.PI * 2) * r, y, Math.sin((i / N) * Math.PI * 2) * r];
+  // base redonda
+  const base = malha(G.cilindro, mat(0xcfcac0), 0, 0.3, 0); base.scale.set(3.2, 0.6, 3.2); g.add(base);
+  for (let i = 0; i < N; i++) {
+    // montantes da torre e hastes que se abrem até a copa
+    tubo(ponto(R0, H0, i), ponto(R0, H1, i));
+    tubo(ponto(R0, H1, i), ponto(R2, H2, i));
+    tubo(ponto(R0 * 0.3, H1 - 0.5, i), ponto(R2, H2, i), 0.05);
+    for (let k = 0; k <= 10; k++) luzes.push(ponto(R0 + 0.08, H0 + ((H1 - H0) * k) / 10, i));
+    for (let k = 1; k <= 8; k++) luzes.push(ponto(R0 + ((R2 - R0) * k) / 8, H1 + ((H2 - H1) * k) / 8, i));
+  }
+  // anéis da torre e aro hexagonal da copa
+  for (const y of [H0, 3.4, 6.4, H1]) for (let i = 0; i < N; i++) tubo(ponto(R0, y, i), ponto(R0, y, i + 1), 0.05);
+  for (let i = 0; i < 6; i++) {
+    const a = ponto(R2, H2, i * 2), b = ponto(R2, H2, i * 2 + 2);
+    tubo(a, b, 0.09);
+    for (let k = 0; k < 10; k++) luzes.push(a.map((v, j) => v + ((b[j] - v) * k) / 10));
+  }
+  // guirlanda em espiral na torre
+  const verde = mat(0x1f6b3a, { roughness: 0.9 });
+  let ant = null;
+  for (let k = 0; k <= 72; k++) {
+    const a = (k / 72) * Math.PI * 2 * 3, y = H0 + 0.8 + (k / 72) * (H1 - H0 - 1.2);
+    const p = [Math.cos(a) * (R0 + 0.25), y, Math.sin(a) * (R0 + 0.25)];
+    if (ant) tubo(ant, p, 0.22, verde);
+    ant = p;
+  }
+  // bolas vermelhas e douradas penduradas na copa
+  for (let i = 0; i < N; i++) {
+    const p = ponto(R2 * 0.75, H1 + (H2 - H1) * 0.6 - 0.6, i + 0.5);
+    const b = malha(G.esfera, mat(i % 2 ? 0xc0392b : 0xd4a72c, { metalness: 0.4, roughness: 0.3 }), ...p); b.scale.setScalar(0.32); g.add(b);
+  }
+  const corpo = achatar(g);
+  // luzinhas quentes: uma malha instanciada que brilha sem depender da luz da cena
+  const lamp = new THREE.InstancedMesh(new THREE.SphereGeometry(0.09, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffd27a }), luzes.length);
+  const m4 = new THREE.Matrix4();
+  luzes.forEach((p, i) => lamp.setMatrixAt(i, m4.makeTranslation(...p)));
+  corpo.add(lamp);
+  return corpo;
+}
+
 function colocarMarcos() {
   const marcos = [
+    [/árvore espacial|escultura da árvore/i, () => arvoreEspacial()],
     [/letreiro/i, () => letreiro()],
     [/barco da raia/i, () => { const b = prop('barco'); if (!b) return null; const g = new THREE.Group(); g.add(b); return g; }]
   ];

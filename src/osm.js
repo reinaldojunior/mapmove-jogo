@@ -2,6 +2,8 @@
 // Funções puras: conversão para metros locais, ponto dentro de polígono e zonas ao longo do percurso.
 
 const AREAS = ['parque', 'grama', 'mata', 'esporte', 'agua', 'bairro'];
+// como o povo da cidade chama o lugar, quando o mapa usa outro nome
+const APELIDOS = { 'Escultura da Árvore': 'Árvore Espacial' };
 
 export function pontoNoPoligono(x, z, pts) {
   let dentro = false;
@@ -37,7 +39,7 @@ export function prepararOSM(dados, paraLocal) {
   const predios = (dados.predio || []).filter((b) => b.p.length >= 3).map((b) => ({ ...b, pts: conv(b.p) }));
   const linhas = (lista) => (lista || []).map((l) => conv(l.p)).filter((l) => l.length > 1);
   const ruas = (dados.via || []).filter((v) => v.n).map((v) => ({ nome: v.n, pts: conv(v.p) }));
-  const pontos = (dados.poi || []).map((p) => { const q = paraLocal(p.la, p.lo); return { nome: p.nome, tipo: p.tipo, x: q.x, z: q.z }; });
+  const pontos = (dados.poi || []).map((p) => { const q = paraLocal(p.la, p.lo); return { nome: APELIDOS[p.nome] || p.nome, tipo: p.tipo, x: q.x, z: q.z }; });
   // parques e lagos com nome que não vieram como ponto: usa o centro da área
   for (const a of areas) {
     if (!a.nome || !['parque', 'agua'].includes(a.tipo) || pontos.some((p) => p.nome === a.nome)) continue;
