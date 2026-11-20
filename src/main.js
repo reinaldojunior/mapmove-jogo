@@ -850,28 +850,60 @@ function barreira(s, d) {
 }
 
 
+// vira-lata caramelo atravessando a rua em galope (frente do cachorro para +x)
 function cachorro(s) {
   const g = new THREE.Group();
-  const caramelo = mat(0xc8873e), escuro = mat(0x7a4a1e);
-  const corpo = malha(G.capsula, caramelo, 0, 0.55, 0); corpo.scale.set(0.38, 0.5, 0.38); corpo.rotation.z = Math.PI / 2; g.add(corpo);
-  const cabeca = malha(G.esfera, caramelo, 0.62, 0.85, 0); cabeca.scale.set(0.26, 0.22, 0.22); g.add(cabeca);
-  const focinho = malha(G.esfera, caramelo, 0.86, 0.8, 0); focinho.scale.set(0.14, 0.1, 0.12); g.add(focinho);
-  const nariz = malha(G.esfera, mat(0x111111), 0.98, 0.82, 0); nariz.scale.setScalar(0.045); g.add(nariz);
+  const caramelo = mat(0xc98a3f), claro = mat(0xf0d2a0), escuro = mat(0x7a4a1e), preto = mat(0x151515);
+  const corpo = new THREE.Group(); corpo.position.y = 0.62; g.add(corpo);
+  // tronco: peito mais largo na frente, barriga clara
+  const tronco = malha(G.capsula, caramelo, 0, 0, 0); tronco.scale.set(0.36, 0.62, 0.34); tronco.rotation.z = Math.PI / 2; corpo.add(tronco);
+  const peito = malha(G.esfera, claro, 0.26, -0.06, 0); peito.scale.set(0.2, 0.2, 0.17); corpo.add(peito);
+  const barriga = malha(G.esfera, claro, -0.02, -0.12, 0); barriga.scale.set(0.34, 0.1, 0.15); corpo.add(barriga);
+  // pescoço, cabeça, focinho, nariz, língua, olhos, orelhas caídas e coleira
+  const cabeca = new THREE.Group(); cabeca.position.set(0.44, 0.24, 0); corpo.add(cabeca);
+  const pescoco = malha(G.capsula, caramelo, -0.08, -0.1, 0); pescoco.scale.set(0.2, 0.22, 0.18); pescoco.rotation.z = -0.7; cabeca.add(pescoco);
+  const cranio = malha(G.esfera, caramelo, 0.04, 0.04, 0); cranio.scale.set(0.2, 0.18, 0.17); cabeca.add(cranio);
+  const focinho = malha(G.caixa, claro, 0.2, -0.02, 0); focinho.scale.set(0.18, 0.1, 0.12); cabeca.add(focinho);
+  const nariz = malha(G.esfera, preto, 0.3, 0.01, 0); nariz.scale.set(0.035, 0.03, 0.045); cabeca.add(nariz);
+  const lingua = malha(G.caixa, mat(0xe86a7a), 0.2, -0.08, 0); lingua.scale.set(0.1, 0.02, 0.06); lingua.rotation.z = -0.5; cabeca.add(lingua);
+  const orelhas = [];
   for (const lado of [-1, 1]) {
-    const orelha = malha(G.esfera, escuro, 0.56, 1.0, lado * 0.14); orelha.scale.set(0.08, 0.14, 0.05); orelha.rotation.x = lado * 0.4; g.add(orelha);
+    const olho = malha(G.esfera, preto, 0.15, 0.08, lado * 0.075); olho.scale.setScalar(0.024); cabeca.add(olho);
+    const orelha = new THREE.Group(); orelha.position.set(-0.02, 0.15, lado * 0.12); cabeca.add(orelha);
+    const aba = malha(G.caixa, escuro, 0, -0.08, 0); aba.scale.set(0.1, 0.16, 0.03); orelha.add(aba);
+    orelha.rotation.x = lado * 0.5; orelhas.push(orelha);
   }
-  const rabo = malha(G.capsula, caramelo, -0.62, 0.8, 0); rabo.scale.set(0.08, 0.25, 0.08); rabo.rotation.z = 0.8; g.add(rabo);
+  const coleira = malha(G.cilindro, mat(0xd32f2f), -0.06, -0.08, 0); coleira.scale.set(0.15, 0.04, 0.15); coleira.rotation.z = -0.7; cabeca.add(coleira);
+  // rabo
+  const rabo = new THREE.Group(); rabo.position.set(-0.5, 0.1, 0); corpo.add(rabo);
+  const raboM = malha(G.capsula, caramelo, -0.1, 0.12, 0); raboM.scale.set(0.07, 0.17, 0.07); raboM.rotation.z = 0.7; rabo.add(raboM);
+  // patas com coxa e canela (pivô no ombro/quadril)
   const patas = [];
-  for (const [px, pz] of [[0.32, 0.14], [0.32, -0.14], [-0.32, 0.14], [-0.32, -0.14]]) {
-    const p = membro(0.38, 0.06, caramelo); p.position.set(px, 0.42, pz); g.add(p); patas.push(p);
+  for (const [px, pz, frente] of [[0.3, 0.13, 1], [0.3, -0.13, 1], [-0.32, 0.13, 0], [-0.32, -0.13, 0]]) {
+    const coxa = membro(0.24, 0.065, caramelo); coxa.position.set(px, -0.08, pz); corpo.add(coxa);
+    const canela = membro(0.24, 0.045, caramelo); canela.position.y = -0.24; coxa.add(canela);
+    const pe = malha(G.esfera, claro, 0.03, -0.25, 0); pe.scale.set(0.07, 0.04, 0.06); canela.add(pe);
+    patas.push({ coxa, canela, frente });
   }
   const lado = Math.random() < 0.5 ? -1 : 1;
   return addEntidade({
     tipo: 'cachorro', motivo: 'Esbarrou no cachorro', obj: g, s, d: lado * 6.2, rot: lado > 0 ? Math.PI : 0,
-    larg: 1.5, prof: 0.6, h: 0.95, rabo, patas, gatilho: 34,
+    larg: 1.5, prof: 0.6, h: 0.95, corpo, cabeca, rabo, orelhas, patas, gatilho: 34,
     anima(t) {
-      this.rabo.rotation.x = Math.sin(t * 18) * 0.6;
-      if (this.vd) this.patas.forEach((p, i) => { p.rotation.z = Math.sin(t * 16 + (i % 2) * Math.PI) * 0.7; });
+      const corre = !!this.vd;
+      const f = corre ? 14 : 3, a = t * f;
+      // galope: patas da frente juntas, de trás meio passo depois; corpo sobe e balança
+      this.patas.forEach((p, i) => {
+        const fase = a + (p.frente ? 0 : Math.PI * 0.9) + (i % 2) * 0.35;
+        const amp = corre ? 0.8 : 0.08;
+        p.coxa.rotation.z = Math.sin(fase) * amp;
+        p.canela.rotation.z = (p.frente ? -1 : 1) * Math.max(0, Math.sin(fase + 1.2)) * amp * 0.9;
+      });
+      this.corpo.position.y = 0.62 + (corre ? Math.abs(Math.sin(a)) * 0.07 : 0);
+      this.corpo.rotation.z = corre ? Math.sin(a) * 0.1 : 0;
+      this.cabeca.rotation.z = corre ? Math.sin(a + 0.6) * 0.12 : Math.sin(t * 2) * 0.05;
+      this.rabo.rotation.x = Math.sin(t * 16) * 0.7;
+      this.orelhas.forEach((o, i) => { o.rotation.z = corre ? Math.sin(a + i) * 0.4 : 0; });
     }
   });
 }
@@ -2671,4 +2703,4 @@ carregarProva();
 loop();
 
 // ganchos para testes automatizados
-window.__jogo = { L, vestirAtleta, abrirLoja, ACESSORIOS_3D, corredor, camera, perfil: () => perfil, P, TR, fazerTreino, definirPerfil: (p) => { perfil = p; salvarPerfil(); mostrarInicio(); }, criar: { cone, barreira }, osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, placas: () => placas, semaforos: () => semaforos, atualizarPlacas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };
+window.__jogo = { L, vestirAtleta, abrirLoja, ACESSORIOS_3D, corredor, camera, perfil: () => perfil, P, TR, fazerTreino, definirPerfil: (p) => { perfil = p; salvarPerfil(); mostrarInicio(); }, criar: { cone, barreira, cachorro }, osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, placas: () => placas, semaforos: () => semaforos, atualizarPlacas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };
