@@ -411,7 +411,6 @@ const PROPS = {
   poste: { arquivo: 'poste.glb', altura: 5 },
   pedalinho: { arquivo: 'pedalinho.glb', comprimento: 2.4, eixo: 'z', giro: 0 },
   torcedor: { arquivo: 'torcedor.glb', altura: 1.75 },
-  barco: { arquivo: 'barco.glb', comprimento: 9, eixo: 'z', giro: 0 },
   // lugares do mapa (modelos Higgsfield); a frente do modelo fica para +z
   igreja: { arquivo: 'igreja.glb', altura: 16, giro: -Math.PI / 2 },
   escola: { arquivo: 'escola.glb', comprimento: 26, giro: -Math.PI / 2 },
@@ -1541,11 +1540,60 @@ function arvoreEspacial() {
   return corpo;
 }
 
+// Barco da Raia de Remo: navio-monumento de tábuas marrons, proa pontuda, escotilhas, duas cabines,
+// guarda-corpo e dois mastros (montado a partir de foto do Street View). Comprido em x, lateral virada para z.
+function barcoRaia() {
+  const g = new THREE.Group();
+  const C = 26, A = 4.2, Lg = 6.5; // comprimento, altura do casco, largura
+  const tabuas = textura(256, 256, (c, w, h) => {
+    c.fillStyle = '#8a5a3b'; c.fillRect(0, 0, w, h);
+    for (let y = 0; y < h; y += 16) { c.fillStyle = y % 32 ? '#7d5034' : '#93613f'; c.fillRect(0, y, w, 15); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(0, y + 15, w, 1); }
+  }, [C / 4, A / 1.2]);
+  // casco: perfil lateral com fundo reto atrás e proa subindo em ponta
+  const perfil = new THREE.Shape();
+  perfil.moveTo(-C / 2, 0.3); perfil.lineTo(C * 0.18, 0.3); perfil.lineTo(C / 2, A); perfil.lineTo(-C / 2, A); perfil.closePath();
+  const casco = new THREE.Mesh(new THREE.ExtrudeGeometry(perfil, { depth: Lg, bevelEnabled: false }), new THREE.MeshStandardMaterial({ map: tabuas, roughness: 0.85 }));
+  casco.position.z = -Lg / 2; g.add(casco);
+  // proa afinando: cunha na frente para não ficar "caixote"
+  const madeira = mat(0x7d5034), branco = mat(0xf2f2f2), vidro = mat(0x2e3a44);
+  // base de concreto
+  const base = malha(G.caixa, mat(0xb9b4aa), -1, 0.15, 0); base.scale.set(C * 0.75, 0.3, Lg + 0.6); g.add(base);
+  // convés
+  const conves = malha(G.caixa, mat(0x6e4a32), 0, A + 0.05, 0); conves.scale.set(C, 0.1, Lg); g.add(conves);
+  // escotilhas dos dois lados do casco
+  for (const lado of [-1, 1]) for (let i = 0; i < 8; i++) {
+    const x = -C / 2 + 4 + i * 2.4;
+    const aro = malha(G.cilindro, branco, x, A * 0.6, lado * (Lg / 2 + 0.02)); aro.scale.set(0.42, 0.06, 0.42); aro.rotation.x = Math.PI / 2; g.add(aro);
+    const vid = malha(G.cilindro, vidro, x, A * 0.6, lado * (Lg / 2 + 0.05)); vid.scale.set(0.3, 0.04, 0.3); vid.rotation.x = Math.PI / 2; g.add(vid);
+  }
+  // duas cabines com escotilhas e grade em cima
+  for (const [cx, cl, ch] of [[-C * 0.05, 6, 2.2], [-C * 0.36, 4.5, 1.8]]) {
+    const cab = malha(G.caixa, madeira, cx, A + ch / 2, 0); cab.scale.set(cl, ch, Lg * 0.7); g.add(cab);
+    for (const lado of [-1, 1]) for (let i = 0; i < 2; i++) {
+      const aro = malha(G.cilindro, branco, cx - cl / 4 + i * cl / 2, A + ch * 0.55, lado * (Lg * 0.35 + 0.02)); aro.scale.set(0.38, 0.06, 0.38); aro.rotation.x = Math.PI / 2; g.add(aro);
+    }
+    for (const lado of [-1, 1]) { const r = malha(G.caixa, branco, cx, A + ch + 0.55, lado * Lg * 0.33); r.scale.set(cl, 0.06, 0.06); g.add(r); }
+    for (let i = 0; i <= 4; i++) for (const lado of [-1, 1]) { const p = malha(G.caixa, branco, cx - cl / 2 + (i * cl) / 4, A + ch + 0.28, lado * Lg * 0.33); p.scale.set(0.06, 0.55, 0.06); g.add(p); }
+  }
+  // guarda-corpo em volta do convés
+  for (const lado of [-1, 1]) {
+    const r = malha(G.caixa, branco, 0, A + 1.05, lado * (Lg / 2 - 0.05)); r.scale.set(C * 0.98, 0.07, 0.07); g.add(r);
+    const r2 = malha(G.caixa, branco, 0, A + 0.6, lado * (Lg / 2 - 0.05)); r2.scale.set(C * 0.98, 0.05, 0.05); g.add(r2);
+    for (let x = -C / 2 + 0.3; x <= C / 2 - 0.3; x += 1.6) { const p = malha(G.caixa, branco, x, A + 0.55, lado * (Lg / 2 - 0.05)); p.scale.set(0.07, 1.0, 0.07); g.add(p); }
+  }
+  // mastros
+  for (const [mx, mh] of [[C * 0.08, 13], [-C * 0.28, 11]]) { const m = malha(G.cilindro, mat(0xcfd3d6), mx, A + mh / 2, 0); m.scale.set(0.12, mh, 0.12); g.add(m); }
+  // plaquinha clara na lateral (como na foto)
+  for (const lado of [-1, 1]) { const pl = malha(G.caixa, mat(0xd9c7b8), C * 0.1, A * 0.72, lado * (Lg / 2 + 0.03)); pl.scale.set(1.6, 1.0, 0.04); g.add(pl); }
+  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  return g;
+}
+
 function colocarMarcos() {
   const marcos = [
     [/escultura da árvore/i, () => arvoreEspacial()],
     [/letreiro/i, () => letreiro()],
-    [/barco da raia/i, () => { const b = prop('barco'); if (!b) return null; const g = new THREE.Group(); g.add(b); return g; }]
+    [/barco da raia/i, () => barcoRaia()]
   ];
   for (const [nome, criar] of marcos) {
     const p = osm.pontos.find((q) => nome.test(q.nome));
