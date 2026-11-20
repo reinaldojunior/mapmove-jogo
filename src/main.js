@@ -371,7 +371,14 @@ const PROPS = {
   poste: { arquivo: 'poste.glb', altura: 5 },
   pedalinho: { arquivo: 'pedalinho.glb', comprimento: 2.4, eixo: 'z', giro: 0 },
   torcedor: { arquivo: 'torcedor.glb', altura: 1.75 },
-  barco: { arquivo: 'barco.glb', comprimento: 9, eixo: 'z', giro: 0 }
+  barco: { arquivo: 'barco.glb', comprimento: 9, eixo: 'z', giro: 0 },
+  // lugares do mapa (modelos Higgsfield); a frente do modelo fica para +z
+  igreja: { arquivo: 'igreja.glb', altura: 16, giro: -Math.PI / 2 },
+  escola: { arquivo: 'escola.glb', comprimento: 26, giro: -Math.PI / 2 },
+  padaria: { arquivo: 'padaria.glb', comprimento: 10, giro: -Math.PI / 2 },
+  mercado: { arquivo: 'mercado.glb', comprimento: 15, giro: 0 },
+  posto: { arquivo: 'posto.glb', comprimento: 18, giro: -Math.PI / 2 },
+  // escultura da árvore: entra quando houver foto da peça real (modelo a partir da imagem)
 };
 
 async function carregarProp(nome) {
@@ -1280,6 +1287,12 @@ function fachadaPosto() {
 }
 
 const FACHADAS = { igreja: fachadaIgreja, escola: fachadaEscola, comercio: fachadaComercio, posto: fachadaPosto };
+// modelo do Higgsfield quando carregou; senão a fachada feita em blocos
+function fachada(tipo, i) {
+  const nome = tipo === 'comercio' ? (i % 2 ? 'padaria' : 'mercado') : tipo;
+  const m = prop(nome);
+  return m || achatar(FACHADAS[tipo]());
+}
 
 // gira o objeto para a frente (+z) olhar para o ponto do percurso mais próximo
 function virarParaPercurso(obj, x, z) {
@@ -1291,11 +1304,11 @@ function virarParaPercurso(obj, x, z) {
 
 function colocarLocais() {
   const usados = [];
-  for (const l of osm.locais || []) {
+  for (const [i, l] of (osm.locais || []).entries()) {
     const perto = pista.pertoDe(l.x, l.z, 200);
     if (perto.dist > 130 || perto.dist < 16) continue;
     if (areaEm(osm, l.x, l.z)?.tipo === 'agua') continue;
-    const g = achatar(FACHADAS[l.tipo]());
+    const g = fachada(l.tipo, i);
     g.position.set(l.x, perto.y - 0.05, l.z);
     virarParaPercurso(g, l.x, l.z);
     g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
@@ -1332,29 +1345,9 @@ function letreiro() {
   return g;
 }
 
-// escultura da árvore: tronco de hastes de aço que se abrem em galhos com folhas douradas e verdes
-function esculturaArvore() {
-  const g = new THREE.Group();
-  const aco = mat(0x9aa3ad, { metalness: 0.8, roughness: 0.3 });
-  bloco(g, 0x8c8c86, 0, 0.4, 0, 3.4, 0.8, 3.4);
-  for (let i = 0; i < 7; i++) {
-    const a = (i / 7) * Math.PI * 2;
-    const haste = malha(G.cilindro, aco, Math.cos(a) * 0.35, 3.4, Math.sin(a) * 0.35);
-    haste.scale.set(0.09, 5.4, 0.09); haste.rotation.set(Math.sin(a) * 0.12, 0, -Math.cos(a) * 0.12); g.add(haste);
-    const galho = malha(G.cilindro, aco, Math.cos(a) * 1.6, 7, Math.sin(a) * 1.6);
-    galho.scale.set(0.07, 3.6, 0.07); galho.rotation.set(Math.sin(a) * 0.9, 0, -Math.cos(a) * 0.9); g.add(galho);
-    for (let k = 0; k < 3; k++) {
-      const f = malha(G.copa, mat(k % 2 ? 0xd4a72c : 0x3f9f4f, { metalness: 0.5, roughness: 0.35 }), Math.cos(a + k * 0.3) * (2.4 + k * 0.4), 8 + k * 0.5, Math.sin(a + k * 0.3) * (2.4 + k * 0.4));
-      f.scale.set(0.55, 0.12, 0.4); f.rotation.set(aleat(0, 1), a, aleat(0, 1)); g.add(f);
-    }
-  }
-  return g;
-}
-
 function colocarMarcos() {
   const marcos = [
     [/letreiro/i, () => letreiro()],
-    [/escultura da árvore/i, () => achatar(esculturaArvore())],
     [/barco da raia/i, () => { const b = prop('barco'); if (!b) return null; const g = new THREE.Group(); g.add(b); return g; }]
   ];
   for (const [nome, criar] of marcos) {
