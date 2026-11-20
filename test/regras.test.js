@@ -92,3 +92,9 @@ test('salto sobre o carro: só com carro de 3 a 13 m à frente, e passa por cima
   const alturaMax = R.SALTO_CARRO.velocidade ** 2 / (2 * -R.PULO.gravidade);
   assert.ok(alturaMax > 2.2 + 0.8, `altura ${alturaMax}`);
 });
+
+test('deslizar para baixo reduz o ritmo e poupa energia', () => {
+  assert.ok(Math.abs(R.velocidadeAlvo({ freando: true }) - R.velocidadeAlvo() * R.FREIO.fator) < 1e-9);
+  const normal = 100 - R.gastarEnergia(100, 10), freando = 100 - R.gastarEnergia(100, 10, { freando: true });
+  assert.ok(Math.abs(freando - normal * R.FREIO.economia) < 1e-9);
+});

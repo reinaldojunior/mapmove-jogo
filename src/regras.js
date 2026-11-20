@@ -37,8 +37,12 @@ export const ENERGIA_GEL = 35;
 export const ENERGIA_AGUA = 3;
 export const ENERGIA_BAIXA = 30;
 
-export function gastarEnergia(e, dt, { inclinacao = 0, gel = false, sede = false } = {}) {
+// deslizar para baixo: reduz o ritmo por um tempo (e poupa energia)
+export const FREIO = { fator: 0.7, duracao: 2.5, economia: 0.5 };
+
+export function gastarEnergia(e, dt, { inclinacao = 0, gel = false, sede = false, freando = false } = {}) {
   let gasto = ENERGIA_GASTO + Math.max(0, inclinacao) * ENERGIA_SUBIDA;
+  if (freando) gasto *= FREIO.economia;
   if (gel) gasto *= 0.3; // com gel fazendo efeito, quase não gasta
   if (sede) gasto *= 1.8; // com pouca água, gasta quase o dobro
   return Math.max(0, e - gasto * dt);
@@ -52,8 +56,9 @@ export const fatorEnergia = (e) => (e >= ENERGIA_BAIXA ? 1 : 0.72 + 0.28 * Math.
 // o gel deixa o pace ~13% mais rápido que o pace base do nível (7:30 → 6:30)
 export const paceDoGel = (pace) => Math.round((pace * PACE_GEL) / PACE_BASE);
 
-export function velocidadeAlvo({ gel = false, inclinacao = 0, naCalcada = false, energia = 100, pace = PACE_BASE } = {}) {
+export function velocidadeAlvo({ gel = false, inclinacao = 0, naCalcada = false, energia = 100, pace = PACE_BASE, freando = false } = {}) {
   let v = mps(gel ? paceDoGel(pace) : pace) * fatorEnergia(energia);
+  if (freando) v *= FREIO.fator;
   // subida deixa o pace mais lento e descida mais rápido (5% de subida ≈ 15% mais devagar)
   v *= Math.max(0.6, Math.min(1.25, 1 - 3 * inclinacao));
   if (naCalcada) v *= 0.6;

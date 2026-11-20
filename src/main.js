@@ -991,7 +991,7 @@ function gerarPadrao(s, nivel) {
       usados.push(d); cone(s + i * aleat(0, 3), d);
     }
   } else if (r < 0.35) barreira(s, ladoQualquer() * 1.9);
-  else if (r < 0.5) galho(s, ladoQualquer());
+  else if (r < 0.5) { const d = aleat(-2.8, 2.8); for (let i = 0; i < 5; i++) moeda(s + i * 2.6, d); } // sem galhos: no lugar, moedas
   else if (r < 0.65) cachorro(s);
   else if (r < 0.78) ciclista(s, aleat(-2.6, 2.6));
   else if (r < 0.9) { const d = aleat(-2.8, 2.8); for (let i = 0; i < 6; i++) moeda(s + i * 2.6, d); }
@@ -1000,7 +1000,7 @@ function gerarPadrao(s, nivel) {
     const lado = ladoQualquer();
     barreira(s, lado * 1.9);
     cone(s + 9, -lado * 2.6);
-    galho(s + 18, -lado);
+    barreira(s + 18, -lado * 1.9);
     gel(s + 13, lado * 2.4);
     cone(s + 26, aleat(-1, 1));
     return 40;
@@ -1778,7 +1778,7 @@ function reiniciar() {
     t: 0, tempoReal: 0, x: p.x, z: p.z, ang: p.ang, camAng: p.ang, s: 0, sMax: 0, d: 0, v: 0, y: 0, vy: 0,
     agachado: 0, geis: 0, gelAtivo: 0, giroPend: 0, parado: 0, voltar: false, fase: 0, agua: 100, pontos: 0,
     energia: 100, energiaAvisada: false, passoIdx: 0, tropecos: 0, coposPegos: 0, paceBase: paceDoPerfil(),
-    fatorTenis: 1, gelMax: R.GEL_MAX, relogio: false, isotonico: false, saltoAnim: 0, saltandoCarro: false,
+    fatorTenis: 1, gelMax: R.GEL_MAX, relogio: false, isotonico: false, saltoAnim: 0, saltandoCarro: false, freio: 0,
     penal: 0, proximoSpawn: 70, proximoPosto: 1000, proximoKm: 1000, proximaTravessa: 140, tremor: 0, kmAvisado: 0
   });
   fundo.position.z = 0;
@@ -2118,7 +2118,11 @@ function acao(tipo) {
     else s.vy = R.PULO.velocidade;
     s.agachado = 0;
   }
-  else if (tipo === 'abaixar' && s.y === 0) s.agachado = R.TEMPO_AGACHADO;
+  else if (tipo === 'abaixar') {
+    // deslizar para baixo: tira o pé por alguns segundos (mais lento, poupa energia)
+    if (!(s.freio > 0)) aviso('🐢 Ritmo mais leve', '', 900);
+    s.freio = R.FREIO.duracao;
+  }
   else if (tipo === 'agua') beber();
   else if (tipo === 'gel') usarGel();
 }
@@ -2171,12 +2175,13 @@ function passo(dt) {
       if (Math.abs(dif) < 0.35) s.ang += dif * Math.min(1, 2.5 * dt);
     }
     s.gelAtivo = Math.max(0, s.gelAtivo - dt);
-    s.energia = R.gastarEnergia(s.energia, dt, { inclinacao: p.inclinacao, gel: s.gelAtivo > 0, sede: s.agua < 25 });
+    s.freio = Math.max(0, (s.freio || 0) - dt);
+    s.energia = R.gastarEnergia(s.energia, dt, { inclinacao: p.inclinacao, gel: s.gelAtivo > 0, sede: s.agua < 25, freando: s.freio > 0 });
     if (s.energia < R.ENERGIA_BAIXA && !s.energiaAvisada) {
       s.energiaAvisada = true;
       aviso(s.geis ? '🔋 Energia baixa! Use um gel ⚡' : '🔋 Energia baixa! Pegue um gel ⚡', 'alerta', 1800);
     }
-    const alvo = R.velocidadeAlvo({ gel: s.gelAtivo > 0, inclinacao: p.inclinacao, naCalcada: Math.abs(s.d) > R.MEIA_RUA, energia: s.energia, pace: s.paceBase / s.fatorTenis });
+    const alvo = R.velocidadeAlvo({ gel: s.gelAtivo > 0, inclinacao: p.inclinacao, naCalcada: Math.abs(s.d) > R.MEIA_RUA, energia: s.energia, pace: s.paceBase / s.fatorTenis, freando: s.freio > 0 });
     s.v = R.aproximarVelocidade(s.v, alvo, dt);
     const W = s.v * R.ESCALA_TEMPO;
     const [fx, fz] = frente(s.ang);
