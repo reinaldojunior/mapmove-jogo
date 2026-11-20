@@ -49,6 +49,7 @@ export function prepararOSM(dados, paraLocal) {
     areas, predios, ruas, pontos,
     rios: linhas(dados.rio),
     caminhos: linhas(dados.caminho),
+    locais: (dados.local || []).map((l) => { const q = paraLocal(l.la, l.lo); return { tipo: l.c, x: q.x, z: q.z }; }),
     semaforos: (dados.semaforo || []).map(([la, lo]) => { const q = paraLocal(la, lo); return [q.x, q.z]; }),
     arvores: (dados.arvore || []).map(([la, lo]) => { const q = paraLocal(la, lo); return [q.x, q.z]; }),
     vias: (dados.via || []).map((v) => ({ tipo: v.t, pontos: v.p, nome: v.n }))

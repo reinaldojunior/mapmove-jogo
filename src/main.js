@@ -370,7 +370,8 @@ const PROPS = {
   banco: { arquivo: 'banco.glb', comprimento: 1.8, eixo: 'x', giro: 0 },
   poste: { arquivo: 'poste.glb', altura: 5 },
   pedalinho: { arquivo: 'pedalinho.glb', comprimento: 2.4, eixo: 'z', giro: 0 },
-  torcedor: { arquivo: 'torcedor.glb', altura: 1.75 }
+  torcedor: { arquivo: 'torcedor.glb', altura: 1.75 },
+  barco: { arquivo: 'barco.glb', comprimento: 9, eixo: 'z', giro: 0 }
 };
 
 async function carregarProp(nome) {
@@ -1179,7 +1180,10 @@ function construirOSM() {
   if (rios) grupoOSM.add(rios);
   const trilhas = malhaDeLinhas(osm.caminhos, 2.2, matCaminho, -0.03, -0.9);
   if (trilhas) grupoOSM.add(trilhas);
-  const predios = malhaDePredios(osm.predios);
+  // igrejas, escolas e comércios do mapa ganham fachada própria no lugar do prédio genérico
+  const locais = colocarLocais();
+  const predios = malhaDePredios(osm.predios.filter((b) => !locais.some((l) => pontoNoPoligono(l.x, l.z, b.pts))));
+  colocarMarcos();
   if (predios) grupoOSM.add(predios);
   plantarArvores();
   colocarPedalinhos();
@@ -1190,6 +1194,187 @@ function construirOSM() {
     const gr = fita(amostras, a, b, matGrama, { vCada: 4, dy: -0.04 });
     gr.renderOrder = -1;
     visual.add(gr);
+  }
+}
+
+// ─── FACHADAS (IGREJA, ESCOLA, COMÉRCIO, POSTO) E MARCOS DA CIDADE ────────────
+// a frente de cada peça olha para +z; quem posiciona gira para a frente ficar virada para o percurso
+
+function bloco(g, cor, x, y, z, sx, sy, sz, extra) {
+  const m = malha(G.caixa, mat(cor, extra), x, y, z); m.scale.set(sx, sy, sz); g.add(m); return m;
+}
+const VIDRO = 0x7fb6d6;
+const PAREDES = [0xf7efe1, 0xf2dfc4, 0xe9f0f2, 0xf6e3e8, 0xfff2c8, 0xdfeedd];
+const TOLDOS = [[0xd83a3a, 0xffffff], [0x2a7de1, 0xffffff], [0x1f9d55, 0xfff6d5], [0xf29b1b, 0xffffff]];
+
+function fachadaIgreja() {
+  const g = new THREE.Group();
+  const branco = 0xf4efe6;
+  bloco(g, branco, 0, 3.6, -3, 9, 7.2, 14);
+  for (const lado of [-1, 1]) {
+    const t = bloco(g, 0xb5523b, lado * 2.35, 8.5, -3, 5.6, 0.3, 14.8); t.rotation.z = -lado * 0.62;
+  }
+  // torre na frente com cúpula e cruz
+  bloco(g, branco, 0, 7, 4.6, 3.4, 14, 3.4);
+  bloco(g, 0x6e8fb8, 0, 11.6, 6.32, 1.2, 1.8, 0.1);
+  const cupula = malha(new THREE.ConeGeometry(2.3, 3.6, 4), mat(0xb5523b), 0, 15.8, 4.6); cupula.rotation.y = Math.PI / 4; g.add(cupula);
+  bloco(g, 0xd9c27a, 0, 18.6, 4.6, 0.22, 2.2, 0.22);
+  bloco(g, 0xd9c27a, 0, 18.9, 4.6, 1.2, 0.22, 0.22);
+  // porta e janelas compridas
+  bloco(g, 0x6b3f22, 0, 1.6, 6.32, 1.6, 3.2, 0.1);
+  for (const z of [-8, -4.5, -1]) for (const lado of [-1, 1]) bloco(g, VIDRO, lado * 4.52, 4, z, 0.1, 2.6, 1);
+  bloco(g, 0xd8d2c4, 0, 0.15, 7.6, 6, 0.3, 3);
+  return g;
+}
+
+function fachadaEscola() {
+  const g = new THREE.Group();
+  const larg = 22, alt = 7.4;
+  bloco(g, 0xf6d55c, 0, alt / 2, -3, larg, alt, 9);
+  bloco(g, 0x2f6fc0, 0, 0.9, 1.53, larg + 0.02, 1.8, 0.08);
+  bloco(g, 0xffffff, 0, alt + 0.2, -3, larg + 0.6, 0.4, 9.6);
+  for (const y of [2.9, 5.6]) for (let x = -larg / 2 + 2; x <= larg / 2 - 2; x += 3) bloco(g, VIDRO, x, y, 1.55, 1.9, 1.3, 0.1);
+  // entrada com marquise e muro baixo com grade
+  bloco(g, 0x2f6fc0, 0, 3.2, 2.6, 5, 0.3, 2.4);
+  bloco(g, 0x6b3f22, 0, 1.2, 1.56, 2.2, 2.4, 0.1);
+  for (const lado of [-1, 1]) {
+    bloco(g, 0xe8e1d0, lado * (larg / 4 + 2), 0.6, 7, larg / 2 - 4, 1.2, 0.3);
+    for (let x = 3; x < larg / 2 + 1; x += 0.6) bloco(g, 0x2b2f36, lado * x, 1.6, 7, 0.06, 0.9, 0.06);
+  }
+  // mastro com bandeira
+  bloco(g, 0xd0d4da, larg / 2 - 1, 4, 5.5, 0.12, 8, 0.12);
+  bloco(g, 0x1f9d55, larg / 2 - 0.3, 7.3, 5.5, 1.4, 0.9, 0.05);
+  return g;
+}
+
+function fachadaComercio() {
+  const g = new THREE.Group();
+  const larg = aleat(8, 12), alt = aleat(4.2, 5.4), [c1, c2] = escolher(TOLDOS);
+  bloco(g, escolher(PAREDES), 0, alt / 2, -4, larg, alt, 8);
+  bloco(g, 0x4a4f57, 0, 1.4, 0.03, larg - 1.2, 2.8, 0.06);
+  bloco(g, VIDRO, 0, 1.45, 0.07, larg - 1.6, 2.5, 0.05, { roughness: 0.15, metalness: 0.3 });
+  // faixa do letreiro (sem nome) e toldo listrado
+  bloco(g, c1, 0, alt - 0.6, 0.06, larg - 0.4, 0.9, 0.12);
+  const n = Math.round(larg / 0.8);
+  for (let i = 0; i < n; i++) {
+    const t = bloco(g, i % 2 ? c2 : c1, -larg / 2 + (i + 0.5) * (larg / n), 3.1, 0.75, larg / n + 0.01, 0.08, 1.6);
+    t.rotation.x = 0.35;
+  }
+  bloco(g, 0xd8d2c4, 0, 0.1, 2.2, larg + 1, 0.2, 3);
+  return g;
+}
+
+function fachadaPosto() {
+  const g = new THREE.Group();
+  bloco(g, 0xffffff, 0, 5.4, 4, 14, 0.9, 9);
+  bloco(g, 0xd83a3a, 0, 5.2, 8.52, 14.02, 0.45, 0.05);
+  for (const x of [-4.5, 4.5]) for (const z of [1.5, 6.5]) bloco(g, 0xe6e6e6, x, 2.5, z, 0.45, 5, 0.45);
+  for (const x of [-2.2, 2.2]) {
+    bloco(g, 0x2b2f36, x, 0.85, 4, 0.9, 1.7, 0.5);
+    bloco(g, 0xd83a3a, x, 1.4, 4.26, 0.7, 0.5, 0.05);
+    bloco(g, 0xb0b5bb, x, 0.08, 4, 2.2, 0.16, 5);
+  }
+  bloco(g, escolher(PAREDES), 0, 2, -4.5, 10, 4, 6);
+  bloco(g, VIDRO, 0, 1.5, -1.47, 7, 2.2, 0.06);
+  return g;
+}
+
+const FACHADAS = { igreja: fachadaIgreja, escola: fachadaEscola, comercio: fachadaComercio, posto: fachadaPosto };
+
+// gira o objeto para a frente (+z) olhar para o ponto do percurso mais próximo
+function virarParaPercurso(obj, x, z) {
+  const perto = pista.pertoDe(x, z, 300);
+  const p = pista.em(perto.s);
+  obj.rotation.y = Math.atan2(p.x - x, p.z - z);
+  return perto;
+}
+
+function colocarLocais() {
+  const usados = [];
+  for (const l of osm.locais || []) {
+    const perto = pista.pertoDe(l.x, l.z, 200);
+    if (perto.dist > 130 || perto.dist < 16) continue;
+    if (areaEm(osm, l.x, l.z)?.tipo === 'agua') continue;
+    const g = achatar(FACHADAS[l.tipo]());
+    g.position.set(l.x, perto.y - 0.05, l.z);
+    virarParaPercurso(g, l.x, l.z);
+    g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    grupoOSM.add(g);
+    usados.push(l);
+  }
+  return usados;
+}
+
+// letreiro "EU ♥ INDAIATUBA": letras em blocos coloridos com a letra na frente e em cima
+function letreiro() {
+  const g = new THREE.Group();
+  const texto = ['E', 'U', '♥', 'I', 'N', 'D', 'A', 'I', 'A', 'T', 'U', 'B', 'A'];
+  const cores = ['#e63946', '#f4a261', '#ff2d55', '#2a9d8f', '#1d6fd8', '#8e44ad', '#f1c40f', '#e67e22', '#27ae60', '#e63946', '#1d6fd8', '#f39c12', '#16a085'];
+  const L = 1.5, H = 2.1, P = 0.7;
+  let x = -((texto.length - 1) * (L + 0.12)) / 2;
+  texto.forEach((ch, i) => {
+    const cor = ch === '♥' ? '#ffffff' : cores[i];
+    const tex = textura(128, 180, (c, w, h) => {
+      c.fillStyle = cor; c.fillRect(0, 0, w, h);
+      c.fillStyle = ch === '♥' ? '#ff2d55' : '#ffffff';
+      c.font = `800 ${ch === '♥' ? 150 : 160}px "Baloo 2", system-ui, sans-serif`;
+      c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(ch, w / 2, h / 2 + 12);
+    });
+    const lateral = new THREE.MeshStandardMaterial({ color: new THREE.Color(cor).multiplyScalar(0.8), roughness: 0.5 });
+    const frente = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5 });
+    const m = new THREE.Mesh(G.caixa, [lateral, lateral, lateral, lateral, frente, frente]);
+    const alto = ch === '♥' ? H * 1.15 : H;
+    m.scale.set(L, alto, P); m.position.set(x, 0.5 + alto / 2, 0); m.castShadow = true;
+    g.add(m);
+    x += L + 0.12;
+  });
+  bloco(g, 0xd8d2c4, 0, 0.25, 0, texto.length * (L + 0.12) + 1.2, 0.5, 2.2);
+  return g;
+}
+
+// escultura da árvore: tronco de hastes de aço que se abrem em galhos com folhas douradas e verdes
+function esculturaArvore() {
+  const g = new THREE.Group();
+  const aco = mat(0x9aa3ad, { metalness: 0.8, roughness: 0.3 });
+  bloco(g, 0x8c8c86, 0, 0.4, 0, 3.4, 0.8, 3.4);
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    const haste = malha(G.cilindro, aco, Math.cos(a) * 0.35, 3.4, Math.sin(a) * 0.35);
+    haste.scale.set(0.09, 5.4, 0.09); haste.rotation.set(Math.sin(a) * 0.12, 0, -Math.cos(a) * 0.12); g.add(haste);
+    const galho = malha(G.cilindro, aco, Math.cos(a) * 1.6, 7, Math.sin(a) * 1.6);
+    galho.scale.set(0.07, 3.6, 0.07); galho.rotation.set(Math.sin(a) * 0.9, 0, -Math.cos(a) * 0.9); g.add(galho);
+    for (let k = 0; k < 3; k++) {
+      const f = malha(G.copa, mat(k % 2 ? 0xd4a72c : 0x3f9f4f, { metalness: 0.5, roughness: 0.35 }), Math.cos(a + k * 0.3) * (2.4 + k * 0.4), 8 + k * 0.5, Math.sin(a + k * 0.3) * (2.4 + k * 0.4));
+      f.scale.set(0.55, 0.12, 0.4); f.rotation.set(aleat(0, 1), a, aleat(0, 1)); g.add(f);
+    }
+  }
+  return g;
+}
+
+function colocarMarcos() {
+  const marcos = [
+    [/letreiro/i, () => letreiro()],
+    [/escultura da árvore/i, () => achatar(esculturaArvore())],
+    [/barco da raia/i, () => { const b = prop('barco'); if (!b) return null; const g = new THREE.Group(); g.add(b); return g; }]
+  ];
+  for (const [nome, criar] of marcos) {
+    const p = osm.pontos.find((q) => nome.test(q.nome));
+    if (!p) continue;
+    const perto = pista.pertoDe(p.x, p.z, 400);
+    if (perto.dist > 250) continue;
+    const obj = criar();
+    if (!obj) continue;
+    // marco colado na rua da prova vai um pouco para trás, para não ficar em cima da calçada
+    let { x, z } = p;
+    if (perto.dist < 14) {
+      const q = pista.em(perto.s), dx = x - q.x, dz = z - q.z, d = Math.hypot(dx, dz) || 1;
+      const lado = d > 0.5 ? 1 : 1;
+      x = q.x + (dx / d) * 14 * lado; z = q.z + (dz / d) * 14 * lado;
+    }
+    obj.position.set(x, pista.pertoDe(x, z).y - 0.05, z);
+    virarParaPercurso(obj, x, z);
+    obj.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    grupoOSM.add(obj);
   }
 }
 
@@ -1577,7 +1762,27 @@ function mostrar(tela) {
   $('#controles').hidden = tela !== null;
 }
 
+// ─── MÚSICA DE FUNDO (as mesmas faixas do simulador de percurso do Portal) ───
+const MUSICAS = (() => { const a = ['musica-2', 'musica-3', 'musica-4']; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; })();
+const musica = { el: null, faixa: 0, ligada: (() => { try { return localStorage.getItem('mapmove-musica') !== '0'; } catch { return true; } })() };
+function tocarMusica(tocar) {
+  if (!musica.el) {
+    const a = new Audio(); a.preload = 'none'; a.setAttribute('playsinline', ''); a.volume = 0.4;
+    a.src = `/som/${MUSICAS[0]}.mp3`;
+    a.addEventListener('ended', () => { musica.faixa = (musica.faixa + 1) % MUSICAS.length; a.src = `/som/${MUSICAS[musica.faixa]}.mp3`; a.play().catch(() => {}); });
+    musica.el = a;
+  }
+  if (tocar && musica.ligada) musica.el.play().catch(() => {}); else musica.el.pause();
+}
+function alternarMusica() {
+  musica.ligada = !musica.ligada;
+  try { localStorage.setItem('mapmove-musica', musica.ligada ? '1' : '0'); } catch { /* sem storage */ }
+  $('#btnMusica').textContent = musica.ligada ? '🔊' : '🔇';
+  tocarMusica(musica.ligada && estado.modo !== 'pausa');
+}
+
 function iniciar(escolha) {
+  tocarMusica(true);
   if (escolha) ultimaEscolha = escolha;
   reiniciar();
   estado.modo = 'contagem';
@@ -1607,12 +1812,14 @@ function passoContagem(dt) {
 function pausar() {
   if (estado.modo !== 'jogando') return;
   estado.modo = 'pausa';
+  tocarMusica(false);
   mostrar('telaPausa');
 }
 
 function continuar() {
   if (estado.modo !== 'pausa') return;
   estado.modo = 'jogando';
+  tocarMusica(true);
   mostrar(null);
 }
 
@@ -1969,6 +2176,10 @@ $('#btnDeNovo').addEventListener('click', () => iniciar());
 $('#btnTrocar').addEventListener('click', mostrarInicio);
 $('#btnSair').addEventListener('click', mostrarInicio);
 $('#btnPausa').addEventListener('click', pausar);
+$('#btnMusica').textContent = musica.ligada ? '🔊' : '🔇';
+$('#btnMusica').addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); alternarMusica(); });
+$('#btnTrocar').addEventListener('click', () => tocarMusica(false));
+$('#btnSair').addEventListener('click', () => tocarMusica(false));
 $('#btnContinuar').addEventListener('click', continuar);
 document.addEventListener('visibilitychange', () => { if (document.hidden) pausar(); });
 
