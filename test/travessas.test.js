@@ -34,3 +34,12 @@ test('travessas genéricas ficam dentro do percurso', () => {
   assert.ok(t.length >= 4);
   assert.ok(t.every((v) => v.s >= 120 && v.s < 1940 && v.lados.length >= 1));
 });
+
+test('avenida de pista dupla vira um cruzamento largo com as duas pistas', () => {
+  const via = (m) => ({ tipo: 'primary', nome: 'Avenida Dupla', pontos: [[lat(m), lng(-100)], [lat(m), lng(100)]] });
+  const t = encontrarTravessas(pista, [via(400), via(415)]);
+  assert.equal(t.length, 1);
+  assert.ok(Math.abs(t[0].s - 407.5) < 2 && Math.abs(t[0].vao - 15) < 2, JSON.stringify(t[0]));
+  const simples = encontrarTravessas(pista, [via(400)]);
+  assert.equal(simples[0].vao, undefined);
+});

@@ -657,7 +657,7 @@ function posicionarCenario(item, s) {
   let invade = false;
   if (!fora && Number.isFinite(pista.total)) invade = Math.abs(pista.projetar(x, z, Math.max(0, s), 60, 60).d) < item.folga;
   // abre espaço na grade, nas árvores e nos prédios onde chega uma travessa
-  const naTravessa = travessas.some((t) => Math.abs(t.s - s) < item.vao && t.lados.includes(Math.sign(item.d)));
+  const naTravessa = travessas.some((t) => Math.abs(t.s - s) < item.vao + (t.vao || 0) / 2 && t.lados.includes(Math.sign(item.d)));
   // sem dados do mapa (treino) vale "cidade"; com dados, cada trecho mostra o que combina com ele
   const zona = zonas ? zonaEm(zonas, s, Math.sign(item.d)) : (item.molde.densidade.cidade ? 'cidade' : 'nenhuma');
   const combina = sorteio(s, item.k) < (item.molde.densidade[zona] ?? 0);
@@ -918,9 +918,16 @@ function inclinacaoVisual(s) {
 }
 
 function adicionarTravessa(t) {
-  const p = emEst(t.s);
-  const [rx, rz] = direita(p.ang);
   t.objs = [];
+  // avenida com canteiro: uma pista de cada lado do canteiro central
+  const meios = t.vao ? [t.s - t.vao / 2, t.s + t.vao / 2] : [t.s];
+  for (const sPista of meios) adicionarPistaTravessa(t, sPista);
+  for (const o of t.objs) grupoTravessas.add(o);
+}
+
+function adicionarPistaTravessa(t, sPista) {
+  const p = emEst(sPista);
+  const [rx, rz] = direita(p.ang);
   for (const lado of t.lados) {
     const rua = planoChao(7, 34, matTravessa);
     rua.position.set(p.x + rx * lado * 21, p.y + 0.02, p.z + rz * lado * 21);
@@ -935,10 +942,9 @@ function adicionarTravessa(t) {
     const zebra = planoChao(8, 2.6, matZebra);
     zebra.position.set(p.x, p.y + 0.05, p.z);
     zebra.rotation.y = -p.ang;
-    zebra.rotation.x = inclinacaoVisual(t.s);
+    zebra.rotation.x = inclinacaoVisual(sPista);
     t.objs.push(zebra);
   }
-  for (const o of t.objs) grupoTravessas.add(o);
 }
 
 function definirTravessas(lista) {
@@ -1770,7 +1776,7 @@ function passo(dt) {
   if (sFrente >= s.proximoSpawn) {
     const nivel = prova ? 0.5 : Math.min(1, s.t / 150);
     const dentro = !prova || (s.proximoSpawn > 60 && s.proximoSpawn < pista.total - 60);
-    const longeDeTravessa = !travessas.some((t) => Math.abs(t.s - s.proximoSpawn) < 14);
+    const longeDeTravessa = !travessas.some((t) => Math.abs(t.s - s.proximoSpawn) < 14 + (t.vao || 0) / 2);
     let extra = 0;
     if (dentro && livre(s.proximoSpawn, 40) && longeDeTravessa) extra = gerarPadrao(s.proximoSpawn, nivel);
     s.proximoSpawn += extra + aleat(75, 120) - nivel * 15;
@@ -1793,7 +1799,9 @@ function passo(dt) {
   for (const t of travessas) {
     if (!t.principal || t.carro || t.s - s.s > 130 || t.s - s.s < 70) continue;
     t.carro = true;
-    if (Math.random() < 0.7 && livre(t.s, 30)) carro(t.s, escolher(t.lados));
+    // na avenida dupla o carro vem numa das duas pistas, nunca no canteiro
+    const sCarro = t.vao ? t.s + (Math.random() < 0.5 ? -1 : 1) * t.vao / 2 : t.s;
+    if (Math.random() < 0.7 && livre(sCarro, 30)) carro(sCarro, escolher(t.lados));
   }
 
   // dica ao chegar perto do posto

@@ -64,13 +64,16 @@ export function encontrarTravessas(pista, vias) {
   const juntos = [];
   for (const t of achados) {
     const ult = juntos[juntos.length - 1];
-    if (ult && t.s - ult.s < JUNTAR_M) {
+    if (ult && t.s - ult.s1 < JUNTAR_M) {
       ult.lados = [...new Set([...ult.lados, ...t.lados])];
       ult.principal = ult.principal || t.principal;
       ult.nome = ult.nome || t.nome;
-    } else juntos.push({ ...t, lados: [...t.lados] });
+      ult.s1 = t.s;
+    } else juntos.push({ ...t, lados: [...t.lados], s0: t.s, s1: t.s });
   }
-  return juntos.filter((t) => t.s > 15 && t.s < pista.total - 15);
+  // avenida de pista dupla: as duas pistas cruzam a poucos metros uma da outra; fica no meio, com a largura
+  return juntos.map(({ s0, s1, ...t }) => (s1 - s0 >= 8 ? { ...t, s: (s0 + s1) / 2, vao: s1 - s0 } : t))
+    .filter((t) => t.s > 15 && t.s < pista.total - 15);
 }
 
 // travessas genéricas quando o mapa de ruas não está disponível (e no treino)

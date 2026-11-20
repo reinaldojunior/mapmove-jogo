@@ -150,7 +150,7 @@ export function placasDoPercurso(osm, pista, travessas = []) {
   const cruzam = travessas.filter((t) => t.nome && t.nome !== ruaEm(t.s)).sort((a, b) => (b.principal ? 1 : 0) - (a.principal ? 1 : 0));
   for (const t of cruzam) {
     if (!t.principal && placas.some((p) => Math.abs(p.s - t.s) < 180)) continue;
-    placas.push({ s: t.s - 7, lado: t.lados.includes(1) ? 1 : -1, tipo: 'rua', nome: t.nome });
+    placas.push({ s: t.s - 7 - (t.vao || 0) / 2, lado: t.lados.includes(1) ? 1 : -1, tipo: 'rua', nome: t.nome });
   }
   const PULAR = /parquinho|playground|^play /i;
   const melhores = new Map();
