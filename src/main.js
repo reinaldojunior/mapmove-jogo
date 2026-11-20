@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import './style.css';
 import { PistaReal, PistaReta, frente, direita, difAngulo } from './pista.js';
@@ -337,9 +338,13 @@ const PERSONAGENS = {
   portal: { nome: 'Corredor Mapmove', desc: 'O atleta do simulador do Portal, com boné, óculos e colete.', emoji: '🏃',
     anims: [['correr', 'atleta-corrida.glb', 0], ['parado', 'atleta-parado.glb', 37], ['comemorar', 'atleta-comemora.glb', 0]] },
   liso: { nome: 'Corredor liso', desc: 'Experimental: regata e shorts lisos, ideal para os acessórios da loja.', emoji: '🏃‍♂️',
-    anims: [['correr', 'corredor-corrida.glb', 0], ['parado', 'corredor-parado.glb', 0], ['comemorar', 'corredor-comemora.glb', 0]] }
+    anims: [['correr', 'corredor-corrida.glb', 0], ['parado', 'corredor-parado.glb', 0], ['comemorar', 'corredor-comemora.glb', 0]] },
+  maratonista: { nome: 'Maratonista', desc: 'Feito no Meshy a partir das fichas de 3 vistas.', emoji: '🏃🏾',
+    anims: [['correr', 'maratonista-corrida.glb', 0], ['parado', 'maratonista-parado.glb', 0], ['comemorar', 'maratonista-comemora.glb', 0]] }
 };
 const gltfLoader = new GLTFLoader();
+// modelos exportados do Meshy vêm com a malha comprimida (Draco)
+gltfLoader.setDRACOLoader(new DRACOLoader().setDecoderPath('/draco/'));
 
 let carregandoAtleta = 0;
 async function carregarAtleta(c, id = 'portal') {
