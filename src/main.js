@@ -318,6 +318,44 @@ async function carregarAtleta(c) {
   trocarAnimacao(c, c.atleta.pedida || 'parado');
 }
 
+// objetos 3D (carro, mesa de água, barreira): carregados uma vez e clonados para cada uso
+const PROPS = {
+  carro: { arquivo: 'carro.glb', comprimento: 3.6, eixo: 'x', giro: 0 },
+  // mesa e cavalete vão pela altura real; o comprimento sai da proporção do modelo
+  mesa: { arquivo: 'mesa-agua.glb', altura: 1.0, eixo: 'z', giro: 0 },
+  barreira: { arquivo: 'barreira.glb', altura: 1.12, eixo: 'x', giro: 0 }
+};
+
+async function carregarProp(nome) {
+  const cfg = PROPS[nome];
+  const gltf = await gltfLoader.loadAsync(`/modelos/${cfg.arquivo}`);
+  const model = gltf.scene;
+  model.updateMatrixWorld(true);
+  let box = new THREE.Box3().setFromObject(model, true);
+  const tam = box.getSize(new THREE.Vector3());
+  // deixa o lado comprido no eixo pedido
+  const longoEmX = tam.x >= tam.z;
+  if ((cfg.eixo === 'x') !== longoEmX) model.rotation.y = Math.PI / 2;
+  model.rotation.y += cfg.giro;
+  model.updateMatrixWorld(true);
+  box = new THREE.Box3().setFromObject(model, true);
+  const t2 = box.getSize(new THREE.Vector3());
+  const escala = cfg.altura ? cfg.altura / Math.max(t2.y, 0.001) : cfg.comprimento / Math.max(t2.x, t2.z, 0.001);
+  const g = new THREE.Group();
+  model.position.set(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2);
+  g.add(model);
+  g.scale.setScalar(escala);
+  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  cfg.modelo = g;
+  cfg.tamanho = t2.multiplyScalar(escala);
+}
+
+// clone do modelo 3D, ou null enquanto não carregou (aí usa o desenho de blocos)
+function prop(nome) {
+  const m = PROPS[nome]?.modelo;
+  return m ? m.clone() : null;
+}
+
 function trocarAnimacao(c, nome) {
   const a = c.atleta;
   if (!a) return;
@@ -615,7 +653,15 @@ function barreira(s, d) {
     const perna = malha(G.caixa, mat(0xc98a4b), lado * 1.6, 0.5, 0); perna.scale.set(0.1, 1, 0.1); perna.rotation.x = 0.2; g.add(perna);
     const perna2 = perna.clone(); perna2.rotation.x = -0.2; g.add(perna2);
   }
-  return addEntidade({ tipo: 'barreira', motivo: 'Bateu na barreira', obj: g, s, d, larg: 3.6, prof: 0.5, h: 1.08 });
+  // com o modelo 3D, cavaletes lado a lado fecham os mesmos 3,6 m
+  let obj = g;
+  const unico = prop('barreira');
+  if (unico) {
+    const larg = PROPS.barreira.tamanho.x, n = Math.max(1, Math.round(3.6 / larg));
+    obj = new THREE.Group();
+    for (let i = 0; i < n; i++) { const c = i ? prop('barreira') : unico; c.position.x = (i - (n - 1) / 2) * (3.6 / n); obj.add(c); }
+  }
+  return addEntidade({ tipo: 'barreira', motivo: 'Bateu na barreira', obj, s, d, larg: 3.6, prof: 0.5, h: 1.08 });
 }
 
 function galho(s, lado) {
@@ -686,7 +732,8 @@ function carro(s, lado) {
   for (const px of [-0.95, 0.95]) for (const pz of [-0.78, 0.78]) {
     const r = malha(G.cilindro, mat(0x111111), px, 0.36, pz); r.scale.set(0.36, 0.22, 0.36); r.rotation.x = Math.PI / 2; g.add(r);
   }
-  return addEntidade({ tipo: 'carro', motivo: 'Bateu no carro', obj: achatar(g), s, d: lado * 16, rot: lado > 0 ? Math.PI : 0, larg: 3.1, prof: 1.6, h: 2.2, gatilho: 55 });
+  const modelo = prop('carro');
+  return addEntidade({ tipo: 'carro', motivo: 'Bateu no carro', obj: modelo || achatar(g), s, d: lado * 16, rot: lado > 0 ? Math.PI : 0, larg: 3.4, prof: 1.7, h: 2.2, gatilho: 55 });
 }
 
 function moeda(s, d) {
@@ -728,7 +775,9 @@ function mesaAgua(s, lado) {
     const c = malha(G.cilindro, i % 3 ? branco : mat(0x8fd3ff), aleat(-0.4, 0.4), 0.98, -1.6 + (i / 17) * 3.2);
     c.scale.set(0.11, 0.14, 0.11); g.add(c);
   }
-  return addEntidade({ tipo: 'mesa', mesa: true, motivo: 'Bateu na mesa de água', obj: achatar(g), s, d: lado * 3.35, lado, larg: 1.15, prof: 3.7, h: 1.0, fixo: !!prova, tentada: false });
+  const modelo = prop('mesa');
+  const prof = modelo ? PROPS.mesa.tamanho.z : 3.7, larg = modelo ? PROPS.mesa.tamanho.x : 1.15;
+  return addEntidade({ tipo: 'mesa', mesa: true, motivo: 'Bateu na mesa de água', obj: modelo || achatar(g), s, d: lado * (4 - larg / 2 - 0.1), lado, larg, prof, h: 1.0, fixo: !!prova, tentada: false });
 }
 
 function portico(s, texto, { cor = '#ffd21f', corTexto = '#0b1d3a' } = {}) {
@@ -1437,6 +1486,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) pausa
 aplicarQualidade(nivel);
 mostrarInicio();
 carregarAtleta(corredor).catch((e) => console.error('atleta 3D', e));
+for (const nome of Object.keys(PROPS)) carregarProp(nome).catch(() => { /* sem o arquivo, fica o desenho de blocos */ });
 carregarProva();
 loop();
 
