@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PistaReal } from '../src/pista.js';
-import { pontoNoPoligono, areaPoligono, prepararOSM, areaEm, zonasDoPercurso, zonaEm } from '../src/osm.js';
+import { pontoNoPoligono, areaPoligono, prepararOSM, areaEm, zonasDoPercurso, zonaEm, ruasDoPercurso, abreviarRua, placasDoPercurso } from '../src/osm.js';
 
 const quadrado = [[0, 0], [10, 0], [10, 10], [0, 10]];
 
@@ -36,4 +36,41 @@ test('zonas de cada lado do percurso', () => {
   assert.equal(zonaEm(zonas, 200, -1), 'livre');
   assert.equal(zonaEm(zonas, 700, -1), 'cidade');
   assert.equal(zonaEm(zonas, 800, 1), 'livre');
+});
+
+test('rua com nome paralela ao percurso vira trecho; transversal não', () => {
+  const comRuas = prepararOSM({
+    ...dados,
+    via: [
+      { t: 'primary', n: 'Avenida Engenheiro Fábio Roberto Barnabé', p: [[lat(100), lng(2)], [lat(600), lng(2)]] },
+      { t: 'residential', n: 'Rua Transversal', p: [[lat(800), lng(-100)], [lat(800), lng(100)]] }
+    ]
+  }, pista.paraLocal);
+  const trechos = ruasDoPercurso(comRuas, pista);
+  assert.equal(trechos.length, 1);
+  assert.equal(trechos[0].nome, 'Avenida Engenheiro Fábio Roberto Barnabé');
+  assert.ok(trechos[0].s0 >= 90 && trechos[0].s0 <= 110 && trechos[0].s1 >= 590, JSON.stringify(trechos[0]));
+});
+
+test('pontos de referência incluem lagos e parques com nome', () => {
+  assert.ok(osm.pontos.some((p) => p.nome === 'Lago' && p.tipo === 'lago'));
+  assert.ok(osm.pontos.some((p) => p.nome === 'Parque' && p.tipo === 'parque'));
+});
+
+test('abreviação de placa de rua', () => {
+  assert.equal(abreviarRua('Avenida Engenheiro Fábio Roberto Barnabé'), 'Av. Eng. Fábio Roberto Barnabé');
+  assert.equal(abreviarRua('Rua Martinho Lutero'), 'R. Martinho Lutero');
+});
+
+test('placas: rua do trecho, rua que cruza e ponto de referência', () => {
+  const comRuas = prepararOSM({
+    ...dados,
+    via: [{ t: 'primary', n: 'Avenida Engenheiro Fábio Roberto Barnabé', p: [[lat(100), lng(2)], [lat(600), lng(2)]] }]
+  }, pista.paraLocal);
+  const placas = placasDoPercurso(comRuas, pista, [{ s: 800, lados: [-1, 1], nome: 'Rua Transversal' }]);
+  const ruas = placas.filter((p) => p.tipo === 'rua').map((p) => p.nome);
+  assert.ok(ruas.includes('Avenida Engenheiro Fábio Roberto Barnabé'));
+  assert.ok(ruas.includes('Rua Transversal'));
+  const lago = placas.find((p) => p.nome === 'Lago');
+  assert.ok(lago && lago.lado === 1 && lago.s < lago.sPonto, JSON.stringify(lago));
 });

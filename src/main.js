@@ -7,7 +7,7 @@ import { PistaReal, PistaReta, frente, direita, difAngulo } from './pista.js';
 import * as R from './regras.js';
 import { criarControles } from './controles.js';
 import { encontrarTravessas, travessasGenericas, buscarVias } from './travessas.js';
-import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono } from './osm.js';
+import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono, placasDoPercurso, abreviarRua } from './osm.js';
 
 const SUPABASE_URL = 'https://ssfsxdmzbubvygctdjgf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_s2yoUApfYl_ZvSUkqYYrVw_uXwKsybM';
@@ -134,12 +134,48 @@ const texCalcada = textura(256, 256, (g, w, h) => {
 });
 
 const texGrama = textura(128, 128, (g, w, h) => {
-  g.fillStyle = '#5fb04a'; g.fillRect(0, 0, w, h);
-  for (let i = 0; i < 500; i++) {
-    g.fillStyle = Math.random() < 0.5 ? '#4f9e3d' : '#6cc055';
-    g.fillRect(Math.random() * w, Math.random() * h, 3, 5);
+  g.fillStyle = '#6cba52'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 900; i++) {
+    const v = Math.random();
+    g.fillStyle = v < 0.4 ? '#5ba843' : v < 0.85 ? '#7ccb5f' : '#a6c76a';
+    g.fillRect(Math.random() * w, Math.random() * h, 1.5, 2 + Math.random() * 3);
   }
 });
+
+// gramado claro e manchado: multiplica a cor de cada área (parque, mata, campo)
+const texGramado = textura(256, 256, (g, w, h) => {
+  g.fillStyle = '#e9eee4'; g.fillRect(0, 0, w, h);
+  const mancha = (x, y, r, cor) => {
+    for (const dx of [-w, 0, w]) for (const dy of [-h, 0, h]) {
+      const gr = g.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r);
+      gr.addColorStop(0, cor); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gr; g.fillRect(x + dx - r, y + dy - r, r * 2, r * 2);
+    }
+  };
+  for (let i = 0; i < 26; i++) mancha(Math.random() * w, Math.random() * h, 20 + Math.random() * 50, Math.random() < 0.5 ? 'rgba(255,255,235,0.3)' : 'rgba(60,90,30,0.08)');
+  for (let i = 0; i < 2600; i++) {
+    const v = Math.random();
+    g.fillStyle = v < 0.45 ? 'rgba(70,110,40,0.22)' : v < 0.9 ? 'rgba(255,255,230,0.3)' : 'rgba(190,170,90,0.25)';
+    g.fillRect(Math.random() * w, Math.random() * h, 1.5, 2 + Math.random() * 3);
+  }
+});
+
+// ondinhas da água: mapa de normais feito de senos que fecham na borda (repete sem emenda)
+const texAguaNormal = (() => {
+  const N = 128, c = document.createElement('canvas'); c.width = c.height = N;
+  const g = c.getContext('2d'), img = g.createImageData(N, N);
+  const ondas = [[1, 2, 0.6], [3, -1, 0.35], [-2, 3, 0.3], [5, 4, 0.12], [-6, 1, 0.1]];
+  const alt = (x, y) => ondas.reduce((a, [kx, ky, amp]) => a + amp * Math.sin(((kx * x + ky * y) / N) * Math.PI * 2), 0);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const dx = alt(x + 1, y) - alt(x - 1, y), dy = alt(x, y + 1) - alt(x, y - 1);
+    const nx = -dx * 2.2, ny = -dy * 2.2, l = Math.hypot(nx, ny, 1), i = (y * N + x) * 4;
+    img.data[i] = (nx / l * 0.5 + 0.5) * 255; img.data[i + 1] = (ny / l * 0.5 + 0.5) * 255; img.data[i + 2] = (1 / l * 0.5 + 0.5) * 255; img.data[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+})();
 
 const texJanelas = textura(128, 256, (g, w, h) => {
   g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h);
@@ -203,7 +239,7 @@ const G = {
   moeda: new THREE.CylinderGeometry(0.42, 0.42, 0.1, 24),
   tronco: new THREE.CylinderGeometry(0.12, 0.2, 1, 8),
   // copa facetada (estilo low poly): normais por face
-  copa: (() => { const g = new THREE.IcosahedronGeometry(1, 0).toNonIndexed(); g.computeVertexNormals(); return g; })()
+  copa: (() => { const g = new THREE.IcosahedronGeometry(1, 1).toNonIndexed(); g.computeVertexNormals(); return g; })()
 };
 const PELES = [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0x5c3a1e];
 const CAMISAS = [0xff4d4d, 0x1e88ff, 0x2ecc71, 0xffd21f, 0xff8c1a, 0xb05cff, 0xffffff, 0x14b8a6];
@@ -328,7 +364,8 @@ const PROPS = {
   mesa: { arquivo: 'mesa-agua.glb', altura: 1.0, eixo: 'z', giro: 0 },
   barreira: { arquivo: 'barreira.glb', altura: 1.12, eixo: 'x', giro: 0 },
   // cenário de parque
-  ipe: { arquivo: 'ipe.glb', altura: 7 },
+  ipe: { arquivo: 'ipe2.glb', altura: 6.5 },
+  placa: { arquivo: 'placa.glb', altura: 4.2 },
   arvoreGrande: { arquivo: 'arvore.glb', altura: 8 },
   banco: { arquivo: 'banco.glb', comprimento: 1.8, eixo: 'x', giro: 0 },
   poste: { arquivo: 'poste.glb', altura: 5 },
@@ -555,7 +592,8 @@ function fita(amostras, d0, d1, material, { vCada = 8, dy = 0, inclinacao = fals
 const matRua = new THREE.MeshStandardMaterial({ map: texAsfalto, roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
 const matCalcada = new THREE.MeshStandardMaterial({ map: texCalcada, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
 const matGrama = new THREE.MeshStandardMaterial({ map: texGrama, roughness: 1, depthWrite: false });
-const matChao = new THREE.MeshStandardMaterial({ color: 0x5fb04a, roughness: 1, depthWrite: false });
+const texChao = texGramado.clone(); texChao.repeat.set(9000 / 9, 9000 / 9);
+const matChao = new THREE.MeshStandardMaterial({ color: 0x7fc062, map: texChao, roughness: 1, depthWrite: false });
 // a grama repete a textura a cada 4 m nos dois sentidos
 texGrama.repeat.set(6, 1);
 
@@ -925,11 +963,12 @@ async function carregarTravessas(distancia, pistaAlvo) {
 
 // ─── CENÁRIO REAL (OPENSTREETMAP), NO ESTILO CLARO DO MAPBOX STANDARD ─────────
 
-const CORES_AREA = { bairro: 0xd9d3c6, esporte: 0x86c766, grama: 0xa3d77f, parque: 0x93d071, mata: 0x5ea64a, agua: 0x5bb8ee };
+const CORES_AREA = { bairro: 0xd9d3c6, esporte: 0x8fcf6c, grama: 0xa9dc84, parque: 0x9bd577, mata: 0x67ad50, agua: 0x3f9fd6 };
 const ORDEM_AREA = { bairro: -2.6, esporte: -2.4, grama: -2.4, parque: -2.4, mata: -2.3, agua: -2.2 };
 const matsArea = Object.fromEntries(Object.entries(CORES_AREA).map(([k, cor]) => [k, k === 'agua'
-  ? new THREE.MeshStandardMaterial({ color: cor, roughness: 0.08, metalness: 0.15, depthWrite: false })
-  : new THREE.MeshStandardMaterial({ color: cor, roughness: 1, depthWrite: false })]));
+  ? new THREE.MeshStandardMaterial({ color: 0x3f9fd6, roughness: 0.14, metalness: 0.25, envMapIntensity: 1.4, normalMap: texAguaNormal, normalScale: new THREE.Vector2(0.55, 0.55), depthWrite: false })
+  : new THREE.MeshStandardMaterial({ color: cor, map: k === 'bairro' ? null : texGramado, roughness: 1, depthWrite: false })]));
+const matMargem = new THREE.MeshStandardMaterial({ color: 0xcdbf98, roughness: 1, depthWrite: false });
 const matCaminho = new THREE.MeshStandardMaterial({ color: 0xeee4cf, roughness: 1, depthWrite: false });
 const matRio = matsArea.agua;
 const CORES_PAREDE = [0xf6f1e9, 0xece5da, 0xf1e4d4, 0xe3e8ee, 0xefe6ef, 0xf3ead0];
@@ -944,7 +983,7 @@ let pedalinhos = [];
 const alturaChao = (x, z) => pista.pertoDe(x, z).y;
 
 function malhaDePoligono(listas, material, dy, ordem) {
-  const pos = [];
+  const pos = [], uv = [];
   for (const pts of listas) {
     const contorno = pts.slice();
     if (contorno.length > 3 && contorno[0][0] === contorno.at(-1)[0] && contorno[0][1] === contorno.at(-1)[1]) contorno.pop();
@@ -952,11 +991,12 @@ function malhaDePoligono(listas, material, dy, ordem) {
     const v2 = contorno.map(([x, z]) => new THREE.Vector2(x, z));
     const faces = THREE.ShapeUtils.triangulateShape(v2, []);
     const ys = contorno.map(([x, z]) => alturaChao(x, z) + dy);
-    for (const f of faces) for (const i of [f[0], f[2], f[1]]) pos.push(contorno[i][0], ys[i], contorno[i][1]);
+    for (const f of faces) for (const i of [f[0], f[2], f[1]]) { pos.push(contorno[i][0], ys[i], contorno[i][1]); uv.push(contorno[i][0] / 9, contorno[i][1] / 9); }
   }
   if (!pos.length) return null;
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   geo.computeVertexNormals();
   const m = new THREE.Mesh(geo, material);
   m.renderOrder = ordem;
@@ -1125,6 +1165,10 @@ function construirOSM() {
     const m = malhaDePoligono(listas, matsArea[tipo], tipo === 'agua' ? -0.05 : -0.08, ORDEM_AREA[tipo]);
     if (m) grupoOSM.add(m);
   }
+  // margem de terra clara em volta dos lagos
+  const margens = osm.areas.filter((a) => a.tipo === 'agua').map((a) => [...a.pts, a.pts[0]]);
+  const margem = malhaDeLinhas(margens, 1.8, matMargem, -0.055, -2.25);
+  if (margem) grupoOSM.add(margem);
   const rios = malhaDeLinhas(osm.rios, 5, matRio, -0.06, -2.1);
   if (rios) grupoOSM.add(rios);
   const trilhas = malhaDeLinhas(osm.caminhos, 2.2, matCaminho, -0.03, -0.9);
@@ -1154,13 +1198,165 @@ async function carregarOSM(distancia, pistaAlvo) {
   osm = prepararOSM(dados, pistaAlvo.paraLocal);
   zonas = zonasDoPercurso(osm, pistaAlvo);
   construirOSM();
-  definirTravessas(encontrarTravessas(pistaAlvo, osm.vias).map((t) => ({ ...t, carro: false })));
+  const cruzamentos = encontrarTravessas(pistaAlvo, osm.vias).map((t) => ({ ...t, carro: false }));
+  definirTravessas(cruzamentos);
+  definirPlacas(placasDoPercurso(osm, pistaAlvo, cruzamentos), semaforosDoPercurso());
 }
 
 function atualizarOSM(dt, t) {
   const lim = [300, 220, 160][nivel];
   for (const c of chunksArvores) c.visible = Math.hypot(c.userData.centro[0] - estado.x, c.userData.centro[1] - estado.z) < lim;
+  texAguaNormal.offset.set(t * 0.012, t * 0.007);
   for (const b of pedalinhos) { b.position.y = b.userData.base + Math.sin(t * 1.6 + b.userData.fase) * 0.05; b.rotation.y += dt * 0.05; }
+}
+
+// ─── PLACAS DE RUA, PONTOS DE REFERÊNCIA E SEMÁFOROS ──────────────────────────
+// só existem perto do corredor: cada placa tem a própria textura com o nome, criada e descartada sob demanda
+
+let placas = [], semaforos = [];
+const grupoPlacas = new THREE.Group();
+scene.add(grupoPlacas);
+const ICONE_PONTO = { parque: '🌳', lago: '🦆', monumento: '🗿', cultura: '🏛️', compras: '🛍️', pier: '🚣' };
+
+// divide o nome em até 2 linhas equilibradas
+function linhasDoNome(txt, max = 20) {
+  if (txt.length <= max) return [txt];
+  const p = txt.split(' ');
+  let melhor = null;
+  for (let i = 1; i < p.length; i++) {
+    const a = p.slice(0, i).join(' '), b = p.slice(i).join(' ');
+    const pior = Math.max(a.length, b.length);
+    if (!melhor || pior < melhor.pior) melhor = { pior, l: [a, b] };
+  }
+  return melhor.l;
+}
+
+function texPlaca(linhas, fundo, rodape) {
+  const t = textura(512, 256, (g, w, h) => {
+    g.fillStyle = fundo; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#fff'; g.lineWidth = 9;
+    g.beginPath(); g.roundRect(14, 14, w - 28, h - 28, 18); g.stroke();
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const area = rodape ? h - 92 : h - 60, y0 = 30;
+    let tam = linhas.length > 1 ? 74 : 92;
+    const fonte = () => `800 ${tam}px "Baloo 2", system-ui, sans-serif`;
+    g.font = fonte();
+    while (tam > 30 && Math.max(...linhas.map((l) => g.measureText(l).width)) > w - 70) { tam -= 4; g.font = fonte(); }
+    const passo = Math.min(tam * 1.02, area / linhas.length);
+    linhas.forEach((l, i) => g.fillText(l, w / 2, y0 + area / 2 + (i - (linhas.length - 1) / 2) * passo + 4));
+    if (rodape) { g.font = `700 40px "Baloo 2", system-ui, sans-serif`; g.fillText(rodape, w / 2, h - 58); }
+  });
+  t.anisotropy = 4;
+  return t;
+}
+
+function criarPlaca(p) {
+  const g = new THREE.Group();
+  const rua = p.tipo === 'rua';
+  const linhas = rua ? linhasDoNome(abreviarRua(p.nome)) : linhasDoNome(`${ICONE_PONTO[p.categoria] || '📍'} ${p.nome}`, 22);
+  const rodape = rua ? null : `${p.lado > 0 ? '➜' : '⬅'} ${Math.max(10, Math.round(p.dist / 10) * 10)} m`;
+  const tex = texPlaca(linhas, rua ? '#1552b0' : '#7a4a22', rodape);
+  const matTexto = new THREE.MeshBasicMaterial({ map: tex });
+  let W, H, yc, meia;
+  const modelo = rua && prop('placa');
+  if (modelo) {
+    // placa azul feita no Higgsfield: a chapa ocupa o alto do poste, de frente para o eixo x
+    g.add(modelo);
+    const tam = PROPS.placa.tamanho;
+    W = tam.z * 0.9; H = tam.y * 0.38; yc = tam.y * 0.785; meia = tam.x / 2 + 0.015;
+  } else {
+    // placa de parque: dois mourões de madeira e chapa marrom (ou azul, se o modelo não carregou)
+    W = rua ? 2.6 : 3.4; H = rua ? 1.3 : 1.8; yc = rua ? 3.0 : 2.0; meia = 0.06;
+    const madeira = mat(rua ? 0x8d949c : 0x6b4423);
+    for (const z of rua ? [0] : [-W / 2 + 0.2, W / 2 - 0.2]) {
+      const poste = malha(G.caixa, madeira, 0, yc / 2, z); poste.scale.set(0.12, yc + H / 2, 0.12); g.add(poste);
+    }
+    const chapa = malha(G.caixa, mat(rua ? 0x1552b0 : 0x7a4a22), 0, yc, 0); chapa.scale.set(0.1, H + 0.12, W + 0.12); g.add(chapa);
+  }
+  for (const lado of [-1, 1]) {
+    const t = new THREE.Mesh(new THREE.PlaneGeometry(W, H), matTexto);
+    t.position.set(lado * meia, yc, 0); t.rotation.y = lado * Math.PI / 2;
+    g.add(t);
+  }
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
+function criarSemaforo() {
+  const g = new THREE.Group();
+  const cinza = mat(0x3b4048);
+  const poste = malha(G.cilindro, cinza, 0, 2.6, 0); poste.scale.set(0.09, 5.2, 0.09); g.add(poste);
+  const braco = malha(G.cilindro, cinza, -1.6, 5.05, 0); braco.scale.set(0.06, 3.2, 0.06); braco.rotation.z = Math.PI / 2; g.add(braco);
+  for (const [x, y] of [[-2.9, 4.45], [0.16, 2.75]]) {
+    const caixa = malha(G.caixa, mat(0x1d1f24), x, y, 0); caixa.scale.set(0.34, 1.0, 0.3); g.add(caixa);
+    [[0xff3b30, 0.3, 0.25], [0xffcc00, 0, 0.25], [0x34ff6a, -0.3, 2.4]].forEach(([cor, dy, brilho]) => {
+      const luz = malha(G.esfera, new THREE.MeshStandardMaterial({ color: cor, emissive: cor, emissiveIntensity: brilho }), x, y + dy, 0.16);
+      luz.scale.setScalar(0.11); g.add(luz);
+    });
+  }
+  return g;
+}
+
+function semaforosDoPercurso() {
+  const lista = [];
+  for (const [x, z] of osm.semaforos || []) {
+    const perto = pista.pertoDe(x, z, 60);
+    if (perto.dist > 25 || lista.some((o) => Math.abs(o.s - perto.s) < 30)) continue;
+    lista.push({ s: perto.s, lado: 1 });
+  }
+  return lista;
+}
+
+function definirPlacas(lista, listaSemaforos = []) {
+  limparPlacas();
+  placas = lista;
+  semaforos = listaSemaforos;
+}
+
+function limparPlacas() {
+  for (const p of [...placas, ...semaforos]) if (p.obj) soltarPlaca(p);
+  placas = []; semaforos = [];
+}
+
+function soltarPlaca(p) {
+  grupoPlacas.remove(p.obj);
+  p.obj.traverse((o) => { if (o.isMesh && o.material.map && o.material.isMeshBasicMaterial) { o.material.map.dispose(); o.material.dispose(); } });
+  p.obj = null;
+}
+
+function posicionarNaBeira(obj, s, lado, d) {
+  const p = emEst(s);
+  const [rx, rz] = direita(p.ang);
+  obj.position.set(p.x + rx * lado * d, p.y, p.z + rz * lado * d);
+  return p;
+}
+
+function atualizarPlacas(sCorredor) {
+  for (const p of placas) {
+    const perto = p.s > sCorredor - 30 && p.s < sCorredor + 260;
+    if (perto && !p.obj) {
+      p.obj = criarPlaca(p);
+      const e = posicionarNaBeira(p.obj, p.s, p.lado, R.LIMITE_CALCADA + 1.1);
+      // de frente para quem vem correndo, um pouco virada para o meio da rua
+      p.obj.rotation.y = -e.ang + Math.PI / 2 - p.lado * 0.35;
+      // nas esquinas fechadas a placa cairia em cima de outro trecho da rua
+      p.obj.visible = pista.pertoDe(p.obj.position.x, p.obj.position.z, 20).dist > R.LIMITE_CALCADA;
+      grupoPlacas.add(p.obj);
+    } else if (!perto && p.obj) soltarPlaca(p);
+    if (p.tipo === 'ponto' && !p.avisado && sCorredor > (p.sPonto ?? p.s) - 5 && sCorredor < (p.sPonto ?? p.s) + 40) {
+      p.avisado = true;
+      aviso(`${ICONE_PONTO[p.categoria] || '📍'} ${p.nome}`, 'km', 2000);
+    }
+  }
+  for (const m of semaforos) {
+    const perto = m.s > sCorredor - 30 && m.s < sCorredor + 260;
+    if (perto && !m.obj) {
+      m.obj = criarSemaforo();
+      const e = posicionarNaBeira(m.obj, m.s, m.lado, R.MEIA_RUA + 0.6);
+      m.obj.rotation.y = -e.ang;
+      grupoPlacas.add(m.obj);
+    } else if (!perto && m.obj) { grupoPlacas.remove(m.obj); m.obj = null; }
+  }
 }
 
 // ─── ESTADO ───────────────────────────────────────────────────────────────────
@@ -1197,6 +1393,7 @@ function postosDaProva(rotulo) {
 function prepararPercurso(escolha) {
   ultimaEscolha = escolha;
   limparEntidades();
+  limparPlacas();
   if (escolha.tipo === 'prova') {
     pista = new PistaReal(escolha.distancia.percurso);
     prova = { nome: dadosProva.nome, rotulo: escolha.distancia.rotulo, total: pista.total };
@@ -1651,6 +1848,7 @@ function passo(dt) {
 
   atualizarCenario(s.s);
   atualizarOSM(dt, s.t);
+  atualizarPlacas(s.s);
   if (!prova) { visual.position.z = -Math.floor(s.s / 40) * 40; fundo.position.z = s.z; }
 
   hudTimer -= dt;
@@ -1774,4 +1972,4 @@ carregarProva();
 loop();
 
 // ganchos para testes automatizados
-window.__jogo = { criar: { galho, cone, barreira }, osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };
+window.__jogo = { criar: { galho, cone, barreira }, osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, placas: () => placas, semaforos: () => semaforos, atualizarPlacas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };

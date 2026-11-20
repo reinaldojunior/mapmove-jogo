@@ -46,7 +46,7 @@ export function encontrarTravessas(pista, vias) {
           const lados = [];
           if (k > 0 || c.u * len > DIST_T) lados.push(lado(a));
           if (k < pts.length - 2 || (1 - c.u) * len > DIST_T) lados.push(lado(b));
-          achados.push({ s, lados: [...new Set(lados)], principal });
+          achados.push({ s, lados: [...new Set(lados)], principal, nome: via.nome });
         }
       }
     }
@@ -57,7 +57,7 @@ export function encontrarTravessas(pista, vias) {
       if (Math.abs(q.d) > DIST_T) continue;
       const qv = pista.projetar(vizinho.x, vizinho.z, q.s, 60, 60);
       if (Math.abs(qv.d) < DIST_T || Math.abs(qv.d - q.d) < Math.abs(qv.s - q.s) * SENO_MIN) continue;
-      achados.push({ s: q.s, lados: [Math.sign(qv.d) || 1], principal });
+      achados.push({ s: q.s, lados: [Math.sign(qv.d) || 1], principal, nome: via.nome });
     }
   }
   achados.sort((a, b) => a.s - b.s);
@@ -67,6 +67,7 @@ export function encontrarTravessas(pista, vias) {
     if (ult && t.s - ult.s < JUNTAR_M) {
       ult.lados = [...new Set([...ult.lados, ...t.lados])];
       ult.principal = ult.principal || t.principal;
+      ult.nome = ult.nome || t.nome;
     } else juntos.push({ ...t, lados: [...t.lados] });
   }
   return juntos.filter((t) => t.s > 15 && t.s < pista.total - 15);
