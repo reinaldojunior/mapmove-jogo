@@ -1470,22 +1470,34 @@ function linhasDoNome(txt, max = 20) {
 }
 
 function texPlaca(linhas, fundo, rodape) {
-  const t = textura(512, 256, (g, w, h) => {
+  // 1024 px de largura e filtro anisotrópico no máximo: dá para ler de longe e de lado
+  const t = textura(1024, 512, (g, w, h) => {
     g.fillStyle = fundo; g.fillRect(0, 0, w, h);
-    g.strokeStyle = '#fff'; g.lineWidth = 9;
-    g.beginPath(); g.roundRect(14, 14, w - 28, h - 28, 18); g.stroke();
+    g.strokeStyle = '#fff'; g.lineWidth = 16;
+    g.beginPath(); g.roundRect(26, 26, w - 52, h - 52, 34); g.stroke();
     g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    const area = rodape ? h - 92 : h - 60, y0 = 30;
-    let tam = linhas.length > 1 ? 74 : 92;
-    const fonte = () => `800 ${tam}px "Baloo 2", system-ui, sans-serif`;
+    const area = rodape ? h - 190 : h - 110, y0 = 55;
+    let tam = linhas.length > 1 ? 160 : 200;
+    const fonte = () => `800 ${tam}px "Baloo 2", "Arial Black", system-ui, sans-serif`;
     g.font = fonte();
-    while (tam > 30 && Math.max(...linhas.map((l) => g.measureText(l).width)) > w - 70) { tam -= 4; g.font = fonte(); }
-    const passo = Math.min(tam * 1.02, area / linhas.length);
-    linhas.forEach((l, i) => g.fillText(l, w / 2, y0 + area / 2 + (i - (linhas.length - 1) / 2) * passo + 4));
-    if (rodape) { g.font = `700 40px "Baloo 2", system-ui, sans-serif`; g.fillText(rodape, w / 2, h - 58); }
+    while (tam > 60 && Math.max(...linhas.map((l) => g.measureText(l).width)) > w - 120) { tam -= 6; g.font = fonte(); }
+    const passo = Math.min(tam * 1.0, area / linhas.length);
+    linhas.forEach((l, i) => g.fillText(l, w / 2, y0 + area / 2 + (i - (linhas.length - 1) / 2) * passo + 8));
+    if (rodape) { g.font = `700 84px "Baloo 2", "Arial Black", system-ui, sans-serif`; g.fillText(rodape, w / 2, h - 112); }
   });
-  t.anisotropy = 4;
   return t;
+}
+
+// cartão marrom no pé da tela (como a placa do parque): não se confunde com os avisos do meio
+let pontoTimer;
+function mostrarPonto(p) {
+  const el = $('#ponto');
+  el.querySelector('.ico').textContent = ICONE_PONTO[p.categoria] || '📍';
+  el.querySelector('b').textContent = p.nome;
+  el.hidden = false;
+  el.classList.remove('entra'); void el.offsetWidth; el.classList.add('entra');
+  clearTimeout(pontoTimer);
+  pontoTimer = setTimeout(() => { el.hidden = true; }, 4000);
 }
 
 function criarPlaca(p) {
@@ -1583,7 +1595,7 @@ function atualizarPlacas(sCorredor) {
     } else if (!perto && p.obj) soltarPlaca(p);
     if (p.tipo === 'ponto' && !p.avisado && sCorredor > (p.sPonto ?? p.s) - 5 && sCorredor < (p.sPonto ?? p.s) + 40) {
       p.avisado = true;
-      aviso(`${ICONE_PONTO[p.categoria] || '📍'} ${p.nome}`, 'km', 2000);
+      mostrarPonto(p);
     }
   }
   for (const m of semaforos) {

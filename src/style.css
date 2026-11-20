@@ -330,3 +330,32 @@ kbd {
 
 .creditos { opacity: 0.7; font-size: 12px; }
 .creditos a { color: inherit; }
+
+/* ponto turístico: cartão marrom embaixo das pílulas da esquerda, longe da pista e dos avisos do meio */
+#ponto {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 210px;
+  margin-top: 2px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 8px;
+  background: #7a4a22;
+  border: 2px solid #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  color: #fff;
+  pointer-events: none;
+}
+#ponto[hidden] { display: none; }
+#ponto .ico { font-size: 22px; line-height: 1; }
+#ponto .txt { display: flex; flex-direction: column; line-height: 1.1; min-width: 0; }
+#ponto small { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.8; white-space: nowrap; }
+#ponto b { font-size: 15px; font-weight: 800; }
+#ponto.entra { animation: ponto 4s ease forwards; }
+@keyframes ponto {
+  0% { opacity: 0; transform: translateX(-110%); }
+  10% { opacity: 1; transform: translateX(0); }
+  85% { opacity: 1; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(-20px); }
+}
+@media (prefers-reduced-motion: reduce) { #ponto.entra { animation: none; } }
