@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import * as R from '../src/regras.js';
 import {
   colide, coleta, desidratar, hidratar, formatarPace, formatarKm, formatarTempo,
   velocidadeAlvo, aproximarVelocidade, resultadoAgua, mps, PACE_BASE, PACE_GEL, ALTURA_EM_PE, ALTURA_AGACHADO
@@ -58,4 +59,22 @@ test('pegar água: só no verde e encostado do lado da mesa', () => {
   assert.equal(resultadoAgua(90, 2, mesa), 'cedo');
   assert.equal(resultadoAgua(104, 2, mesa), 'tarde');
   assert.equal(resultadoAgua(100, -2, mesa), 'longe');
+});
+
+test('energia: gasta mais na subida e com sede, quase nada com gel', () => {
+  const plano = 100 - R.gastarEnergia(100, 10);
+  const subida = 100 - R.gastarEnergia(100, 10, { inclinacao: 0.06 });
+  const sede = 100 - R.gastarEnergia(100, 10, { sede: true });
+  const gel = 100 - R.gastarEnergia(100, 10, { gel: true, inclinacao: 0.06 });
+  assert.ok(Math.abs(plano - R.ENERGIA_GASTO * 10) < 1e-9);
+  assert.ok(subida > plano * 2 && sede > plano * 1.7 && gel < subida / 3);
+  assert.equal(R.gastarEnergia(0.1, 10), 0);
+});
+
+test('energia baixa deixa o corredor mais lento; gel e água repõem', () => {
+  assert.equal(R.fatorEnergia(80), 1);
+  assert.ok(Math.abs(R.fatorEnergia(0) - 0.72) < 1e-9);
+  assert.ok(R.velocidadeAlvo({ energia: 10 }) < R.velocidadeAlvo({ energia: 50 }));
+  assert.equal(R.reporEnergia(90, R.ENERGIA_GEL), 100);
+  assert.equal(R.reporEnergia(20, R.ENERGIA_AGUA), 20 + R.ENERGIA_AGUA);
 });

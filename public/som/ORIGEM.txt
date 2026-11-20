@@ -1,0 +1,7 @@
+Sons copiados do simulador de percurso do Portal (assets/som):
+- corneta-largada: enviada pelo dono do site
+- torcida, fogos: gerados no Higgsfield (Mirelo) para o Mapmove
+- voz-conseguimos: gerada no Higgsfield (Seed Audio, voz "Andre")
+- respiracao: trecho enviado pelo dono do site
+- musica-2 e musica-3: faixas do dono do site feitas no Suno; musica-4: Higgsfield (ElevenLabs Music)
+Os passos são sintetizados no próprio jogo (Web Audio), sem arquivo.

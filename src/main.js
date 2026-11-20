@@ -7,6 +7,7 @@ import { PistaReal, PistaReta, frente, direita, difAngulo } from './pista.js';
 import * as R from './regras.js';
 import { criarControles } from './controles.js';
 import { encontrarTravessas, travessasGenericas, buscarVias } from './travessas.js';
+import { criarSom } from './som.js';
 import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono, placasDoPercurso, abreviarRua } from './osm.js';
 
 const SUPABASE_URL = 'https://ssfsxdmzbubvygctdjgf.supabase.co';
@@ -1674,6 +1675,7 @@ function reiniciar() {
   Object.assign(estado, {
     t: 0, tempoReal: 0, x: p.x, z: p.z, ang: p.ang, camAng: p.ang, s: 0, sMax: 0, d: 0, v: 0, y: 0, vy: 0,
     agachado: 0, geis: 0, gelAtivo: 0, giroPend: 0, parado: 0, voltar: false, fase: 0, agua: 100, pontos: 0,
+    energia: 100, energiaAvisada: false, passoIdx: 0,
     penal: 0, proximoSpawn: 70, proximoPosto: 1000, proximoKm: 1000, proximaTravessa: 140, tremor: 0, kmAvisado: 0
   });
   fundo.position.z = 0;
@@ -1684,6 +1686,7 @@ function reiniciar() {
 
 let audio = null;
 function bip(freq, dur, volume = 0.18) {
+  if (!musica.ligada) return;
   try {
     audio = audio || new (window.AudioContext || window.webkitAudioContext)();
     if (audio.state === 'suspended') audio.resume();
@@ -1700,7 +1703,8 @@ function bip(freq, dur, volume = 0.18) {
 
 const hud = {
   km: $('#hudKm'), kmTotal: $('#hudKmTotal'), tempo: $('#hudTempo'), pace: $('#hudPace'),
-  agua: $('#hudAgua'), aguaTxt: $('#hudAguaTxt'), aguaBox: $('.pilula.agua'), pontos: $('#hudPontos'),
+  agua: $('#hudAgua'), aguaTxt: $('#hudAguaTxt'), aguaBox: $('.pilula.agua'),
+  energia: $('#hudEnergia'), energiaTxt: $('#hudEnergiaTxt'), energiaBox: $('.pilula.energia'), pontos: $('#hudPontos'),
   inc: $('#hudInc'), incTxt: $('#hudIncTxt'), penal: $('#hudPenalTxt'),
   gel: $('#btnGel'), gelQtd: $('#gelQtd'), gota: $('#btnAgua'), dica: $('#dicaGestos'), contagem: $('#contagem')
 };
@@ -1768,6 +1772,9 @@ function atualizarHud() {
   hud.agua.style.width = `${s.agua}%`;
   hud.aguaTxt.textContent = `${Math.round(s.agua)}%`;
   hud.aguaBox.classList.toggle('baixa', s.agua < 25);
+  hud.energia.style.width = `${s.energia}%`;
+  hud.energiaTxt.textContent = `${Math.round(s.energia)}%`;
+  hud.energiaBox.classList.toggle('baixa', s.energia < R.ENERGIA_BAIXA);
   hud.pontos.textContent = Math.floor(s.pontos).toLocaleString('pt-BR');
   const pct = Math.round(inc * 100);
   hud.inc.classList.toggle('sobe', pct >= 1);
@@ -1822,8 +1829,10 @@ function mostrar(tela) {
 }
 
 // ─── MÚSICA DE FUNDO (as mesmas faixas do simulador de percurso do Portal) ───
+const som = criarSom();
 const MUSICAS = (() => { const a = ['musica-2', 'musica-3', 'musica-4']; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; })();
 const musica = { el: null, faixa: 0, ligada: (() => { try { return localStorage.getItem('mapmove-musica') !== '0'; } catch { return true; } })() };
+som.ligar(musica.ligada);
 function tocarMusica(tocar) {
   if (!musica.el) {
     const a = new Audio(); a.preload = 'none'; a.setAttribute('playsinline', ''); a.volume = 0.4;
@@ -1837,10 +1846,14 @@ function alternarMusica() {
   musica.ligada = !musica.ligada;
   try { localStorage.setItem('mapmove-musica', musica.ligada ? '1' : '0'); } catch { /* sem storage */ }
   $('#btnMusica').textContent = musica.ligada ? '🔊' : '🔇';
+  som.ligar(musica.ligada);
   tocarMusica(musica.ligada && estado.modo !== 'pausa');
 }
 
 function iniciar(escolha) {
+  som.iniciar();
+  som.pararLoops();
+  som.pausar(false);
   tocarMusica(true);
   if (escolha) ultimaEscolha = escolha;
   reiniciar();
@@ -1860,7 +1873,7 @@ function passoContagem(dt) {
     s.ultimoNumero = n;
     if (n > 0) { hud.contagem.textContent = n; hud.contagem.className = ''; bip(520, 0.18); }
     else {
-      hud.contagem.textContent = 'VAI!'; hud.contagem.className = 'vai'; bip(880, 0.7, 0.22);
+      hud.contagem.textContent = 'VAI!'; hud.contagem.className = 'vai'; som.largada();
       setTimeout(() => { hud.contagem.hidden = true; }, 700);
       s.modo = 'jogando';
     }
@@ -1872,6 +1885,7 @@ function pausar() {
   if (estado.modo !== 'jogando') return;
   estado.modo = 'pausa';
   tocarMusica(false);
+  som.pausar(true);
   mostrar('telaPausa');
 }
 
@@ -1879,13 +1893,23 @@ function continuar() {
   if (estado.modo !== 'pausa') return;
   estado.modo = 'jogando';
   tocarMusica(true);
+  som.pausar(false);
   mostrar(null);
 }
 
 function lerRecorde(chave) { try { return JSON.parse(localStorage.getItem(chave) || 'null'); } catch { return null; } }
 function salvarRecorde(chave, v) { try { localStorage.setItem(chave, JSON.stringify(v)); } catch { /* sem storage */ } }
 
+// torcida de fundo: cheia na largada e na chegada, maior na cidade que no parque
+function nivelTorcida(sAtual) {
+  if (!Number.isFinite(pista.total)) return 0.45;
+  if (sAtual < 200 || sAtual > pista.total - 300) return 1;
+  const z = zonas ? zonaEm(zonas, sAtual, 1) : 'cidade';
+  return z === 'cidade' ? 0.55 : z === 'parque' ? 0.3 : 0.2;
+}
+
 function terminar(titulo, concluiu = false) {
+  if (concluiu) som.chegada(); else som.pararLoops();
   const s = estado;
   s.modo = 'fim';
   s.concluiu = concluiu;
@@ -1930,6 +1954,7 @@ function beber() {
   gotaFeedback = 0.6;
   if (res === 'pegou') {
     s.agua = R.hidratar(s.agua);
+    s.energia = R.reporEnergia(s.energia, R.ENERGIA_AGUA);
     s.pontos += 20;
     g.className = `botao-jogo gota pegou ${m.lado > 0 ? 'dir' : 'esq'}`;
     aviso(`💧 +${R.AGUA_GOLE} de água`);
@@ -1944,7 +1969,9 @@ function usarGel() {
   if (!s.geis || s.gelAtivo > 0) return;
   s.geis--;
   s.gelAtivo = R.GEL_DURACAO;
-  aviso('⚡ Gel! 6:30/km por 15 s');
+  s.energia = R.reporEnergia(s.energia, R.ENERGIA_GEL);
+  s.energiaAvisada = false;
+  aviso(`⚡ Gel! 6:30/km por 15 s · 🔋 +${R.ENERGIA_GEL}`);
   atualizarHud();
 }
 
@@ -2015,7 +2042,12 @@ function passo(dt) {
       if (Math.abs(dif) < 0.35) s.ang += dif * Math.min(1, 2.5 * dt);
     }
     s.gelAtivo = Math.max(0, s.gelAtivo - dt);
-    const alvo = R.velocidadeAlvo({ gel: s.gelAtivo > 0, inclinacao: p.inclinacao, naCalcada: Math.abs(s.d) > R.MEIA_RUA });
+    s.energia = R.gastarEnergia(s.energia, dt, { inclinacao: p.inclinacao, gel: s.gelAtivo > 0, sede: s.agua < 25 });
+    if (s.energia < R.ENERGIA_BAIXA && !s.energiaAvisada) {
+      s.energiaAvisada = true;
+      aviso(s.geis ? '🔋 Energia baixa! Use um gel ⚡' : '🔋 Energia baixa! Pegue um gel ⚡', 'alerta', 1800);
+    }
+    const alvo = R.velocidadeAlvo({ gel: s.gelAtivo > 0, inclinacao: p.inclinacao, naCalcada: Math.abs(s.d) > R.MEIA_RUA, energia: s.energia });
     s.v = R.aproximarVelocidade(s.v, alvo, dt);
     const W = s.v * R.ESCALA_TEMPO;
     const [fx, fz] = frente(s.ang);
@@ -2025,6 +2057,9 @@ function passo(dt) {
     s.sMax = Math.max(s.sMax, s.s);
     s.pontos += W * dt * 0.05;
     s.fase += dt * W * 0.6;
+    // um passo a cada meia volta da passada, só com o pé no chão
+    const idx = Math.floor(s.fase / Math.PI);
+    if (idx !== s.passoIdx) { s.passoIdx = idx; if (s.y === 0) som.passo(Math.abs(s.d) > R.MEIA_RUA); }
     if (Math.abs(s.d) > R.LIMITE_CALCADA) penalizar();
     if (s.modo !== 'jogando') return;
     if (prova && s.s >= pista.total) return terminar(`🏁 Chegada! ${prova.rotulo} concluído`, true);
@@ -2122,6 +2157,11 @@ function passo(dt) {
 
   atualizarCenario(s.s);
   atualizarOSM(dt, s.t);
+  som.atualizar({
+    correndo: true,
+    progresso: Math.min(1, Math.max(0, s.s / Math.min(1500, 0.3 * (Number.isFinite(pista.total) ? pista.total : 5000)))),
+    inclinacao: p.inclinacao, energia: s.energia, velocidade: s.v, torcida: nivelTorcida(s.s)
+  });
   atualizarPlacas(s.s);
   if (!prova) { visual.position.z = -Math.floor(s.s / 40) * 40; fundo.position.z = s.z; }
 
@@ -2237,8 +2277,8 @@ $('#btnSair').addEventListener('click', mostrarInicio);
 $('#btnPausa').addEventListener('click', pausar);
 $('#btnMusica').textContent = musica.ligada ? '🔊' : '🔇';
 $('#btnMusica').addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); alternarMusica(); });
-$('#btnTrocar').addEventListener('click', () => tocarMusica(false));
-$('#btnSair').addEventListener('click', () => tocarMusica(false));
+$('#btnTrocar').addEventListener('click', () => { tocarMusica(false); som.pararLoops(); });
+$('#btnSair').addEventListener('click', () => { tocarMusica(false); som.pararLoops(); som.pausar(false); });
 $('#btnContinuar').addEventListener('click', continuar);
 document.addEventListener('visibilitychange', () => { if (document.hidden) pausar(); });
 

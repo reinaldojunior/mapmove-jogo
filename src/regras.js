@@ -26,8 +26,27 @@ export const JANELA_AGUA_M = 2.5; // distância da mesa em que a gota fica verde
 export const PERTO_DA_MESA = 1.3; // quão encostado no lado da mesa precisa estar
 export const PERDA_TROPECO = 0.35; // velocidade que sobra depois de tropeçar
 
-export function velocidadeAlvo({ gel = false, inclinacao = 0, naCalcada = false } = {}) {
-  let v = mps(gel ? PACE_GEL : PACE_BASE);
+// energia (0–100): gasta devagar no plano, mais nas subidas e com sede; o gel repõe
+export const ENERGIA_GASTO = 0.085; // por segundo: o 10K termina com ~40%; o 21K pede 1 ou 2 géis
+export const ENERGIA_SUBIDA = 2.5; // a mais por segundo a cada 100% de inclinação (5% de subida ≈ +0,125/s)
+export const ENERGIA_GEL = 35;
+export const ENERGIA_AGUA = 3;
+export const ENERGIA_BAIXA = 30;
+
+export function gastarEnergia(e, dt, { inclinacao = 0, gel = false, sede = false } = {}) {
+  let gasto = ENERGIA_GASTO + Math.max(0, inclinacao) * ENERGIA_SUBIDA;
+  if (gel) gasto *= 0.3; // com gel fazendo efeito, quase não gasta
+  if (sede) gasto *= 1.8; // com pouca água, gasta quase o dobro
+  return Math.max(0, e - gasto * dt);
+}
+
+export const reporEnergia = (e, qtd) => Math.min(100, e + qtd);
+
+// abaixo de 30% o corredor vai "quebrando": até 72% da velocidade com o tanque vazio
+export const fatorEnergia = (e) => (e >= ENERGIA_BAIXA ? 1 : 0.72 + 0.28 * Math.max(0, e) / ENERGIA_BAIXA);
+
+export function velocidadeAlvo({ gel = false, inclinacao = 0, naCalcada = false, energia = 100 } = {}) {
+  let v = mps(gel ? PACE_GEL : PACE_BASE) * fatorEnergia(energia);
   // subida deixa o pace mais lento e descida mais rápido (5% de subida ≈ 15% mais devagar)
   v *= Math.max(0.6, Math.min(1.25, 1 - 3 * inclinacao));
   if (naCalcada) v *= 0.6;

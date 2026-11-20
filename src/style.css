@@ -224,6 +224,11 @@ html, body {
   transition: width 0.2s linear;
 }
 .pilula.agua.baixa .barra i { background: linear-gradient(90deg, #ff7a59, #ff3b3b); }
+.pilula.energia .barra i { background: linear-gradient(90deg, #c8f56b, #34c759); }
+.pilula.energia.baixa .barra i { background: linear-gradient(90deg, #ffb347, #ff6b2b); }
+.pilula.energia.baixa { animation: pulsoEnergia 1s ease-in-out infinite; }
+@keyframes pulsoEnergia { 50% { background: rgba(200, 80, 20, 0.8); } }
+@media (prefers-reduced-motion: reduce) { .pilula.energia.baixa { animation: none; } }
 
 #aviso {
   position: absolute;
