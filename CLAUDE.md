@@ -20,6 +20,11 @@ só mudam as características (gênero, corpo, pele, cabelo, rosto) e a roupa.
   sempre incluir "no logos, no brand marks, plain clothing and shoes".
 - Sem acessórios que a loja já vende (boné, viseira, bandana, óculos, relógio, pochete), a menos que o pedido diga o contrário.
 
+**Animais (cachorro, mascote de quatro patas)**: no lugar da pose A, em pé com as quatro patas retas e afastadas
+(espaço visível entre as patas da frente e entre as de trás), cabeça olhando para a frente, boca fechada, rabo
+esticado para trás sem encostar nas pernas, sem coleira, guia, plaquinha ou acessórios. Vistas: lateral (principal),
+frente e costas, numa imagem só. Exemplo em `docs/personagens/border-collie/`.
+
 Trecho para colar no prompt (em inglês):
 
 > Full body, standing in a clean symmetrical A-pose. Arms held away from the body at a 45-degree angle with clear
