@@ -332,7 +332,8 @@ function criarCorredor() {
 }
 
 const ALTURA_ATLETA = 2.15;
-const ANIMS = [['correr', 'atleta-corrida.glb', 0], ['parado', 'atleta-parado.glb', 37], ['comemorar', 'atleta-comemora.glb', 0]];
+// corredor base sem acessórios (Higgsfield): boné, óculos, relógio etc. vêm da loja
+const ANIMS = [['correr', 'corredor-corrida.glb', 0], ['parado', 'corredor-parado.glb', 0], ['comemorar', 'corredor-comemora.glb', 0]];
 const gltfLoader = new GLTFLoader();
 
 async function carregarAtleta(c) {
