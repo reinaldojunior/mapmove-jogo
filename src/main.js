@@ -1344,7 +1344,7 @@ function letreiro() {
   return g;
 }
 
-// Árvore Espacial da Morada do Sol: torre de treliça que se abre numa copa hexagonal, com luzes de Natal
+// Escultura da Árvore (nome do mapa): torre de treliça que se abre numa copa hexagonal, com luzes de Natal
 function arvoreEspacial() {
   const g = new THREE.Group();
   const aco = mat(0xd9dde2, { metalness: 0.6, roughness: 0.35 });
@@ -1400,7 +1400,7 @@ function arvoreEspacial() {
 
 function colocarMarcos() {
   const marcos = [
-    [/árvore espacial|escultura da árvore/i, () => arvoreEspacial()],
+    [/escultura da árvore/i, () => arvoreEspacial()],
     [/letreiro/i, () => letreiro()],
     [/barco da raia/i, () => { const b = prop('barco'); if (!b) return null; const g = new THREE.Group(); g.add(b); return g; }]
   ];

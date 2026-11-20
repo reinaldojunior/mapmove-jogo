@@ -16,7 +16,7 @@ Regras:
 - **Obstáculos:** cones e barreiras (pule), galhos baixos (abaixe ou passe pelo meio), cachorro atravessando, ciclista (desvie) e carros saindo das travessas principais. Bater faz tropeçar e perder velocidade.
 - **Cenário real:** `public/osm/<slug>.json` traz do OpenStreetMap os parques, matas, gramados, lagos, rios, trilhas, prédios e ruas numa faixa em volta do percurso. O jogo desenha essas áreas, levanta os prédios, planta árvores nas áreas verdes, coloca pedalinhos nos lagos e decide por trecho se é parque (árvores, postes e bancos, torcida rala) ou cidade. As travessas saem das ruas reais desse arquivo. Dados © colaboradores do OpenStreetMap (ODbL).
 - **Placas e semáforos:** placas azuis com o nome da rua por onde o percurso passa e das ruas que cruzam (nomes do OpenStreetMap), placas marrons para parques, lagos e pontos turísticos a até 220 m (com aviso ao passar) e os semáforos reais do mapa.
-- **Lugares conhecidos:** igrejas, escolas, comércios e postos do mapa viram modelos 3D do Higgsfield (igreja, escola, padaria, mercado, posto), sem nome, virados para a rua; o letreiro "Eu ♥ Indaiatuba", a Árvore Espacial da Morada do Sol (treliça com luzes de Natal, feita no código) e o barco da Raia de Remo ficam nos lugares reais.
+- **Lugares conhecidos:** igrejas, escolas, comércios e postos do mapa viram modelos 3D do Higgsfield (igreja, escola, padaria, mercado, posto), sem nome, virados para a rua; o letreiro "Eu ♥ Indaiatuba", a Escultura da Árvore (treliça com luzes de Natal, feita no código a partir de foto) e o barco da Raia de Remo ficam nos lugares reais.
 - **Música:** as mesmas faixas do simulador de percurso do Portal (`public/som`), em ordem aleatória; botão 🔊 no HUD liga/desliga e pausa junto com o jogo.
 - **Modelos 3D:** atleta do simulador do portal; carro, mesa de água, barreira, ipê, árvore, banco, poste, pedalinho e torcedor gerados no Higgsfield (Tripo).
 - **Gel:** aparece nos trechos mais difíceis e fica guardado (até 5) no botão ⚡ para usar quando quiser.
@@ -56,3 +56,5 @@ Importe o repositório na Vercel; ela detecta o Vite sozinha (build `npm run bui
 - `src/travessas.js`: cruzamentos reais (OpenStreetMap) e travessas genéricas.
 - `src/regras.js`: regras puras (ritmo, colisão, hidratação, formatos).
 - `test/`: testes de `pista.js`, `regras.js` e `travessas.js` (`npm test`).
+
+Os nomes de ruas, lugares e pontos turísticos seguem exatamente o OpenStreetMap; o jogo não troca por apelidos.
