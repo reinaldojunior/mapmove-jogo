@@ -14,6 +14,8 @@ só mudam as características (gênero, corpo, pele, cabelo, rosto) e a roupa.
 - Pernas retas, pés na largura dos ombros, **espaço entre as coxas**.
 - Vistas: frente (principal), lateral direita a 90° e costas, sempre "same character and outfit";
   gerar a frontal primeiro e usá-la como referência das outras.
+- **Personagens anônimos**: foto de pessoa real (atleta conhecido, por exemplo) serve só de inspiração de estilo
+  (corpo, cabelo, tipo de roupa); não enviar a foto como referência nem copiar o rosto. Usar "not resembling any real person".
 - **Sem logotipos ou marcas** em roupa e tênis (o gerador inventa logos de marcas reais se não for proibido);
   sempre incluir "no logos, no brand marks, plain clothing and shoes".
 - Sem acessórios que a loja já vende (boné, viseira, bandana, óculos, relógio, pochete), a menos que o pedido diga o contrário.
