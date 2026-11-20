@@ -341,7 +341,7 @@ const PERSONAGENS = {
     anims: [['correr', 'corredor-corrida.glb', 0], ['parado', 'corredor-parado.glb', 0], ['comemorar', 'corredor-comemora.glb', 0]] },
   corredora: { nome: 'Corredora', desc: 'Feita no Meshy: aquece com polichinelos e pula os carros com rolamento.', emoji: '🏃🏾‍♀️',
     // um arquivo com várias animações: estado do jogo → nome da animação no arquivo
-    arquivo: 'corredora.glb', clipes: { correr: 'Run_02', parado: 'jumping_jacks', aquecer: 'jumping_jacks', comemorar: 'Cheer_with_Both_Hands_Up', pular: 'Run_Jump_and_Roll' } },
+    arquivo: 'corredora.glb', clipes: { caminhar: 'Walking', correr: 'Run_02', parado: 'jumping_jacks', aquecer: 'jumping_jacks', comemorar: 'Cheer_with_Both_Hands_Up', pular: 'Run_Jump_and_Roll' } },
   maratonista: { nome: 'Maratonista', desc: 'Feito no Meshy a partir das fichas de 3 vistas.', emoji: '🏃🏾',
     anims: [['correr', 'maratonista-corrida.glb', 0], ['parado', 'maratonista-parado.glb', 0], ['comemorar', 'maratonista-comemora.glb', 0]] }
 };
@@ -511,6 +511,7 @@ function trocarAnimacao(c, nome) {
   a.pedida = nome;
   // quem não tem aquecimento fica parado; quem não tem salto corre no ar
   const parte = a.partes[nome] || (nome === 'aquecer' && a.partes.parado) || a.partes.correr;
+  // (caminhar e pular sem animação própria caem na corrida)
   if (!parte || a.atual === parte) return;
   if (a.atual && a.atual.grp === parte.grp) {
     // mesmo boneco, outra animação: transição suave
@@ -1965,6 +1966,8 @@ function iniciar(escolha) {
   aplicarEquipamento();
   atualizarHud();
   estado.modo = 'contagem';
+  estado.chegada = CHEGADA.tempo;
+  { const p = emEst(-CHEGADA.metros); Object.assign(estado, { x: p.x, z: p.z, ang: p.ang, camAng: p.ang }); }
   estado.contagem = 3.999;
   estado.ultimoNumero = 4;
   mostrar(null);
@@ -1972,8 +1975,16 @@ function iniciar(escolha) {
   aviso(prova ? `${prova.rotulo} · ${prova.nome}` : 'Treino de reta', 'km', 2400);
 }
 
+// antes da largada: o corredor chega caminhando até a linha, aquece no 3-2-1 e sai correndo no VAI!
+const CHEGADA = { tempo: 1.6, metros: 6 };
 function passoContagem(dt) {
   const s = estado;
+  if (s.chegada > 0) {
+    s.chegada = Math.max(0, s.chegada - dt);
+    const p = emEst(-CHEGADA.metros * (s.chegada / CHEGADA.tempo));
+    Object.assign(s, { x: p.x, z: p.z, ang: p.ang, s: 0, d: 0 });
+    return;
+  }
   s.contagem -= dt;
   const n = Math.ceil(s.contagem);
   if (n !== s.ultimoNumero) {
@@ -2303,10 +2314,12 @@ function desenhar(dt) {
   corredor.sombra.position.set(s.x, chao + 0.08, s.z);
   corredor.sombra.scale.setScalar(1 - Math.min(0.5, s.y / 4));
   const noAr = s.y > 0.05, agachado = s.agachado > 0;
-  const anim = s.modo === 'jogando' ? (s.saltoAnim > 0 ? 'pular' : s.v < 0.2 ? 'parado' : 'correr')
+  const anim = s.modo === 'jogando' ? (s.saltoAnim > 0 ? 'pular' : s.parado > 0 ? 'parado' : 'correr')
     : s.modo === 'fim' ? (s.concluiu ? 'comemorar' : 'parado')
+    : s.modo === 'contagem' && s.chegada > 0 ? 'caminhar'
     : s.modo === 'inicio' || s.modo === 'contagem' ? 'aquecer' : 'parado';
-  const ritmo = s.modo === 'jogando' ? 1.25 * (s.v / R.mps(R.PACE_BASE)) : 1; // a passada acelera com o nível
+  // a passada acelera com o nível; quem não tem caminhada chega num trote lento
+  const ritmo = s.modo === 'jogando' ? 1.25 * (s.v / R.mps(R.PACE_BASE)) : anim === 'caminhar' && !corredor.atleta?.partes?.caminhar ? 0.45 : 1;
   const comModelo = s.modo !== 'pausa' && animarAtleta(corredor, dt, { anim, ritmo, noAr, agachado });
   if (!comModelo) {
     if (s.modo === 'jogando') animarCorredor(corredor, s.fase, { noAr, agachado, parado: s.v < 0.2 });
