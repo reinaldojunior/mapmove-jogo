@@ -848,19 +848,6 @@ function barreira(s, d) {
   return addEntidade({ tipo: 'barreira', motivo: 'Bateu na barreira', obj, s, d, larg: 3.6, prof: 0.5, h: 1.08 });
 }
 
-// galho baixo: árvore na calçada e galho atravessando a faixa até um pouco antes do meio.
-// O desenho é relativo ao centro da área que bate (d = lado * 2,9), para os dois coincidirem.
-function galho(s, lado) {
-  const D = 2.9;
-  const g = new THREE.Group();
-  const arv = arvore(1.1); arv.position.x = lado * (5.3 - D); g.add(arv);
-  const ramo = malha(G.tronco, mat(0x7a4a24), lado * (3.35 - D), 1.85, 0); ramo.scale.set(0.75, 3.9, 0.75); ramo.rotation.z = lado * (Math.PI / 2 - 0.1); g.add(ramo);
-  for (let i = 0; i < 5; i++) {
-    const f = malha(G.copa, mat(escolher(VERDES)), lado * (1.6 + i * 0.75 - D), 2.0 + aleat(-0.05, 0.15), aleat(-0.3, 0.3));
-    f.scale.set(0.55, 0.38, 0.6); g.add(f);
-  }
-  return addEntidade({ tipo: 'galho', motivo: 'Bateu no galho', obj: achatar(g), s, d: lado * D, larg: 3.0, prof: 0.7, h: 3.2, base: 1.45 });
-}
 
 function cachorro(s) {
   const g = new THREE.Group();
@@ -991,7 +978,7 @@ function gerarPadrao(s, nivel) {
       usados.push(d); cone(s + i * aleat(0, 3), d);
     }
   } else if (r < 0.35) barreira(s, ladoQualquer() * 1.9);
-  else if (r < 0.5) { const d = aleat(-2.8, 2.8); for (let i = 0; i < 5; i++) moeda(s + i * 2.6, d); } // sem galhos: no lugar, moedas
+  else if (r < 0.5) { const d = aleat(-2.8, 2.8); for (let i = 0; i < 5; i++) moeda(s + i * 2.6, d); } // nada de obstáculo na altura da cabeça: no lugar, moedas
   else if (r < 0.65) cachorro(s);
   else if (r < 0.78) ciclista(s, aleat(-2.6, 2.6));
   else if (r < 0.9) { const d = aleat(-2.8, 2.8); for (let i = 0; i < 6; i++) moeda(s + i * 2.6, d); }
@@ -2671,4 +2658,4 @@ carregarProva();
 loop();
 
 // ganchos para testes automatizados
-window.__jogo = { L, vestirAtleta, abrirLoja, ACESSORIOS_3D, corredor, camera, perfil: () => perfil, P, TR, fazerTreino, definirPerfil: (p) => { perfil = p; salvarPerfil(); mostrarInicio(); }, criar: { galho, cone, barreira }, osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, placas: () => placas, semaforos: () => semaforos, atualizarPlacas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };
+window.__jogo = { L, vestirAtleta, abrirLoja, ACESSORIOS_3D, corredor, camera, perfil: () => perfil, P, TR, fazerTreino, definirPerfil: (p) => { perfil = p; salvarPerfil(); mostrarInicio(); }, criar: { cone, barreira }, osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, placas: () => placas, semaforos: () => semaforos, atualizarPlacas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };

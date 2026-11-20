@@ -30,3 +30,9 @@ Trecho para colar no prompt (em inglês):
 
 Depois do 3D: remesh ~10.000 polígonos, textura 1024, rigging humanoide (~1,75 m) e um GLB por animação
 (corrida reta tipo Run_02, parado, comemoração). Exemplo completo em `docs/personagens/`.
+
+## Regras de jogo
+
+- **Nada de obstáculo na altura da cabeça**: sem árvores, galhos ou qualquer coisa que obrigue a abaixar.
+  Obstáculos ficam no chão (cones, cavaletes, cachorro, bicicleta, carros nas travessas). Deslizar para baixo
+  serve para reduzir o ritmo, não para abaixar. Árvores só como cenário, fora da pista.
