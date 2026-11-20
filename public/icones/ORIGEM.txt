@@ -1,0 +1,3 @@
+Ícones da loja (256x256, WebP com fundo transparente), gerados no Higgsfield (GPT Image 2.6) para o Mapmove Run,
+todos a partir do mesmo ícone de referência (tenis-carbono) para manter o padrão: 3D brilhante, cores vivas.
+Acessórios 3D em public/modelos/acessorios: gerados no Higgsfield (Tripo 3D), texturas reduzidas a 256 px.
