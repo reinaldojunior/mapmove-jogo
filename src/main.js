@@ -854,7 +854,11 @@ function barreira(s, d) {
 
 // border collie 3D (Higgsfield) com esqueleto montado pelo jogo; enquanto não carrega, o caramelo de blocos
 let caoModelo = null;
-gltfLoader.loadAsync('/modelos/border-collie.glb').then((g) => { caoModelo = rigarQuadrupede(g.scene, 0.95); }).catch(() => {});
+// o do Meshy (feito a partir das fotos) é o principal; o do Higgsfield fica de reserva
+gltfLoader.loadAsync('/modelos/cao-meshy.glb').catch(() => gltfLoader.loadAsync('/modelos/border-collie.glb')).then((g) => {
+  prepararMalhaAtleta(g.scene); // tira o brilho de metal que vira mancha branca
+  caoModelo = rigarQuadrupede(g.scene, 0.95);
+}).catch(() => {});
 
 // vira-lata caramelo atravessando a rua em galope (frente do cachorro para +x)
 function cachorro(s) {
