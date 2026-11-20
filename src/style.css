@@ -263,14 +263,17 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 12px;
-  padding: 20px 16px;
+  padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
   overflow-y: auto;
   text-align: center;
   background: linear-gradient(180deg, rgba(11, 29, 58, 0.25), rgba(11, 29, 58, 0.88) 55%);
 }
 .tela[hidden], #hud[hidden], #aviso[hidden] { display: none; }
+/* centraliza quando cabe; quando não cabe, rola sem cortar o topo */
+.tela > :first-child { margin-top: auto; }
+.tela > :last-child { margin-bottom: auto; }
 
 h1 {
   margin: 0;
@@ -364,3 +367,20 @@ kbd {
   100% { opacity: 0; transform: translateX(-20px); }
 }
 @media (prefers-reduced-motion: reduce) { #ponto.entra { animation: none; } }
+
+/* perfil do corredor (nível, pace, XP, Move$) */
+.cartao.perfil { display: flex; flex-direction: column; gap: 6px; }
+.perfil-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.perfil-topo b { font-size: 20px; }
+.perfil-topo span { font-weight: 800; opacity: 0.9; }
+.perfil-rodape { display: flex; justify-content: space-between; opacity: 0.85; }
+.perfil-aviso { color: #ffd27a; }
+.barra.xp { width: 100%; height: 10px; }
+.barra.xp i { background: linear-gradient(90deg, #ffd21f, #f59e0b); }
+.evolucao { width: min(340px, 100%); display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.1); }
+.evolucao .sobe { font-size: 18px; font-weight: 800; color: #ffd21f; text-align: center; }
+.evolucao ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.evolucao li { display: flex; justify-content: space-between; gap: 8px; text-align: left; }
+.evolucao li b { white-space: nowrap; }
+.evolucao li.falhou { opacity: 0.5; }
+.evolucao .total { display: flex; justify-content: space-between; font-weight: 800; border-top: 1px solid rgba(255, 255, 255, 0.2); padding-top: 4px; }

@@ -78,3 +78,10 @@ test('energia baixa deixa o corredor mais lento; gel e água repõem', () => {
   assert.equal(R.reporEnergia(90, R.ENERGIA_GEL), 100);
   assert.equal(R.reporEnergia(20, R.ENERGIA_AGUA), 20 + R.ENERGIA_AGUA);
 });
+
+test('janela da água cresce com o pace do nível', () => {
+  assert.equal(R.janelaAgua(450), R.JANELA_AGUA_M);
+  assert.ok(Math.abs(R.janelaAgua(225) - R.JANELA_AGUA_M * 2) < 1e-9);
+  assert.equal(R.resultadoAgua(100, 2, { s: 104, lado: 1 }, R.janelaAgua(225)), 'pegou');
+  assert.equal(R.resultadoAgua(100, 2, { s: 104, lado: 1 }), 'cedo');
+});

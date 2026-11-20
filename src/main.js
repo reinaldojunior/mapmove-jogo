@@ -8,6 +8,7 @@ import * as R from './regras.js';
 import { criarControles } from './controles.js';
 import { encontrarTravessas, travessasGenericas, buscarVias } from './travessas.js';
 import { criarSom } from './som.js';
+import * as P from './perfil.js';
 import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono, placasDoPercurso, abreviarRua } from './osm.js';
 
 const SUPABASE_URL = 'https://ssfsxdmzbubvygctdjgf.supabase.co';
@@ -802,7 +803,7 @@ function ciclista(s, d) {
   // pedala mais devagar que o corredor: é preciso ultrapassar
   return addEntidade({
     tipo: 'ciclista', motivo: 'Bateu na bicicleta', obj: g, s, d, larg: 0.9, prof: 1.8, h: 2.3,
-    vs: R.mps(R.PACE_BASE) * R.ESCALA_TEMPO * 0.45, pernas,
+    vs: R.mps(estado.paceBase || R.PACE_BASE) * R.ESCALA_TEMPO * 0.45, pernas,
     anima(t) { this.pernas.forEach((p, i) => { p.rotation.x = Math.sin(t * 9 + i * Math.PI) * 0.6 - 0.3; }); }
   });
 }
@@ -1675,7 +1676,7 @@ function reiniciar() {
   Object.assign(estado, {
     t: 0, tempoReal: 0, x: p.x, z: p.z, ang: p.ang, camAng: p.ang, s: 0, sMax: 0, d: 0, v: 0, y: 0, vy: 0,
     agachado: 0, geis: 0, gelAtivo: 0, giroPend: 0, parado: 0, voltar: false, fase: 0, agua: 100, pontos: 0,
-    energia: 100, energiaAvisada: false, passoIdx: 0,
+    energia: 100, energiaAvisada: false, passoIdx: 0, tropecos: 0, coposPegos: 0, paceBase: paceDoPerfil(),
     penal: 0, proximoSpawn: 70, proximoPosto: 1000, proximoKm: 1000, proximaTravessa: 140, tremor: 0, kmAvisado: 0
   });
   fundo.position.z = 0;
@@ -1794,7 +1795,7 @@ function mesaDaVez() {
   for (const e of entidades) {
     if (!e.mesa || e.tentada) continue;
     const dist = e.s - estado.s;
-    if (dist > -R.JANELA_AGUA_M - 1 && dist < 50 && (!melhor || e.s < melhor.s)) melhor = e;
+    if (dist > -R.janelaAgua(estado.paceBase) - 1 && dist < 50 && (!melhor || e.s < melhor.s)) melhor = e;
   }
   return melhor;
 }
@@ -1809,7 +1810,7 @@ function atualizarGota(dt) {
   g.hidden = false;
   g.classList.toggle('esq', m.lado < 0);
   g.classList.toggle('dir', m.lado > 0);
-  g.classList.toggle('verde', Math.abs(dist) <= R.JANELA_AGUA_M);
+  g.classList.toggle('verde', Math.abs(dist) <= R.janelaAgua(estado.paceBase));
   g.style.setProperty('--pisca', `${Math.max(0.12, Math.min(0.6, dist / 70))}s`);
 }
 
@@ -1824,7 +1825,7 @@ function aviso(txt, classe = '', ms = 1500) {
 
 function mostrar(tela) {
   for (const id of ['telaInicio', 'telaPausa', 'telaFim']) $('#' + id).hidden = id !== tela;
-  $('#hud').hidden = tela === 'telaInicio';
+  $('#hud').hidden = tela === 'telaInicio' || tela === 'telaFim';
   $('#controles').hidden = tela !== null;
 }
 
@@ -1938,6 +1939,7 @@ function terminar(titulo, concluiu = false) {
     else rec = `Recorde do treino: ${anterior.toLocaleString('pt-BR')} pontos`;
   }
   $('#fimRecorde').textContent = rec;
+  mostrarEvolucao(dist, concluiu);
   setTimeout(() => { if (estado.modo === 'fim') mostrar('telaFim'); }, concluiu ? 300 : 800);
 }
 
@@ -1947,12 +1949,13 @@ function beber() {
   const s = estado;
   const m = mesaDaVez();
   if (!m || m.s - s.s > 50) return;
-  const res = R.resultadoAgua(s.s, s.d, m);
+  const res = R.resultadoAgua(s.s, s.d, m, R.janelaAgua(s.paceBase));
   const g = hud.gota;
   if (res === 'longe') return aviso(`Encoste do lado ${m.lado > 0 ? 'direito' : 'esquerdo'}, perto da mesa!`, '', 1100);
   m.tentada = true;
   gotaFeedback = 0.6;
   if (res === 'pegou') {
+    s.coposPegos++;
     s.agua = R.hidratar(s.agua);
     s.energia = R.reporEnergia(s.energia, R.ENERGIA_AGUA);
     s.pontos += 20;
@@ -1971,7 +1974,7 @@ function usarGel() {
   s.gelAtivo = R.GEL_DURACAO;
   s.energia = R.reporEnergia(s.energia, R.ENERGIA_GEL);
   s.energiaAvisada = false;
-  aviso(`⚡ Gel! 6:30/km por 15 s · 🔋 +${R.ENERGIA_GEL}`);
+  aviso(`⚡ Gel! ${R.formatarPace(R.mps(R.paceDoGel(s.paceBase)))}/km por 15 s · 🔋 +${R.ENERGIA_GEL}`);
   atualizarHud();
 }
 
@@ -2047,7 +2050,7 @@ function passo(dt) {
       s.energiaAvisada = true;
       aviso(s.geis ? '🔋 Energia baixa! Use um gel ⚡' : '🔋 Energia baixa! Pegue um gel ⚡', 'alerta', 1800);
     }
-    const alvo = R.velocidadeAlvo({ gel: s.gelAtivo > 0, inclinacao: p.inclinacao, naCalcada: Math.abs(s.d) > R.MEIA_RUA, energia: s.energia });
+    const alvo = R.velocidadeAlvo({ gel: s.gelAtivo > 0, inclinacao: p.inclinacao, naCalcada: Math.abs(s.d) > R.MEIA_RUA, energia: s.energia, pace: s.paceBase });
     s.v = R.aproximarVelocidade(s.v, alvo, dt);
     const W = s.v * R.ESCALA_TEMPO;
     const [fx, fz] = frente(s.ang);
@@ -2142,6 +2145,7 @@ function passo(dt) {
       // tropeça e perde velocidade, mas segue correndo
       e.atingido = true;
       s.v *= R.PERDA_TROPECO;
+      s.tropecos++;
       s.tremor = 0.35;
       aviso(`💥 ${e.motivo}!`, 'alerta', 1100);
     }
@@ -2180,7 +2184,7 @@ function desenhar(dt) {
   const anim = s.modo === 'jogando' ? (s.v < 0.2 ? 'parado' : 'correr')
     : s.modo === 'fim' ? (s.concluiu ? 'comemorar' : 'parado')
     : s.modo === 'inicio' ? 'correr' : 'parado';
-  const ritmo = s.modo === 'jogando' ? 1.25 * (s.v / R.mps(R.PACE_BASE)) : 1;
+  const ritmo = s.modo === 'jogando' ? 1.25 * (s.v / R.mps(R.PACE_BASE)) : 1; // a passada acelera com o nível
   const comModelo = s.modo !== 'pausa' && animarAtleta(corredor, dt, { anim, ritmo, noAr, agachado });
   if (!comModelo) {
     if (s.modo === 'jogando') animarCorredor(corredor, s.fase, { noAr, agachado, parado: s.v < 0.2 });
@@ -2259,7 +2263,49 @@ async function carregarProva() {
   }
 }
 
+// ─── PERFIL DO CORREDOR (salvo no aparelho; conta e ranking vêm depois) ────────
+const CHAVE_PERFIL = 'mapmove-perfil-v1';
+let perfil = (() => { try { return P.lerPerfil(localStorage.getItem(CHAVE_PERFIL)); } catch { return P.perfilNovo(); } })();
+function salvarPerfil() { try { localStorage.setItem(CHAVE_PERFIL, JSON.stringify(perfil)); } catch { /* sem storage */ } }
+// situação de hoje, já com a perda de forma de quem ficou parado
+const formaAtual = () => P.xpComDestreino(perfil.xp, perfil.ultimaCorrida);
+function paceDoPerfil() { return P.situacao(formaAtual().xp).pace; }
+
+function mostrarPerfil() {
+  const forma = formaAtual(), st = P.situacao(forma.xp);
+  $('#perfilNivel').textContent = st.rotulo;
+  $('#perfilPace').textContent = `${R.formatarPace(R.mps(st.pace))}/km`;
+  $('#perfilBarra').style.width = `${Math.round(st.progresso * 100)}%`;
+  $('#perfilXP').textContent = st.completo ? 'Nível máximo!' : `${st.xpNoDegrau} / ${st.xpDoDegrau} XP · próximo: ${R.formatarPace(R.mps(st.proximo?.pace || st.pace))}/km`;
+  $('#perfilMoves').textContent = `${perfil.moves} Move$`;
+  const aviso = $('#perfilAviso');
+  aviso.hidden = !(forma.dias > P.DIAS_SEM_PERDA - 1);
+  if (forma.perdido > 0) aviso.textContent = `${forma.dias} dias sem correr: você perdeu ${forma.perdido} XP de forma. Corra para recuperar!`;
+  else if (forma.dias >= P.DIAS_SEM_PERDA) aviso.textContent = 'Amanhã você começa a perder a forma. Corra hoje!';
+}
+
+function mostrarEvolucao(metros, concluiu) {
+  const el = $('#fimEvolucao');
+  if (metros < 50) { el.hidden = true; return; }
+  const r = P.registrarCorrida(perfil, {
+    metros, prova: prova ? prova.rotulo : null, concluiu, penalidades: estado.penal, tropecos: estado.tropecos,
+    copos: prova ? postos.length : 0, coposPegos: estado.coposPegos, agua: estado.agua
+  });
+  perfil = r.perfil;
+  salvarPerfil();
+  const linhas = r.ganho.itens.map((i) => `<li><span>${i.rotulo}</span><b>+${i.xp} XP</b></li>`);
+  for (const m of r.ganho.missoes) if (!m.ok) linhas.push(`<li class="falhou"><span>Missão: ${m.nome}</span><b>✗</b></li>`);
+  const pace = (st) => `${R.formatarPace(R.mps(st.pace))}/km`;
+  const sobe = r.subiuNivel ? `🎉 Novo nível: ${r.depois.rotulo}! Agora você corre a ${pace(r.depois)}`
+    : r.subiuDegrau ? `⬆️ Subiu para ${r.depois.rotulo}: ${pace(r.depois)}` : '';
+  el.innerHTML = `${sobe ? `<div class="sobe">${sobe}</div>` : ''}<ul>${linhas.join('')}</ul>
+    <div class="total"><span>Total</span><span>+${r.ganho.xp} XP · +${r.ganho.moves} Move$</span></div>
+    <small>${r.depois.rotulo} · ${r.depois.completo ? 'nível máximo' : `${r.depois.xpNoDegrau}/${r.depois.xpDoDegrau} XP para ${pace({ pace: r.depois.proximo.pace })}`}</small>`;
+  el.hidden = false;
+}
+
 function mostrarInicio() {
+  mostrarPerfil();
   estado.modo = 'inicio';
   prepararPercurso({ tipo: 'treino' });
   const p = emEst(0);
@@ -2290,4 +2336,4 @@ carregarProva();
 loop();
 
 // ganchos para testes automatizados
-window.__jogo = { criar: { galho, cone, barreira }, osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, placas: () => placas, semaforos: () => semaforos, atualizarPlacas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };
+window.__jogo = { perfil: () => perfil, P, criar: { galho, cone, barreira }, osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, placas: () => placas, semaforos: () => semaforos, atualizarPlacas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };
