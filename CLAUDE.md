@@ -5,6 +5,9 @@
 Todo pedido de imagem ou modelo de personagem para virar 3D **sempre** inclui estas instruções de pose,
 mesmo que o pedido não fale nelas (sem isso o esqueleto gruda o braço no quadril e a animação fica bugada):
 
+Vale para **qualquer personagem** (corredor, corredora, criança, idoso, mascote): o bloco de pose é fixo;
+só mudam as características (gênero, corpo, pele, cabelo, rosto) e a roupa.
+
 - Corpo inteiro, da cabeça aos pés, dentro do quadro; fundo liso cinza-claro; luz de estúdio uniforme.
 - **Pose A simétrica**: braços a ~45° do corpo, com espaço vazio visível entre braços e tronco/pernas.
 - Mãos relaxadas, dedos separados, **sem encostar no quadril ou na coxa**; nada nas mãos.
