@@ -10,6 +10,7 @@ import { encontrarTravessas, travessasGenericas, buscarVias } from './travessas.
 import { criarSom } from './som.js';
 import * as P from './perfil.js';
 import * as TR from './treinos.js';
+import * as L from './loja.js';
 import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono, placasDoPercurso, abreviarRua } from './osm.js';
 
 const SUPABASE_URL = 'https://ssfsxdmzbubvygctdjgf.supabase.co';
@@ -354,10 +355,11 @@ async function carregarAtleta(c) {
     const mixer = new THREE.AnimationMixer(model);
     const acao = mixer.clipAction(gltf.animations[0]);
     acao.play();
-    c.atleta.partes[nome] = { grp, mixer, acao };
+    c.atleta.partes[nome] = { grp, mixer, acao, model, h, minY: box.min.y };
     if (nome === 'correr') { c.corpo.visible = false; trocarAnimacao(c, 'parado'); }
   }
   trocarAnimacao(c, c.atleta.pedida || 'parado');
+  vestirAtleta();
 }
 
 // objetos 3D (carro, mesa de água, barreira): carregados uma vez e clonados para cada uso
@@ -1678,6 +1680,7 @@ function reiniciar() {
     t: 0, tempoReal: 0, x: p.x, z: p.z, ang: p.ang, camAng: p.ang, s: 0, sMax: 0, d: 0, v: 0, y: 0, vy: 0,
     agachado: 0, geis: 0, gelAtivo: 0, giroPend: 0, parado: 0, voltar: false, fase: 0, agua: 100, pontos: 0,
     energia: 100, energiaAvisada: false, passoIdx: 0, tropecos: 0, coposPegos: 0, paceBase: paceDoPerfil(),
+    fatorTenis: 1, gelMax: R.GEL_MAX, relogio: false, isotonico: false,
     penal: 0, proximoSpawn: 70, proximoPosto: 1000, proximoKm: 1000, proximaTravessa: 140, tremor: 0, kmAvisado: 0
   });
   fundo.position.z = 0;
@@ -1706,6 +1709,7 @@ function bip(freq, dur, volume = 0.18) {
 const hud = {
   km: $('#hudKm'), kmTotal: $('#hudKmTotal'), tempo: $('#hudTempo'), pace: $('#hudPace'),
   agua: $('#hudAgua'), aguaTxt: $('#hudAguaTxt'), aguaBox: $('.pilula.agua'),
+  relogio: $('#hudRelogio'), relogioTxt: $('#hudRelogioTxt'),
   energia: $('#hudEnergia'), energiaTxt: $('#hudEnergiaTxt'), energiaBox: $('.pilula.energia'), pontos: $('#hudPontos'),
   inc: $('#hudInc'), incTxt: $('#hudIncTxt'), penal: $('#hudPenalTxt'),
   gel: $('#btnGel'), gelQtd: $('#gelQtd'), gota: $('#btnAgua'), dica: $('#dicaGestos'), contagem: $('#contagem')
@@ -1777,6 +1781,10 @@ function atualizarHud() {
   hud.energia.style.width = `${s.energia}%`;
   hud.energiaTxt.textContent = `${Math.round(s.energia)}%`;
   hud.energiaBox.classList.toggle('baixa', s.energia < R.ENERGIA_BAIXA);
+  // relógio GPS: distância até o próximo posto de água
+  const proxPosto = s.relogio && prova ? postos.find((q) => q.s > s.s + 1) : null;
+  hud.relogio.hidden = !proxPosto;
+  if (proxPosto) hud.relogioTxt.textContent = `💧 ${Math.round((proxPosto.s - s.s) / 10) * 10} m`;
   hud.pontos.textContent = Math.floor(s.pontos).toLocaleString('pt-BR');
   const pct = Math.round(inc * 100);
   hud.inc.classList.toggle('sobe', pct >= 1);
@@ -1825,8 +1833,8 @@ function aviso(txt, classe = '', ms = 1500) {
 }
 
 function mostrar(tela) {
-  for (const id of ['telaInicio', 'telaPausa', 'telaFim', 'telaTreino']) $('#' + id).hidden = id !== tela;
-  $('#hud').hidden = tela === 'telaInicio' || tela === 'telaFim' || tela === 'telaTreino';
+  for (const id of ['telaInicio', 'telaPausa', 'telaFim', 'telaTreino', 'telaLoja']) $('#' + id).hidden = id !== tela;
+  $('#hud').hidden = ['telaInicio', 'telaFim', 'telaTreino', 'telaLoja'].includes(tela);
   $('#controles').hidden = tela !== null;
 }
 
@@ -1852,6 +1860,16 @@ function alternarMusica() {
   tocarMusica(musica.ligada && estado.modo !== 'pausa');
 }
 
+// efeitos do que está vestido e consumíveis da mochila, aplicados na largada
+function aplicarEquipamento() {
+  const ef = L.efeitos(perfil);
+  const r = L.usarConsumiveis(perfil, { gelMax: R.GEL_MAX + ef.gelMax, prova: !!prova });
+  perfil = r.perfil; salvarPerfil();
+  Object.assign(estado, { fatorTenis: ef.velocidade, gelMax: R.GEL_MAX + ef.gelMax, relogio: ef.distanciaAgua, geis: r.geis, isotonico: r.isotonico });
+  const extras = [r.geis ? `⚡ ${r.geis} ${r.geis > 1 ? 'géis' : 'gel'} no bolso` : '', r.isotonico ? '🥤 isotônico' : '', ef.velocidade > 1 ? '👟 placa de carbono +3%' : ''].filter(Boolean);
+  if (extras.length) setTimeout(() => aviso(extras.join(' · '), 'km', 2200), 2600);
+}
+
 function iniciar(escolha) {
   som.iniciar();
   som.pararLoops();
@@ -1859,6 +1877,8 @@ function iniciar(escolha) {
   tocarMusica(true);
   if (escolha) ultimaEscolha = escolha;
   reiniciar();
+  aplicarEquipamento();
+  atualizarHud();
   estado.modo = 'contagem';
   estado.contagem = 3.999;
   estado.ultimoNumero = 4;
@@ -1957,6 +1977,7 @@ function beber() {
   gotaFeedback = 0.6;
   if (res === 'pegou') {
     s.coposPegos++;
+    if (s.isotonico) { s.isotonico = false; s.agua = R.hidratar(s.agua); aviso(`🥤 Isotônico! +${R.AGUA_GOLE * 2} de água`); }
     s.agua = R.hidratar(s.agua);
     s.energia = R.reporEnergia(s.energia, R.ENERGIA_AGUA);
     s.pontos += 20;
@@ -2051,7 +2072,7 @@ function passo(dt) {
       s.energiaAvisada = true;
       aviso(s.geis ? '🔋 Energia baixa! Use um gel ⚡' : '🔋 Energia baixa! Pegue um gel ⚡', 'alerta', 1800);
     }
-    const alvo = R.velocidadeAlvo({ gel: s.gelAtivo > 0, inclinacao: p.inclinacao, naCalcada: Math.abs(s.d) > R.MEIA_RUA, energia: s.energia, pace: s.paceBase });
+    const alvo = R.velocidadeAlvo({ gel: s.gelAtivo > 0, inclinacao: p.inclinacao, naCalcada: Math.abs(s.d) > R.MEIA_RUA, energia: s.energia, pace: s.paceBase / s.fatorTenis });
     s.v = R.aproximarVelocidade(s.v, alvo, dt);
     const W = s.v * R.ESCALA_TEMPO;
     const [fx, fz] = frente(s.ang);
@@ -2138,7 +2159,7 @@ function passo(dt) {
         scene.remove(e.obj);
         s.pontos += e.pontos;
         if (e.tipo === 'gel') {
-          if (s.geis < R.GEL_MAX) { s.geis++; aviso(`⚡ Gel guardado (${s.geis})`); } else aviso('⚡ Bolso cheio de gel');
+          if (s.geis < s.gelMax) { s.geis++; aviso(`⚡ Gel guardado (${s.geis})`); } else aviso('⚡ Bolso cheio de gel');
           atualizarHud();
         }
       }
@@ -2278,7 +2299,7 @@ function mostrarPerfil() {
   $('#perfilPace').textContent = `${R.formatarPace(R.mps(st.pace))}/km`;
   $('#perfilBarra').style.width = `${Math.round(st.progresso * 100)}%`;
   $('#perfilXP').textContent = st.completo ? 'Nível máximo!' : `${st.xpNoDegrau} / ${st.xpDoDegrau} XP · próximo: ${R.formatarPace(R.mps(st.proximo?.pace || st.pace))}/km`;
-  $('#perfilMoves').textContent = `${perfil.moves} Move$`;
+  $('#perfilMoves').textContent = perfil.moves;
   const aviso = $('#perfilAviso');
   aviso.hidden = !(forma.dias > P.DIAS_SEM_PERDA - 1);
   if (forma.perdido > 0) aviso.textContent = `${forma.dias} dias sem correr: você perdeu ${forma.perdido} XP de forma. Corra para recuperar!`;
@@ -2294,7 +2315,14 @@ function mostrarEvolucao(metros, concluiu) {
   });
   perfil = r.perfil;
   salvarPerfil();
+  const extras = entregarPremios();
+  if (prova && concluiu) {
+    const c = L.conquistasDaProva(perfil, prova.rotulo);
+    perfil = c.perfil; salvarPerfil();
+    for (const id of c.novas) extras.push(`🏅 Conquista: ${L.item(id).nome}`);
+  }
   const linhas = r.ganho.itens.map((i) => `<li><span>${i.rotulo}</span><b>+${i.xp} XP</b></li>`);
+  for (const t of extras) linhas.push(`<li><span>${t}</span></li>`);
   for (const m of r.ganho.missoes) if (!m.ok) linhas.push(`<li class="falhou"><span>Missão: ${m.nome}</span><b>✗</b></li>`);
   const pace = (st) => `${R.formatarPace(R.mps(st.pace))}/km`;
   const sobe = r.subiuNivel ? `🎉 Novo nível: ${r.depois.rotulo}! Agora você corre a ${pace(r.depois)}`
@@ -2334,6 +2362,7 @@ function fazerTreino(comprado) {
   if (r.erro) { mostrarTreinoDoDia(); return; }
   perfil = r.perfil;
   salvarPerfil();
+  const premios = entregarPremios();
   const el = $('#resultadoTreino');
   el.innerHTML = `<div class="executando"><span>${TR.LOCAIS[r.treino.local]}</span><b>Executando: ${r.treino.nome}…</b><span class="barra"><i></i></span></div>`;
   $('#btnTreinoOk').hidden = true;
@@ -2354,13 +2383,128 @@ function fazerTreino(comprado) {
         <span>+${r.xp} XP · ${st.rotulo} (${fmtPace(st.pace)})</span>
         <span class="barra xp"><i style="width:${Math.round(st.progresso * 100)}%"></i></span>
         <span>${st.completo ? 'Nível máximo!' : `${st.xpNoDegrau}/${st.xpDoDegrau} XP para ${fmtPace(st.proximo.pace)}`}</span>
+        ${premios.map((t) => `<span class="sobe">${t}</span>`).join('')}
         <span>🔥 ${r.sequencia} ${r.sequencia === 1 ? 'dia seguido' : 'dias seguidos'}${r.bonus ? ` · bônus +${r.bonus} Move$!` : ''}${r.comprado ? ` · −${TR.PRECO_TREINO} Move$` : ''}</span>
       </div>`;
     $('#btnTreinoOk').hidden = false;
   }, 1700);
 }
 
+// ─── LOJA, VESTIÁRIO E PRÊMIOS ─────────────────────────────────────────────────
+let abaLoja = 'equip';
+const moedaImg = '<img src="/icones/moeda.webp" alt="">';
+
+// prêmios dos níveis alcançados; devolve as linhas para mostrar ao jogador
+function entregarPremios() {
+  const r = L.receberPremios(perfil);
+  if (!r.novos.length) return [];
+  perfil = r.perfil; salvarPerfil(); vestirAtleta();
+  return r.novos.map((n) => `🎁 Prêmio de nível: ${L.item(n.id).nome}${n.reembolso ? ` (seus ${n.reembolso} Move$ voltaram)` : ''}`);
+}
+
+function abrirLoja(cat = abaLoja) {
+  abaLoja = cat;
+  for (const b of document.querySelectorAll('.aba')) b.classList.toggle('ativa', b.dataset.cat === cat);
+  $('#lojaSaldo').textContent = perfil.moves;
+  const nivelNome = (n) => L.NOMES_NIVEL[n];
+  const mochila = perfil.consumiveis || {};
+  $('#lojaItens').innerHTML = L.ITENS.filter((it) => it.cat === cat).map((it) => {
+    const est = L.estadoItem(perfil, it.id);
+    let botao;
+    if (est === 'usando') botao = `<button class="usando" data-acao="equipar" data-id="${it.id}">Usando ✓</button>`;
+    else if (est === 'tenho') botao = `<button class="neutro" data-acao="equipar" data-id="${it.id}">Usar</button>`;
+    else if (est === 'comprar') botao = `<button data-acao="comprar" data-id="${it.id}">${moedaImg}${it.preco}</button>`;
+    else if (est === 'sem-moves') botao = `<button disabled>${moedaImg}${it.preco}</button>`;
+    else if (est === 'nivel') botao = `<button class="neutro" disabled>🔒 ${nivelNome(it.nivelMin)}</button>`;
+    else if (est === 'premio') botao = `<button class="neutro" disabled>🎁 Prêmio do ${nivelNome(it.premioNivel)}</button>`;
+    else if (est === 'conquistado') botao = `<button class="usando" disabled>🏅 Conquistada</button>`;
+    else botao = `<button class="neutro" disabled>🔒 Ainda não</button>`;
+    const tag = it.cat === 'consumivel' && (it.consumo.gel ? mochila.gel : mochila.isotonico)
+      ? `<span class="tag">Na mochila: ${it.consumo.gel ? `${mochila.gel} ${mochila.gel > 1 ? 'géis' : 'gel'}` : `${mochila.isotonico} isotônico`}</span>` : '';
+    return `<div class="item ${est === 'bloqueado' ? 'bloqueado' : ''}"><img src="/icones/${it.id}.webp" alt="" loading="lazy"><b>${it.nome}</b><small>${it.desc}</small>${tag}${botao}</div>`;
+  }).join('');
+  mostrar('telaLoja');
+}
+
+$('#lojaItens').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-acao]');
+  if (!b) return;
+  const id = b.dataset.id;
+  if (b.dataset.acao === 'comprar') {
+    const r = L.comprar(perfil, id);
+    if (r.erro) return;
+    perfil = r.perfil;
+  } else perfil = L.equipar(perfil, id);
+  salvarPerfil(); vestirAtleta(); abrirLoja();
+});
+for (const b of document.querySelectorAll('.aba')) b.addEventListener('click', () => abrirLoja(b.dataset.cat));
+
+// ─── ACESSÓRIOS NO CORREDOR 3D ─────────────────────────────────────────────────
+// posição em frações da altura do corredor (x direita, y cima, z frente do modelo), giro em graus, tam = maior medida
+const ACESSORIOS_3D = {
+  bone: [{ osso: 'Head', pos: [0, 0.128, 0.03], rot: [-10, 0, 0], tam: 0.135 }],
+  viseira: [{ osso: 'Head', pos: [0, 0.118, 0.04], rot: [-10, 0, 0], tam: 0.125 }],
+  bandana: [{ osso: 'Head', pos: [0, 0.122, 0.008], rot: [-10, 0, 0], tam: 0.115 }],
+  oculos: [{ osso: 'Head', pos: [0, 0.088, 0.066], rot: [0, -90, 0], tam: 0.088 }],
+  relogio: [{ osso: 'LeftHand', pos: [0, -0.015, 0], rot: [90, 0, 0], tam: 0.05 }],
+  pochete: [{ osso: 'Hips', pos: [0, -0.01, 0.02], rot: [0, -90, 0], tam: 0.21 }],
+  'tenis-carbono': [{ osso: 'LeftFoot', pos: [0, 0.03, 0], rot: [-90, 0, 0], tam: 0.155 }, { osso: 'RightFoot', pos: [0, 0.03, 0], rot: [-90, 0, 0], tam: 0.155 }],
+  'tenis-dourado': [{ osso: 'LeftFoot', pos: [0, 0.03, 0], rot: [-90, 0, 0], tam: 0.155 }, { osso: 'RightFoot', pos: [0, 0.03, 0], rot: [-90, 0, 0], tam: 0.155 }]
+};
+const cacheAcessorios = new Map();
+function carregarAcessorio(id) {
+  if (!cacheAcessorios.has(id)) {
+    cacheAcessorios.set(id, gltfLoader.loadAsync(`/modelos/acessorios/${id}.glb`).then((g) => {
+      const m = g.scene;
+      m.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(m, true), tam = box.getSize(new THREE.Vector3());
+      m.position.sub(box.getCenter(new THREE.Vector3()));
+      const unidade = new THREE.Group(); unidade.add(m);
+      unidade.scale.setScalar(1 / Math.max(tam.x, tam.y, tam.z, 1e-6));
+      m.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+      return unidade;
+    }).catch(() => null));
+  }
+  return cacheAcessorios.get(id);
+}
+
+let versaoVestir = 0;
+async function vestirAtleta() {
+  const a = corredor.atleta;
+  if (!a || !Object.keys(a.partes).length) return;
+  const versao = ++versaoVestir;
+  const ids = Object.values(perfil.usando || {}).filter((id) => ACESSORIOS_3D[id]);
+  const modelos = await Promise.all(ids.map(carregarAcessorio));
+  if (versao !== versaoVestir) return;
+  const v = new THREE.Vector3(), q = new THREE.Quaternion();
+  for (const parte of Object.values(a.partes)) {
+    for (const o of parte.acessorios || []) o.parent?.remove(o);
+    parte.acessorios = [];
+    // cada acessório fica no sistema de eixos do osso (y ao longo do osso), compensando a escala do osso
+    parte.model.updateMatrixWorld(true);
+    const escModelo = parte.model.getWorldScale(new THREE.Vector3()).x;
+    ids.forEach((id, k) => {
+      if (!modelos[k]) return;
+      for (const cfg of ACESSORIOS_3D[id]) {
+        const osso = parte.model.getObjectByName(cfg.osso);
+        if (!osso) continue;
+        const u = parte.h * escModelo / osso.getWorldScale(v).x; // 1 altura do corredor em unidades do osso
+        q.setFromEuler(new THREE.Euler(...cfg.rot.map((g) => (g * Math.PI) / 180)));
+        const local = new THREE.Matrix4().compose(new THREE.Vector3(...cfg.pos).multiplyScalar(u), q, new THREE.Vector3(1, 1, 1).multiplyScalar(cfg.tam * u));
+        const obj = modelos[k].clone();
+        const casca = new THREE.Group();
+        casca.matrixAutoUpdate = false;
+        casca.matrix.copy(local);
+        casca.add(obj);
+        osso.add(casca);
+        parte.acessorios.push(casca);
+      }
+    });
+  }
+}
+
 function mostrarInicio() {
+  entregarPremios(); // quem já tinha subido de nível antes da loja existir também ganha
   mostrarPerfil();
   mostrarTreinoDoDia();
   estado.modo = 'inicio';
@@ -2386,6 +2530,8 @@ $('#btnContinuar').addEventListener('click', continuar);
 $('#btnTreinoDia').addEventListener('click', () => fazerTreino(false));
 $('#btnComprarTreino').addEventListener('click', () => fazerTreino(true));
 $('#btnTreinoOk').addEventListener('click', mostrarInicio);
+$('#btnLoja').addEventListener('click', () => abrirLoja());
+$('#btnLojaVoltar').addEventListener('click', mostrarInicio);
 document.addEventListener('visibilitychange', () => { if (document.hidden) pausar(); });
 
 aplicarQualidade(nivel);
@@ -2396,4 +2542,4 @@ carregarProva();
 loop();
 
 // ganchos para testes automatizados
-window.__jogo = { perfil: () => perfil, P, TR, fazerTreino, definirPerfil: (p) => { perfil = p; salvarPerfil(); mostrarInicio(); }, criar: { galho, cone, barreira }, osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, placas: () => placas, semaforos: () => semaforos, atualizarPlacas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };
+window.__jogo = { L, vestirAtleta, abrirLoja, ACESSORIOS_3D, corredor, camera, perfil: () => perfil, P, TR, fazerTreino, definirPerfil: (p) => { perfil = p; salvarPerfil(); mostrarInicio(); }, criar: { galho, cone, barreira }, osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, placas: () => placas, semaforos: () => semaforos, atualizarPlacas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };

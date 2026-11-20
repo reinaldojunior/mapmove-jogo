@@ -272,6 +272,7 @@ html, body {
 }
 .tela[hidden], #hud[hidden], #aviso[hidden] { display: none; }
 /* centraliza quando cabe; quando não cabe, rola sem cortar o topo */
+.tela > * { flex-shrink: 0; }
 .tela > :first-child { margin-top: auto; }
 .tela > :last-child { margin-bottom: auto; }
 
@@ -404,3 +405,30 @@ kbd {
 .executando { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
 .executando .barra { width: 220px; height: 12px; }
 .executando .barra i { width: 0; transition: width 1.4s linear; }
+
+/* loja */
+.perfil-rodape .moves { display: inline-flex; align-items: center; gap: 4px; }
+.perfil-rodape .moves img, .saldo img { width: 20px; height: 20px; }
+.loja-btn { align-self: flex-start; margin-top: 4px; }
+.pilula.relogio[hidden] { display: none; }
+.tela.loja { justify-content: flex-start; }
+.tela.loja > :first-child { margin-top: 0; }
+.loja-topo { width: min(420px, 100%); display: flex; justify-content: space-between; align-items: center; }
+.loja-topo h2 { margin: 0; }
+.saldo { display: inline-flex; align-items: center; gap: 6px; font-size: 18px; padding: 4px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); }
+.saldo img { width: 26px; height: 26px; }
+.abas { width: min(420px, 100%); display: flex; gap: 6px; overflow-x: auto; }
+.aba { flex: 1 0 auto; padding: 8px 12px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.12); color: #fff; font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; }
+.aba.ativa { background: #ffd21f; color: #2a1a00; }
+.itens { width: min(420px, 100%); display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px; border-radius: 16px; background: rgba(255, 255, 255, 0.1); text-align: center; }
+.item img { width: 84px; height: 84px; }
+.item.bloqueado img { filter: grayscale(1) brightness(0.6); }
+.item b { font-size: 15px; line-height: 1.15; }
+.item small { opacity: 0.8; font-size: 12px; line-height: 1.25; flex: 1; }
+.item button { width: 100%; padding: 8px; border: 0; border-radius: 999px; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; background: #ffd21f; color: #2a1a00; display: inline-flex; justify-content: center; align-items: center; gap: 4px; }
+.item button img { width: 18px; height: 18px; }
+.item button.usando { background: #34c759; color: #fff; }
+.item button.neutro { background: rgba(255, 255, 255, 0.18); color: #fff; }
+.item button[disabled] { opacity: 0.5; cursor: default; }
+.item .tag { font-size: 11px; font-weight: 800; color: #ffd21f; }

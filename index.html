@@ -16,6 +16,7 @@
         <div class="pilula"><span class="ico">⏱️</span><b id="hudTempo">0:00</b></div>
         <div class="pilula"><span class="ico">🏃</span><b id="hudPace">--:--</b><small>/km</small></div>
         <div class="pilula agua"><span class="ico">💧</span><span class="barra"><i id="hudAgua"></i></span><b id="hudAguaTxt">100%</b></div>
+        <div class="pilula relogio" id="hudRelogio" hidden><span class="ico">⌚</span><b id="hudRelogioTxt"></b></div>
         <div class="pilula energia"><span class="ico">🔋</span><span class="barra"><i id="hudEnergia"></i></span><b id="hudEnergiaTxt">100%</b></div>
         <div class="pilula inclinacao" id="hudInc"><span class="ico">⛰️</span><b id="hudIncTxt">plano</b></div>
         <div id="ponto" hidden><span class="ico"></span><span class="txt"><small>Ponto turístico</small><b></b></span></div>
@@ -58,7 +59,8 @@
       <div class="cartao perfil" id="cartaoPerfil">
         <div class="perfil-topo"><b id="perfilNivel">Iniciante 1</b><span id="perfilPace">7:00/km</span></div>
         <span class="barra xp"><i id="perfilBarra"></i></span>
-        <div class="perfil-rodape"><small id="perfilXP">0 / 100 XP</small><small id="perfilMoves">0 Move$</small></div>
+        <div class="perfil-rodape"><small id="perfilXP">0 / 100 XP</small><small class="moves"><img src="/icones/moeda.webp" alt=""><span id="perfilMoves">0</span> Move$</small></div>
+        <button id="btnLoja" class="cta pequeno loja-btn">🛍️ Loja e vestiário</button>
         <small class="perfil-aviso" id="perfilAviso" hidden></small>
       </div>
       <div class="cartao treino-dia" id="cartaoTreino">
@@ -101,6 +103,21 @@
     <section id="telaTreino" class="tela" hidden>
       <div class="resultado-treino" id="resultadoTreino"></div>
       <button id="btnTreinoOk" class="cta" hidden>Continuar</button>
+    </section>
+
+    <section id="telaLoja" class="tela loja" hidden>
+      <div class="loja-topo">
+        <h2>🛍️ Loja</h2>
+        <span class="saldo"><img src="/icones/moeda.webp" alt=""><b id="lojaSaldo">0</b> Move$</span>
+      </div>
+      <div class="abas" role="tablist">
+        <button class="aba ativa" data-cat="equip" role="tab">Equipamentos</button>
+        <button class="aba" data-cat="visual" role="tab">Visual</button>
+        <button class="aba" data-cat="consumivel" role="tab">Consumíveis</button>
+        <button class="aba" data-cat="conquista" role="tab">Conquistas</button>
+      </div>
+      <div class="itens" id="lojaItens"></div>
+      <button id="btnLojaVoltar" class="cta secundario">Voltar</button>
     </section>
 
     <section id="telaPausa" class="tela" hidden>
