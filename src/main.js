@@ -700,16 +700,18 @@ function barreira(s, d) {
   return addEntidade({ tipo: 'barreira', motivo: 'Bateu na barreira', obj, s, d, larg: 3.6, prof: 0.5, h: 1.08 });
 }
 
+// galho baixo: árvore na calçada e galho atravessando a faixa até um pouco antes do meio.
+// O desenho é relativo ao centro da área que bate (d = lado * 2,9), para os dois coincidirem.
 function galho(s, lado) {
+  const D = 2.9;
   const g = new THREE.Group();
-  const arv = arvore(1.1); arv.position.x = lado * 5.3; g.add(arv);
-  const ramo = malha(G.tronco, mat(0x7a4a24), lado * 3.4, 1.85, 0); ramo.scale.set(0.75, 3.8, 0.75); ramo.rotation.z = lado * (Math.PI / 2 - 0.1); g.add(ramo);
-  for (let i = 0; i < 4; i++) {
-    const f = malha(G.copa, mat(escolher(VERDES)), lado * (1.9 + i * 0.85), 2.0 + aleat(-0.05, 0.15), aleat(-0.25, 0.25));
-    f.scale.set(0.5, 0.36, 0.5); g.add(f);
+  const arv = arvore(1.1); arv.position.x = lado * (5.3 - D); g.add(arv);
+  const ramo = malha(G.tronco, mat(0x7a4a24), lado * (3.35 - D), 1.85, 0); ramo.scale.set(0.75, 3.9, 0.75); ramo.rotation.z = lado * (Math.PI / 2 - 0.1); g.add(ramo);
+  for (let i = 0; i < 5; i++) {
+    const f = malha(G.copa, mat(escolher(VERDES)), lado * (1.6 + i * 0.75 - D), 2.0 + aleat(-0.05, 0.15), aleat(-0.3, 0.3));
+    f.scale.set(0.55, 0.38, 0.6); g.add(f);
   }
-  // galho baixo do lado da calçada até um pouco antes do meio: abaixe ou passe pelo meio
-  return addEntidade({ tipo: 'galho', motivo: 'Bateu no galho', obj: achatar(g), s, d: lado * 2.9, larg: 3.0, prof: 0.7, h: 3.2, base: 1.45 });
+  return addEntidade({ tipo: 'galho', motivo: 'Bateu no galho', obj: achatar(g), s, d: lado * D, larg: 3.0, prof: 0.7, h: 3.2, base: 1.45 });
 }
 
 function cachorro(s) {
@@ -1772,4 +1774,4 @@ carregarProva();
 loop();
 
 // ganchos para testes automatizados
-window.__jogo = { osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };
+window.__jogo = { criar: { galho, cone, barreira }, osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };
