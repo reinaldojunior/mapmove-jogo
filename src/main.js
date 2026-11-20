@@ -364,7 +364,17 @@ async function carregarAtleta(c, id = 'portal') {
     model.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(model, true), h = (box.max.y - box.min.y) || 1;
     model.position.set(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2);
-    model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+    model.traverse((o) => {
+      if (!o.isMesh) return;
+      o.castShadow = true; o.frustumCulled = false;
+      // modelos do Meshy vêm com mapa de metal/brilho: com o sol do jogo viram manchas brancas; deixa a pele e a roupa foscas
+      for (const m of [].concat(o.material)) {
+        if (!m?.isMeshStandardMaterial || !m.metalnessMap) continue;
+        m.metalness = 0; m.metalnessMap = null;
+        m.roughness = 1; m.envMapIntensity = 0.6;
+        m.needsUpdate = true;
+      }
+    });
     // o modelo olha para +z; o corredor do jogo olha para -z
     const grp = new THREE.Group(); grp.add(model);
     grp.scale.setScalar(ALTURA_ATLETA / c.g.scale.x / h);
