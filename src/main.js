@@ -12,6 +12,8 @@ import { criarSom } from './som.js';
 import * as P from './perfil.js';
 import * as TR from './treinos.js';
 import * as L from './loja.js';
+import { rigarQuadrupede, animarQuadrupede } from './quadrupede.js';
+import { clone as clonarComOssos } from 'three/addons/utils/SkeletonUtils.js';
 import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono, placasDoPercurso, abreviarRua } from './osm.js';
 
 const SUPABASE_URL = 'https://ssfsxdmzbubvygctdjgf.supabase.co';
@@ -850,8 +852,22 @@ function barreira(s, d) {
 }
 
 
+// border collie 3D (Higgsfield) com esqueleto montado pelo jogo; enquanto não carrega, o caramelo de blocos
+let caoModelo = null;
+gltfLoader.loadAsync('/modelos/border-collie.glb').then((g) => { caoModelo = rigarQuadrupede(g.scene, 0.95); }).catch(() => {});
+
 // vira-lata caramelo atravessando a rua em galope (frente do cachorro para +x)
 function cachorro(s) {
+  if (caoModelo) {
+    const malha = clonarComOssos(caoModelo);
+    const g = new THREE.Group(); g.add(malha);
+    const lado = Math.random() < 0.5 ? -1 : 1;
+    return addEntidade({
+      tipo: 'cachorro', motivo: 'Esbarrou no cachorro', obj: g, s, d: lado * 6.2, rot: lado > 0 ? Math.PI : 0,
+      larg: 1.5, prof: 0.6, h: 0.95, malha, gatilho: 34,
+      anima(t) { animarQuadrupede(this.malha, t, !!this.vd); }
+    });
+  }
   const g = new THREE.Group();
   const caramelo = mat(0xc98a3f), claro = mat(0xf0d2a0), escuro = mat(0x7a4a1e), preto = mat(0x151515);
   const corpo = new THREE.Group(); corpo.position.y = 0.62; g.add(corpo);
