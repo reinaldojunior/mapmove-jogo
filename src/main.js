@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import './style.css';
 import { PistaReal, PistaReta, frente, direita, difAngulo } from './pista.js';
 import * as R from './regras.js';
@@ -16,18 +18,50 @@ const palco = $('#palco');
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.92;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 palco.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0xcfe9ff, 80, 230);
 const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 700);
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0x7fa86a, 1.7));
-const sol = new THREE.DirectionalLight(0xfff4e0, 2.3);
-sol.position.set(-6, 14, 8);
-scene.add(sol);
+// luz de ambiente gerada na hora (sem arquivo): dá brilho e reflexo aos materiais
+{
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.3;
+  pmrem.dispose();
+}
+scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x55703f, 0.95));
+// sol de manhã, com sombra só perto do corredor (a caixa da sombra acompanha ele)
+const sol = new THREE.DirectionalLight(0xfff1d6, 3.1);
+const SOL_OFFSET = new THREE.Vector3(-14, 26, 9);
+sol.castShadow = true;
+sol.shadow.mapSize.set(1024, 1024);
+Object.assign(sol.shadow.camera, { left: -24, right: 24, top: 24, bottom: -24, near: 1, far: 80 });
+sol.shadow.bias = -0.0006;
+sol.shadow.normalBias = 0.03;
+scene.add(sol, sol.target);
+
+// qualidade gráfica: começa alta e desce sozinha se o celular não aguentar
+const NIVEIS = [
+  { nome: 'alta', pr: Math.min(window.devicePixelRatio, 1.75), sombra: true },
+  { nome: 'média', pr: Math.min(window.devicePixelRatio, 1.25), sombra: true },
+  { nome: 'baixa', pr: 1, sombra: false }
+];
+let nivel = 0;
+try { nivel = Math.max(0, Math.min(2, Number(localStorage.getItem('mapmove-qualidade')) || 0)); } catch { /* sem storage */ }
+function aplicarQualidade(n) {
+  nivel = n;
+  renderer.setPixelRatio(NIVEIS[n].pr);
+  sol.castShadow = NIVEIS[n].sombra;
+  try { localStorage.setItem('mapmove-qualidade', String(n)); } catch { /* sem storage */ }
+  if (typeof redimensionar === 'function') redimensionar();
+}
 
 function redimensionar() {
   const w = palco.clientWidth, h = palco.clientHeight;
@@ -70,9 +104,13 @@ scene.background = textura(16, 256, (g, w, h) => {
 
 // asfalto de 8 m de largura por 8 m de comprimento por repetição
 const texAsfalto = textura(512, 512, (g, w, h) => {
-  g.fillStyle = '#6a6e76'; g.fillRect(0, 0, w, h);
-  for (let i = 0; i < 2600; i++) {
-    const c = 90 + Math.random() * 40;
+  g.fillStyle = '#4a4e55'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 6; i++) {
+    g.fillStyle = `rgba(${Math.random() < 0.5 ? '30,32,36' : '95,98,104'},0.35)`;
+    g.fillRect(Math.random() * w, Math.random() * h, 40 + Math.random() * 120, 30 + Math.random() * 90);
+  }
+  for (let i = 0; i < 4000; i++) {
+    const c = 55 + Math.random() * 50;
     g.fillStyle = `rgba(${c},${c},${c + 6},0.5)`;
     g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
   }
@@ -156,15 +194,15 @@ const malha = (geo, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(geo, m
 
 const G = {
   caixa: new THREE.BoxGeometry(1, 1, 1),
-  esfera: new THREE.SphereGeometry(1, 20, 14),
-  cilindro: new THREE.CylinderGeometry(1, 1, 1, 18),
-  capsula: new THREE.CapsuleGeometry(0.5, 1, 6, 12),
+  esfera: new THREE.SphereGeometry(1, 12, 8),
+  cilindro: new THREE.CylinderGeometry(1, 1, 1, 12),
+  capsula: new THREE.CapsuleGeometry(0.5, 1, 3, 8),
   cone: new THREE.ConeGeometry(1, 1, 18),
   roda: new THREE.TorusGeometry(0.42, 0.06, 8, 24),
   moeda: new THREE.CylinderGeometry(0.42, 0.42, 0.1, 24),
   tronco: new THREE.CylinderGeometry(0.12, 0.2, 1, 8),
   // copa facetada (estilo low poly): normais por face
-  copa: (() => { const g = new THREE.IcosahedronGeometry(1, 1).toNonIndexed(); g.computeVertexNormals(); return g; })()
+  copa: (() => { const g = new THREE.IcosahedronGeometry(1, 0).toNonIndexed(); g.computeVertexNormals(); return g; })()
 };
 const PELES = [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0x5c3a1e];
 const CAMISAS = [0xff4d4d, 0x1e88ff, 0x2ecc71, 0xffd21f, 0xff8c1a, 0xb05cff, 0xffffff, 0x14b8a6];
@@ -189,7 +227,7 @@ function achatar(grupo) {
     geos.push(g);
   });
   const novo = new THREE.Group();
-  if (geos.length) novo.add(new THREE.Mesh(mergeGeometries(geos), matVertice));
+  if (geos.length) { const m = new THREE.Mesh(mergeGeometries(geos), matVertice); m.castShadow = true; novo.add(m); }
   for (const o of comTextura) {
     new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld).decompose(o.position, o.quaternion, o.scale);
     novo.add(o);
@@ -248,6 +286,61 @@ function criarCorredor() {
   g.scale.setScalar(0.92);
   scene.add(g);
   return { g, corpo, pernas, joelhos, bracos, cotovelos, sombra };
+}
+
+const ALTURA_ATLETA = 2.15;
+const ANIMS = [['correr', 'atleta-corrida.glb', 0], ['parado', 'atleta-parado.glb', 37], ['comemorar', 'atleta-comemora.glb', 0]];
+const gltfLoader = new GLTFLoader();
+
+async function carregarAtleta(c) {
+  const holder = new THREE.Group();
+  c.g.add(holder);
+  c.atleta = { holder, partes: {}, atual: null };
+  for (const [nome, arquivo, yaw] of ANIMS) {
+    const gltf = await gltfLoader.loadAsync(`/modelos/${arquivo}`);
+    const model = gltf.scene;
+    model.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(model, true), h = (box.max.y - box.min.y) || 1;
+    model.position.set(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2);
+    model.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+    // o modelo olha para +z; o corredor do jogo olha para -z
+    const grp = new THREE.Group(); grp.add(model);
+    grp.scale.setScalar(ALTURA_ATLETA / c.g.scale.x / h);
+    grp.rotation.y = Math.PI + (yaw * Math.PI) / 180;
+    grp.visible = false;
+    holder.add(grp);
+    const mixer = new THREE.AnimationMixer(model);
+    const acao = mixer.clipAction(gltf.animations[0]);
+    acao.play();
+    c.atleta.partes[nome] = { grp, mixer, acao };
+    if (nome === 'correr') { c.corpo.visible = false; trocarAnimacao(c, 'parado'); }
+  }
+  trocarAnimacao(c, c.atleta.pedida || 'parado');
+}
+
+function trocarAnimacao(c, nome) {
+  const a = c.atleta;
+  if (!a) return;
+  a.pedida = nome;
+  const parte = a.partes[nome] || a.partes.correr;
+  if (!parte || a.atual === parte) return;
+  if (a.atual) a.atual.grp.visible = false;
+  parte.grp.visible = true;
+  parte.acao.reset().play();
+  a.atual = parte;
+}
+
+function animarAtleta(c, dt, { anim, ritmo = 1, noAr = false, agachado = false }) {
+  const a = c.atleta;
+  if (!a?.atual && !a?.partes.correr) return false;
+  trocarAnimacao(c, anim);
+  const parte = a.atual;
+  if (!parte) return false;
+  parte.acao.timeScale = noAr ? 0.25 : ritmo;
+  parte.mixer.update(dt);
+  a.holder.scale.y = agachado ? 0.62 : 1;
+  a.holder.rotation.x = agachado ? 0.35 : noAr ? -0.15 : 0;
+  return true;
 }
 
 function animarCorredor(c, fase, { noAr = false, agachado = false, parado = false } = {}) {
@@ -399,7 +492,9 @@ function fita(amostras, d0, d1, material, { vCada = 8, dy = 0, inclinacao = fals
   if (cor) geo.setAttribute('color', new THREE.BufferAttribute(cor, 3));
   geo.setIndex(idx);
   geo.computeVertexNormals();
-  return new THREE.Mesh(geo, material);
+  const m = new THREE.Mesh(geo, material);
+  m.receiveShadow = true;
+  return m;
 }
 
 // nos zigue-zagues a grama de um trecho cobre a rua de outro: rua e calçada sempre por cima
@@ -490,6 +585,7 @@ let travessas = [];
 
 function addEntidade(e) {
   e.rot = e.rot || 0;
+  if (e.tipo !== 'decor') e.obj.traverse((o) => { if (o.isMesh && !o.material.transparent) o.castShadow = true; });
   scene.add(e.obj);
   entidades.push(e);
   colocar(e);
@@ -994,6 +1090,7 @@ function salvarRecorde(chave, v) { try { localStorage.setItem(chave, JSON.string
 function terminar(titulo, concluiu = false) {
   const s = estado;
   s.modo = 'fim';
+  s.concluiu = concluiu;
   s.tremor = concluiu ? 0 : 0.4;
   hud.gota.hidden = true;
   const pontos = Math.floor(s.pontos);
@@ -1237,9 +1334,21 @@ function desenhar(dt) {
   corredor.g.rotation.y = -s.ang;
   corredor.sombra.position.set(s.x, chao + 0.08, s.z);
   corredor.sombra.scale.setScalar(1 - Math.min(0.5, s.y / 4));
-  if (s.modo === 'jogando') animarCorredor(corredor, s.fase, { noAr: s.y > 0.05, agachado: s.agachado > 0, parado: s.v < 0.2 });
-  else if (s.modo === 'inicio') { s.fase += dt * 6; animarCorredor(corredor, s.fase); }
-  else if (s.modo === 'contagem') animarCorredor(corredor, 0, { parado: true });
+  const noAr = s.y > 0.05, agachado = s.agachado > 0;
+  const anim = s.modo === 'jogando' ? (s.v < 0.2 ? 'parado' : 'correr')
+    : s.modo === 'fim' ? (s.concluiu ? 'comemorar' : 'parado')
+    : s.modo === 'inicio' ? 'correr' : 'parado';
+  const ritmo = s.modo === 'jogando' ? 1.25 * (s.v / R.mps(R.PACE_BASE)) : 1;
+  const comModelo = s.modo !== 'pausa' && animarAtleta(corredor, dt, { anim, ritmo, noAr, agachado });
+  if (!comModelo) {
+    if (s.modo === 'jogando') animarCorredor(corredor, s.fase, { noAr, agachado, parado: s.v < 0.2 });
+    else if (s.modo === 'inicio') { s.fase += dt * 6; animarCorredor(corredor, s.fase); }
+    else if (s.modo === 'contagem') animarCorredor(corredor, 0, { parado: true });
+  }
+  // sombra de verdade na qualidade alta/média; mancha redonda na baixa
+  corredor.sombra.visible = !sol.castShadow;
+  sol.target.position.set(s.x, chao, s.z);
+  sol.position.copy(sol.target.position).add(SOL_OFFSET);
 
   // câmera atrás do corredor, acompanhando as viradas com suavidade
   const cam = CAMERAS[modoCamera];
@@ -1257,8 +1366,20 @@ function desenhar(dt) {
 }
 
 const relogio = new THREE.Clock();
+const medidor = { soma: 0, n: 0 };
+function medirDesempenho(dtReal) {
+  if (estado.modo !== 'jogando' || nivel >= NIVEIS.length - 1) { medidor.soma = medidor.n = 0; return; }
+  medidor.soma += dtReal; medidor.n++;
+  if (medidor.soma < 3) return;
+  const fps = medidor.n / medidor.soma;
+  medidor.soma = medidor.n = 0;
+  if (fps < 40) { aplicarQualidade(nivel + 1); aviso(`Gráficos ajustados (${NIVEIS[nivel].nome}) para o seu celular`, '', 1600); }
+}
+
 function loop() {
-  const dt = Math.min(0.05, relogio.getDelta());
+  const dtReal = relogio.getDelta();
+  const dt = Math.min(0.05, dtReal);
+  medirDesempenho(dtReal);
   if (estado.modo === 'contagem') passoContagem(dt);
   if (estado.modo === 'jogando') passo(dt);
   atualizarGota(dt);
@@ -1313,10 +1434,11 @@ $('#btnPausa').addEventListener('click', pausar);
 $('#btnContinuar').addEventListener('click', continuar);
 document.addEventListener('visibilitychange', () => { if (document.hidden) pausar(); });
 
-redimensionar();
+aplicarQualidade(nivel);
 mostrarInicio();
+carregarAtleta(corredor).catch((e) => console.error('atleta 3D', e));
 carregarProva();
 loop();
 
 // ganchos para testes automatizados
-window.__jogo = { estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };
+window.__jogo = { qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };
