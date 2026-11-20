@@ -61,6 +61,16 @@
         <div class="perfil-rodape"><small id="perfilXP">0 / 100 XP</small><small id="perfilMoves">0 Move$</small></div>
         <small class="perfil-aviso" id="perfilAviso" hidden></small>
       </div>
+      <div class="cartao treino-dia" id="cartaoTreino">
+        <h3>🏋️ Treino do dia</h3>
+        <b id="treinoNome"></b>
+        <small id="treinoInfo"></small>
+        <div class="treino-botoes">
+          <button id="btnTreinoDia" class="cta pequeno">Fazer treino</button>
+          <button id="btnComprarTreino" class="cta pequeno secundario" hidden></button>
+        </div>
+        <small id="treinoSeq"></small>
+      </div>
       <div class="cartao">
         <h3>🏃 Treino de reta</h3>
         <p>Pista reta sem fim para aprender os controles e fazer pontos.</p>
@@ -86,6 +96,11 @@
         </ul>
       </details>
       <small class="creditos">Mapa © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">colaboradores do OpenStreetMap</a></small>
+    </section>
+
+    <section id="telaTreino" class="tela" hidden>
+      <div class="resultado-treino" id="resultadoTreino"></div>
+      <button id="btnTreinoOk" class="cta" hidden>Continuar</button>
     </section>
 
     <section id="telaPausa" class="tela" hidden>

@@ -9,6 +9,7 @@ import { criarControles } from './controles.js';
 import { encontrarTravessas, travessasGenericas, buscarVias } from './travessas.js';
 import { criarSom } from './som.js';
 import * as P from './perfil.js';
+import * as TR from './treinos.js';
 import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono, placasDoPercurso, abreviarRua } from './osm.js';
 
 const SUPABASE_URL = 'https://ssfsxdmzbubvygctdjgf.supabase.co';
@@ -1824,8 +1825,8 @@ function aviso(txt, classe = '', ms = 1500) {
 }
 
 function mostrar(tela) {
-  for (const id of ['telaInicio', 'telaPausa', 'telaFim']) $('#' + id).hidden = id !== tela;
-  $('#hud').hidden = tela === 'telaInicio' || tela === 'telaFim';
+  for (const id of ['telaInicio', 'telaPausa', 'telaFim', 'telaTreino']) $('#' + id).hidden = id !== tela;
+  $('#hud').hidden = tela === 'telaInicio' || tela === 'telaFim' || tela === 'telaTreino';
   $('#controles').hidden = tela !== null;
 }
 
@@ -2304,8 +2305,64 @@ function mostrarEvolucao(metros, concluiu) {
   el.hidden = false;
 }
 
+// ─── TREINO DO DIA ─────────────────────────────────────────────────────────────
+const fmtPace = (seg) => `${R.formatarPace(R.mps(seg))}/km`;
+
+function mostrarTreinoDoDia() {
+  const forma = formaAtual(), st = P.situacao(forma.xp), hoje = TR.diaLocal();
+  const gratis = TR.treinoGratisDisponivel(perfil);
+  const feitos = perfil.treinosHoje?.dia === hoje ? perfil.treinosHoje.n : 0;
+  const t = TR.prescrever(st.nivel, hoje, feitos);
+  $('#treinoNome').textContent = t.nome;
+  $('#treinoInfo').textContent = `${TR.LOCAIS[t.local]} · ${t.detalhe} · +${TR.xpTreino(st.indice)} XP`;
+  $('#btnTreinoDia').hidden = !gratis;
+  const comprar = $('#btnComprarTreino');
+  comprar.hidden = gratis;
+  comprar.disabled = perfil.moves < TR.PRECO_TREINO;
+  comprar.textContent = perfil.moves < TR.PRECO_TREINO
+    ? `Próximo grátis à meia-noite · faltam ${TR.PRECO_TREINO - perfil.moves} Move$ para comprar`
+    : `Comprar treino agora · ${TR.PRECO_TREINO} Move$`;
+  const seq = perfil.ultimoDiaTreino && (perfil.ultimoDiaTreino === hoje || perfil.ultimoDiaTreino === TR.diaLocal(Date.now() - 86400000)) ? perfil.sequencia || 0 : 0;
+  const prox = Object.keys(TR.BONUS_SEQUENCIA).map(Number).find((d) => d > seq);
+  $('#treinoSeq').textContent = `🔥 ${seq} ${seq === 1 ? 'dia seguido' : 'dias seguidos'}${prox ? ` · bônus de ${TR.BONUS_SEQUENCIA[prox]} Move$ com ${prox} dias` : ''}`;
+}
+
+function fazerTreino(comprado) {
+  // a perda de forma vale antes de treinar
+  perfil = { ...perfil, xp: formaAtual().xp };
+  const r = TR.executarTreino(perfil, { comprado });
+  if (r.erro) { mostrarTreinoDoDia(); return; }
+  perfil = r.perfil;
+  salvarPerfil();
+  const el = $('#resultadoTreino');
+  el.innerHTML = `<div class="executando"><span>${TR.LOCAIS[r.treino.local]}</span><b>Executando: ${r.treino.nome}…</b><span class="barra"><i></i></span></div>`;
+  $('#btnTreinoOk').hidden = true;
+  mostrar('telaTreino');
+  requestAnimationFrame(() => requestAnimationFrame(() => { el.querySelector('.barra i').style.width = '100%'; }));
+  setTimeout(() => {
+    const st = r.depois;
+    const sobe = r.subiuNivel ? `🎉 Novo nível: ${st.rotulo}! Agora você corre a ${fmtPace(st.pace)}`
+      : r.subiuDegrau ? `⬆️ Subiu para ${st.rotulo}: ${fmtPace(st.pace)}` : '';
+    el.innerHTML = `
+      <span class="local">${TR.LOCAIS[r.treino.local]}${r.comprado ? ' · treino comprado' : ' · treino do dia'}</span>
+      <h2>✅ ${r.treino.nome}</h2>
+      <span class="detalhe">${r.treino.detalhe}</span>
+      <div class="bloco"><small>Pace executado</small><span class="grande">${fmtPace(r.paceExecutado)}</span></div>
+      <div class="bloco"><small>Para que serve</small><span>${r.treino.serve}</span></div>
+      <div class="bloco"><small>Evolução</small>
+        ${sobe ? `<span class="sobe">${sobe}</span>` : ''}
+        <span>+${r.xp} XP · ${st.rotulo} (${fmtPace(st.pace)})</span>
+        <span class="barra xp"><i style="width:${Math.round(st.progresso * 100)}%"></i></span>
+        <span>${st.completo ? 'Nível máximo!' : `${st.xpNoDegrau}/${st.xpDoDegrau} XP para ${fmtPace(st.proximo.pace)}`}</span>
+        <span>🔥 ${r.sequencia} ${r.sequencia === 1 ? 'dia seguido' : 'dias seguidos'}${r.bonus ? ` · bônus +${r.bonus} Move$!` : ''}${r.comprado ? ` · −${TR.PRECO_TREINO} Move$` : ''}</span>
+      </div>`;
+    $('#btnTreinoOk').hidden = false;
+  }, 1700);
+}
+
 function mostrarInicio() {
   mostrarPerfil();
+  mostrarTreinoDoDia();
   estado.modo = 'inicio';
   prepararPercurso({ tipo: 'treino' });
   const p = emEst(0);
@@ -2326,6 +2383,9 @@ $('#btnMusica').addEventListener('pointerdown', (e) => { e.stopPropagation(); e.
 $('#btnTrocar').addEventListener('click', () => { tocarMusica(false); som.pararLoops(); });
 $('#btnSair').addEventListener('click', () => { tocarMusica(false); som.pararLoops(); som.pausar(false); });
 $('#btnContinuar').addEventListener('click', continuar);
+$('#btnTreinoDia').addEventListener('click', () => fazerTreino(false));
+$('#btnComprarTreino').addEventListener('click', () => fazerTreino(true));
+$('#btnTreinoOk').addEventListener('click', mostrarInicio);
 document.addEventListener('visibilitychange', () => { if (document.hidden) pausar(); });
 
 aplicarQualidade(nivel);
@@ -2336,4 +2396,4 @@ carregarProva();
 loop();
 
 // ganchos para testes automatizados
-window.__jogo = { perfil: () => perfil, P, criar: { galho, cone, barreira }, osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, placas: () => placas, semaforos: () => semaforos, atualizarPlacas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };
+window.__jogo = { perfil: () => perfil, P, TR, fazerTreino, definirPerfil: (p) => { perfil = p; salvarPerfil(); mostrarInicio(); }, criar: { galho, cone, barreira }, osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, placas: () => placas, semaforos: () => semaforos, atualizarPlacas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };

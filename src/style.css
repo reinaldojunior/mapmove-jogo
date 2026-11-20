@@ -384,3 +384,23 @@ kbd {
 .evolucao li b { white-space: nowrap; }
 .evolucao li.falhou { opacity: 0.5; }
 .evolucao .total { display: flex; justify-content: space-between; font-weight: 800; border-top: 1px solid rgba(255, 255, 255, 0.2); padding-top: 4px; }
+
+/* treino do dia */
+.cartao.treino-dia { display: flex; flex-direction: column; gap: 4px; text-align: left; }
+.cartao.treino-dia h3 { margin: 0; }
+#treinoNome { font-size: 17px; }
+#treinoInfo, #treinoSeq { opacity: 0.85; }
+.treino-botoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.cta.pequeno.secundario { background: rgba(255, 255, 255, 0.15); color: #fff; box-shadow: none; }
+.cta[disabled] { opacity: 0.45; pointer-events: none; }
+.resultado-treino { width: min(360px, 100%); display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.resultado-treino .local { opacity: 0.85; font-size: 14px; }
+.resultado-treino h2 { margin: 0; font-size: 26px; line-height: 1.1; }
+.resultado-treino .detalhe { opacity: 0.9; }
+.resultado-treino .bloco { padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.1); display: flex; flex-direction: column; gap: 4px; }
+.resultado-treino .bloco small { opacity: 0.75; text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; font-weight: 700; }
+.resultado-treino .grande { font-size: 30px; font-weight: 800; }
+.resultado-treino .sobe { color: #ffd21f; font-weight: 800; }
+.executando { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.executando .barra { width: 220px; height: 12px; }
+.executando .barra i { width: 0; transition: width 1.4s linear; }
