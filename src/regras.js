@@ -14,6 +14,10 @@ export const LIMITE_CALCADA = 7.6; // além disso saiu do percurso
 export const PENALIDADES_MAX = 3;
 
 export const PULO = { velocidade: 9.5, gravidade: -26 };
+// salto sobre o carro da travessa: pulo bem mais alto quando há um carro logo à frente (sobe ~3,2 m, carro tem 2,2 m)
+export const SALTO_CARRO = { velocidade: 13, de: 3, ate: 13 };
+export const carroParaSaltar = (sCorredor, carros) =>
+  carros.some((c) => c.s - sCorredor >= SALTO_CARRO.de && c.s - sCorredor <= SALTO_CARRO.ate);
 export const ALTURA_EM_PE = 2.1;
 export const ALTURA_AGACHADO = 1.2;
 export const TEMPO_AGACHADO = 0.9;

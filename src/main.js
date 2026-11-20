@@ -339,6 +339,9 @@ const PERSONAGENS = {
     anims: [['correr', 'atleta-corrida.glb', 0], ['parado', 'atleta-parado.glb', 37], ['comemorar', 'atleta-comemora.glb', 0]] },
   liso: { nome: 'Corredor liso', desc: 'Experimental: regata e shorts lisos, ideal para os acessórios da loja.', emoji: '🏃‍♂️',
     anims: [['correr', 'corredor-corrida.glb', 0], ['parado', 'corredor-parado.glb', 0], ['comemorar', 'corredor-comemora.glb', 0]] },
+  corredora: { nome: 'Corredora', desc: 'Feita no Meshy: aquece com polichinelos e pula os carros com rolamento.', emoji: '🏃🏾‍♀️',
+    // um arquivo com várias animações: estado do jogo → nome da animação no arquivo
+    arquivo: 'corredora.glb', clipes: { correr: 'Run_02', parado: 'jumping_jacks', aquecer: 'jumping_jacks', comemorar: 'Cheer_with_Both_Hands_Up', pular: 'Run_Jump_and_Roll' } },
   maratonista: { nome: 'Maratonista', desc: 'Feito no Meshy a partir das fichas de 3 vistas.', emoji: '🏃🏾',
     anims: [['correr', 'maratonista-corrida.glb', 0], ['parado', 'maratonista-parado.glb', 0], ['comemorar', 'maratonista-comemora.glb', 0]] }
 };
@@ -350,6 +353,7 @@ let carregandoAtleta = 0;
 async function carregarAtleta(c, id = 'portal') {
   const vez = ++carregandoAtleta;
   const pers = PERSONAGENS[id] || PERSONAGENS.portal;
+  if (pers.arquivo) return carregarAtletaUnico(c, pers, id, vez);
   // carrega tudo antes de trocar, para o corredor não sumir no meio
   const gltfs = await Promise.all(pers.anims.map(([, arquivo]) => gltfLoader.loadAsync(`/modelos/${arquivo}`)));
   if (vez !== carregandoAtleta) return;
@@ -444,15 +448,80 @@ function prop(nome) {
   return m ? m.clone() : null;
 }
 
+// materiais do Meshy vêm com mapa de metal/brilho: com o sol do jogo viram manchas brancas; deixa foscos
+function prepararMalhaAtleta(model) {
+  model.traverse((o) => {
+    if (!o.isMesh) return;
+    o.castShadow = true; o.frustumCulled = false;
+    for (const m of [].concat(o.material)) {
+      if (!m?.isMeshStandardMaterial || !m.metalnessMap) continue;
+      m.metalness = 0; m.metalnessMap = null;
+      m.roughness = 1; m.envMapIntensity = 0.6;
+      m.needsUpdate = true;
+    }
+  });
+}
+
+// salto com rolamento: trava o avanço do quadril (quem anda é a pista) e tira a subida (quem sobe é o jogo)
+function clipeDeSalto(clipe) {
+  const c = clipe.clone();
+  for (const tr of c.tracks) {
+    if (!/Hips\.position$/.test(tr.name)) continue;
+    const v = tr.values, x0 = v[0], y0 = v[1], z0 = v[2];
+    for (let i = 0; i < v.length; i += 3) { v[i] = x0; v[i + 1] = Math.min(v[i + 1], y0); v[i + 2] = z0; }
+  }
+  return c;
+}
+const SALTO_ANIM = { de: 0.8, ate: 3.3, duracao: 1.5 }; // trecho do clipe: decolagem → de pé de novo
+
+async function carregarAtletaUnico(c, pers, id, vez) {
+  const gltf = await gltfLoader.loadAsync(`/modelos/${pers.arquivo}`);
+  if (vez !== carregandoAtleta) return;
+  if (c.atleta?.holder) c.g.remove(c.atleta.holder);
+  const pedida = c.atleta?.pedida;
+  const holder = new THREE.Group();
+  c.g.add(holder);
+  c.atleta = { holder, partes: {}, atual: null, pedida, id };
+  const model = gltf.scene;
+  model.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(model, true), h = (box.max.y - box.min.y) || 1;
+  model.position.set(-(box.min.x + box.max.x) / 2, -box.min.y, -(box.min.z + box.max.z) / 2);
+  prepararMalhaAtleta(model);
+  const grp = new THREE.Group(); grp.add(model);
+  grp.scale.setScalar(ALTURA_ATLETA / c.g.scale.x / h);
+  grp.rotation.y = Math.PI;
+  holder.add(grp);
+  const mixer = new THREE.AnimationMixer(model);
+  for (const [estado, nomeClipe] of Object.entries(pers.clipes)) {
+    let clipe = gltf.animations.find((a) => a.name === nomeClipe);
+    if (!clipe) continue;
+    if (estado === 'pular') clipe = clipeDeSalto(clipe);
+    const acao = mixer.clipAction(clipe);
+    if (estado === 'pular' || estado === 'comemorar') { acao.setLoop(estado === 'pular' ? THREE.LoopOnce : THREE.LoopRepeat); acao.clampWhenFinished = true; }
+    c.atleta.partes[estado] = { grp, mixer, acao, model, h, minY: box.min.y, unico: true };
+  }
+  c.corpo.visible = false;
+  trocarAnimacao(c, pedida || 'parado');
+  vestirAtleta();
+}
+
 function trocarAnimacao(c, nome) {
   const a = c.atleta;
   if (!a) return;
   a.pedida = nome;
-  const parte = a.partes[nome] || a.partes.correr;
+  // quem não tem aquecimento fica parado; quem não tem salto corre no ar
+  const parte = a.partes[nome] || (nome === 'aquecer' && a.partes.parado) || a.partes.correr;
   if (!parte || a.atual === parte) return;
-  if (a.atual) a.atual.grp.visible = false;
-  parte.grp.visible = true;
-  parte.acao.reset().play();
+  if (a.atual && a.atual.grp === parte.grp) {
+    // mesmo boneco, outra animação: transição suave
+    a.atual.acao.fadeOut(0.15);
+    parte.acao.reset().fadeIn(0.15).play();
+    if (nome === 'pular') parte.acao.time = SALTO_ANIM.de;
+  } else {
+    if (a.atual) a.atual.grp.visible = false;
+    parte.grp.visible = true;
+    parte.acao.reset().play();
+  }
   a.atual = parte;
 }
 
@@ -462,10 +531,10 @@ function animarAtleta(c, dt, { anim, ritmo = 1, noAr = false, agachado = false }
   trocarAnimacao(c, anim);
   const parte = a.atual;
   if (!parte) return false;
-  parte.acao.timeScale = noAr ? 0.25 : ritmo;
+  parte.acao.timeScale = anim === 'pular' && a.partes.pular ? (SALTO_ANIM.ate - SALTO_ANIM.de) / SALTO_ANIM.duracao : noAr ? 0.25 : ritmo;
   parte.mixer.update(dt);
   a.holder.scale.y = agachado ? 0.62 : 1;
-  a.holder.rotation.x = agachado ? 0.35 : noAr ? -0.15 : 0;
+  a.holder.rotation.x = agachado ? 0.35 : noAr && !(anim === 'pular' && a.partes.pular) ? -0.15 : 0;
   return true;
 }
 
@@ -1709,7 +1778,7 @@ function reiniciar() {
     t: 0, tempoReal: 0, x: p.x, z: p.z, ang: p.ang, camAng: p.ang, s: 0, sMax: 0, d: 0, v: 0, y: 0, vy: 0,
     agachado: 0, geis: 0, gelAtivo: 0, giroPend: 0, parado: 0, voltar: false, fase: 0, agua: 100, pontos: 0,
     energia: 100, energiaAvisada: false, passoIdx: 0, tropecos: 0, coposPegos: 0, paceBase: paceDoPerfil(),
-    fatorTenis: 1, gelMax: R.GEL_MAX, relogio: false, isotonico: false,
+    fatorTenis: 1, gelMax: R.GEL_MAX, relogio: false, isotonico: false, saltoAnim: 0, saltandoCarro: false,
     penal: 0, proximoSpawn: 70, proximoPosto: 1000, proximoKm: 1000, proximaTravessa: 140, tremor: 0, kmAvisado: 0
   });
   fundo.position.z = 0;
@@ -2042,7 +2111,13 @@ function acao(tipo) {
   if (tipo === 'pausa') return s.modo === 'pausa' ? continuar() : pausar();
   if (tipo === 'camera') return trocarCamera();
   if (s.modo !== 'jogando' || s.parado > 0) return;
-  if (tipo === 'pular' && s.y === 0) { s.vy = R.PULO.velocidade; s.agachado = 0; }
+  if (tipo === 'pular' && s.y === 0) {
+    // carro da travessa logo à frente: salto alto com rolamento
+    const carros = entidades.filter((e) => e.tipo === 'carro' && !e.atingido);
+    if (R.carroParaSaltar(s.s, carros)) { s.vy = R.SALTO_CARRO.velocidade; s.saltoAnim = SALTO_ANIM.duracao; s.saltandoCarro = true; }
+    else s.vy = R.PULO.velocidade;
+    s.agachado = 0;
+  }
   else if (tipo === 'abaixar' && s.y === 0) s.agachado = R.TEMPO_AGACHADO;
   else if (tipo === 'agua') beber();
   else if (tipo === 'gel') usarGel();
@@ -2122,8 +2197,12 @@ function passo(dt) {
   if (s.vy !== 0 || s.y > 0) {
     s.vy += R.PULO.gravidade * dt;
     s.y = Math.max(0, s.y + s.vy * dt);
-    if (s.y === 0) s.vy = 0;
+    if (s.y === 0) {
+      s.vy = 0;
+      if (s.saltandoCarro) { s.saltandoCarro = false; s.pontos += 30; aviso('🚗 Pulou o carro! +30'); }
+    }
   }
+  s.saltoAnim = Math.max(0, (s.saltoAnim || 0) - dt);
   s.agachado = Math.max(0, s.agachado - dt);
 
   // novos obstáculos à frente; no treino também postos, travessas e km
@@ -2232,9 +2311,9 @@ function desenhar(dt) {
   corredor.sombra.position.set(s.x, chao + 0.08, s.z);
   corredor.sombra.scale.setScalar(1 - Math.min(0.5, s.y / 4));
   const noAr = s.y > 0.05, agachado = s.agachado > 0;
-  const anim = s.modo === 'jogando' ? (s.v < 0.2 ? 'parado' : 'correr')
+  const anim = s.modo === 'jogando' ? (s.saltoAnim > 0 ? 'pular' : s.v < 0.2 ? 'parado' : 'correr')
     : s.modo === 'fim' ? (s.concluiu ? 'comemorar' : 'parado')
-    : s.modo === 'inicio' ? 'correr' : 'parado';
+    : s.modo === 'inicio' || s.modo === 'contagem' ? 'aquecer' : 'parado';
   const ritmo = s.modo === 'jogando' ? 1.25 * (s.v / R.mps(R.PACE_BASE)) : 1; // a passada acelera com o nível
   const comModelo = s.modo !== 'pausa' && animarAtleta(corredor, dt, { anim, ritmo, noAr, agachado });
   if (!comModelo) {
@@ -2520,7 +2599,9 @@ async function vestirAtleta() {
   const modelos = await Promise.all(ids.map(carregarAcessorio));
   if (versao !== versaoVestir) return;
   const v = new THREE.Vector3(), q = new THREE.Quaternion();
-  for (const parte of Object.values(a.partes)) {
+  // personagem de arquivo único: as partes dividem o mesmo boneco, veste uma vez só
+  const partes = [...new Map(Object.values(a.partes).map((p) => [p.model, p])).values()];
+  for (const parte of partes) {
     for (const o of parte.acessorios || []) o.parent?.remove(o);
     parte.acessorios = [];
     // cada acessório fica no sistema de eixos do osso (y ao longo do osso), compensando a escala do osso
