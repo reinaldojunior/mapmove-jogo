@@ -332,16 +332,29 @@ function criarCorredor() {
 }
 
 const ALTURA_ATLETA = 2.15;
-// corredor base sem acessórios (Higgsfield): boné, óculos, relógio etc. vêm da loja
-const ANIMS = [['correr', 'corredor-corrida.glb', 0], ['parado', 'corredor-parado.glb', 0], ['comemorar', 'corredor-comemora.glb', 0]];
+// personagens jogáveis: cada um com as animações de correr, parado e comemorar (yaw corrige a direção do arquivo)
+const PERSONAGENS = {
+  portal: { nome: 'Corredor Mapmove', desc: 'O atleta do simulador do Portal, com boné, óculos e colete.', emoji: '🏃',
+    anims: [['correr', 'atleta-corrida.glb', 0], ['parado', 'atleta-parado.glb', 37], ['comemorar', 'atleta-comemora.glb', 0]] },
+  liso: { nome: 'Corredor liso', desc: 'Experimental: regata e shorts lisos, ideal para os acessórios da loja.', emoji: '🏃‍♂️',
+    anims: [['correr', 'corredor-corrida.glb', 0], ['parado', 'corredor-parado.glb', 0], ['comemorar', 'corredor-comemora.glb', 0]] }
+};
 const gltfLoader = new GLTFLoader();
 
-async function carregarAtleta(c) {
+let carregandoAtleta = 0;
+async function carregarAtleta(c, id = 'portal') {
+  const vez = ++carregandoAtleta;
+  const pers = PERSONAGENS[id] || PERSONAGENS.portal;
+  // carrega tudo antes de trocar, para o corredor não sumir no meio
+  const gltfs = await Promise.all(pers.anims.map(([, arquivo]) => gltfLoader.loadAsync(`/modelos/${arquivo}`)));
+  if (vez !== carregandoAtleta) return;
+  if (c.atleta?.holder) c.g.remove(c.atleta.holder);
+  const pedida = c.atleta?.pedida;
   const holder = new THREE.Group();
   c.g.add(holder);
-  c.atleta = { holder, partes: {}, atual: null };
-  for (const [nome, arquivo, yaw] of ANIMS) {
-    const gltf = await gltfLoader.loadAsync(`/modelos/${arquivo}`);
+  c.atleta = { holder, partes: {}, atual: null, pedida, id };
+  for (const [k, [nome, , yaw]] of pers.anims.entries()) {
+    const gltf = gltfs[k];
     const model = gltf.scene;
     model.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(model, true), h = (box.max.y - box.min.y) || 1;
@@ -359,7 +372,7 @@ async function carregarAtleta(c) {
     c.atleta.partes[nome] = { grp, mixer, acao, model, h, minY: box.min.y };
     if (nome === 'correr') { c.corpo.visible = false; trocarAnimacao(c, 'parado'); }
   }
-  trocarAnimacao(c, c.atleta.pedida || 'parado');
+  trocarAnimacao(c, pedida || 'parado');
   vestirAtleta();
 }
 
@@ -2407,6 +2420,14 @@ function abrirLoja(cat = abaLoja) {
   abaLoja = cat;
   for (const b of document.querySelectorAll('.aba')) b.classList.toggle('ativa', b.dataset.cat === cat);
   $('#lojaSaldo').textContent = perfil.moves;
+  if (cat === 'personagem') {
+    // por enquanto (fase de testes) todos os personagens são livres
+    const atual = perfil.personagem || 'portal';
+    $('#lojaItens').innerHTML = Object.entries(PERSONAGENS).map(([id, p]) => `<div class="item personagem"><span class="emoji">${p.emoji}</span><b>${p.nome}</b><small>${p.desc}</small>${id === atual
+      ? '<button class="usando" disabled>Jogando com ele ✓</button>' : `<button class="neutro" data-acao="personagem" data-id="${id}">Escolher</button>`}</div>`).join('');
+    mostrar('telaLoja');
+    return;
+  }
   const nivelNome = (n) => L.NOMES_NIVEL[n];
   const mochila = perfil.consumiveis || {};
   $('#lojaItens').innerHTML = L.ITENS.filter((it) => it.cat === cat).map((it) => {
@@ -2431,6 +2452,12 @@ $('#lojaItens').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-acao]');
   if (!b) return;
   const id = b.dataset.id;
+  if (b.dataset.acao === 'personagem') {
+    perfil = { ...perfil, personagem: id }; salvarPerfil();
+    carregarAtleta(corredor, id).catch((err) => console.error('personagem', err));
+    abrirLoja('personagem');
+    return;
+  }
   if (b.dataset.acao === 'comprar') {
     const r = L.comprar(perfil, id);
     if (r.erro) return;
@@ -2537,7 +2564,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) pausa
 
 aplicarQualidade(nivel);
 mostrarInicio();
-carregarAtleta(corredor).catch((e) => console.error('atleta 3D', e));
+carregarAtleta(corredor, perfil.personagem).catch((e) => console.error('atleta 3D', e));
 for (const nome of Object.keys(PROPS)) carregarProp(nome).catch(() => { /* sem o arquivo, fica o desenho de blocos */ });
 carregarProva();
 loop();
