@@ -7,6 +7,7 @@ import { PistaReal, PistaReta, frente, direita, difAngulo } from './pista.js';
 import * as R from './regras.js';
 import { criarControles } from './controles.js';
 import { encontrarTravessas, travessasGenericas, buscarVias } from './travessas.js';
+import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono } from './osm.js';
 
 const SUPABASE_URL = 'https://ssfsxdmzbubvygctdjgf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_s2yoUApfYl_ZvSUkqYYrVw_uXwKsybM';
@@ -226,7 +227,9 @@ function achatar(grupo) {
     g.setAttribute('color', new THREE.BufferAttribute(c, 3));
     geos.push(g);
   });
+  // as peças ficam relativas ao grupo; o grupo novo herda a escala dele (posição e giro vêm de quem usa)
   const novo = new THREE.Group();
+  novo.scale.copy(grupo.scale);
   if (geos.length) { const m = new THREE.Mesh(mergeGeometries(geos), matVertice); m.castShadow = true; novo.add(m); }
   for (const o of comTextura) {
     new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld).decompose(o.position, o.quaternion, o.scale);
@@ -323,7 +326,14 @@ const PROPS = {
   carro: { arquivo: 'carro.glb', comprimento: 3.6, eixo: 'x', giro: 0 },
   // mesa e cavalete vão pela altura real; o comprimento sai da proporção do modelo
   mesa: { arquivo: 'mesa-agua.glb', altura: 1.0, eixo: 'z', giro: 0 },
-  barreira: { arquivo: 'barreira.glb', altura: 1.12, eixo: 'x', giro: 0 }
+  barreira: { arquivo: 'barreira.glb', altura: 1.12, eixo: 'x', giro: 0 },
+  // cenário de parque
+  ipe: { arquivo: 'ipe.glb', altura: 7 },
+  arvoreGrande: { arquivo: 'arvore.glb', altura: 8 },
+  banco: { arquivo: 'banco.glb', comprimento: 1.8, eixo: 'x', giro: 0 },
+  poste: { arquivo: 'poste.glb', altura: 5 },
+  pedalinho: { arquivo: 'pedalinho.glb', comprimento: 2.4, eixo: 'z', giro: 0 },
+  torcedor: { arquivo: 'torcedor.glb', altura: 1.75 }
 };
 
 async function carregarProp(nome) {
@@ -335,8 +345,8 @@ async function carregarProp(nome) {
   const tam = box.getSize(new THREE.Vector3());
   // deixa o lado comprido no eixo pedido
   const longoEmX = tam.x >= tam.z;
-  if ((cfg.eixo === 'x') !== longoEmX) model.rotation.y = Math.PI / 2;
-  model.rotation.y += cfg.giro;
+  if (cfg.eixo && (cfg.eixo === 'x') !== longoEmX) model.rotation.y = Math.PI / 2;
+  model.rotation.y += cfg.giro || 0;
   model.updateMatrixWorld(true);
   box = new THREE.Box3().setFromObject(model, true);
   const t2 = box.getSize(new THREE.Vector3());
@@ -425,7 +435,13 @@ function segmentoTorcida(lado) {
   const placa = new THREE.Mesh(new THREE.PlaneGeometry(6.6, 0.9), escolher(matsFaixa));
   placa.position.set(0, 0.7, 0); placa.rotation.y = -lado * Math.PI / 2; g.add(placa);
   const topo = malha(G.caixa, mat(0xdfe6ee), 0, 1.2, 0); topo.scale.set(0.08, 0.08, 6.6); g.add(topo);
-  for (let i = 0; i < 4; i++) {
+  const modelo = prop('torcedor');
+  if (modelo) {
+    modelo.position.set(lado * aleat(0.7, 1.2), 0, aleat(-1.5, 1.5));
+    modelo.rotation.y = (lado > 0 ? Math.PI : 0) + aleat(-0.4, 0.4);
+    g.add(modelo);
+  }
+  for (let i = modelo ? 1 : 0; i < (modelo ? 3 : 4); i++) {
     const p = torcedor();
     p.position.set(lado * aleat(0.7, 2.2), 0, -2.6 + i * 1.7 + aleat(0, 0.4));
     p.rotation.y = -lado * Math.PI / 2 + aleat(-0.3, 0.3);
@@ -462,8 +478,8 @@ function palmeira() {
   return g;
 }
 
-function predio() {
-  const h = aleat(7, 22), w = aleat(6, 10), d = aleat(6, 9);
+function predio(baixo = false) {
+  const h = baixo ? aleat(5, 10) : aleat(7, 22), w = aleat(6, 10), d = aleat(6, 9);
   const cores = [0xf4d7b5, 0xd6e4f0, 0xf7f1e3, 0xe8c4a0, 0xcfe8d5, 0xf0d0d8];
   const map = texJanelas.clone(); map.needsUpdate = true; map.repeat.set(Math.round(w / 2), Math.round(h / 4));
   const o = new THREE.Mesh(G.caixa, new THREE.MeshStandardMaterial({ color: escolher(cores), map, roughness: 0.9 }));
@@ -552,10 +568,13 @@ function construirVisual() {
   visual.add(fita(amostras, -R.MEIA_RUA, R.MEIA_RUA, matRua, { inclinacao: true }));
   visual.add(fita(amostras, -R.LIMITE_CALCADA, -R.MEIA_RUA, matCalcada, { vCada: 4, dy: 0.06 }));
   visual.add(fita(amostras, R.MEIA_RUA, R.LIMITE_CALCADA, matCalcada, { vCada: 4, dy: 0.06 }));
+  visual.userData.amostras = amostras;
+  visual.userData.grama = [];
   for (const [a, b] of [[-32, -R.LIMITE_CALCADA], [R.LIMITE_CALCADA, 32]]) {
     const gr = fita(amostras, a, b, matGrama, { vCada: 4, dy: -0.04 });
     gr.renderOrder = -1;
     visual.add(gr);
+    visual.userData.grama.push(gr);
   }
   let minY = 0, cx = 0, cz = 0;
   for (const a of amostras) { minY = Math.min(minY, a.y); cx += a.x; cz += a.z; }
@@ -572,11 +591,23 @@ function construirVisual() {
 // cenário reciclado numa janela à frente do corredor
 const JANELA = 300;
 let cenario = [];
+let zonas = null; // zonas do percurso (parque, cidade, livre) quando há dados do OpenStreetMap
+const giroAleatorio = () => aleat(0, Math.PI * 2);
+const arvoreDaBeira = () => {
+  const r = Math.random();
+  const m = r < 0.35 ? prop('ipe') : r < 0.75 ? prop('arvoreGrande') : null;
+  if (m) { m.scale.multiplyScalar(aleat(0.85, 1.1)); m.rotation.y = giroAleatorio(); return m; }
+  return Math.random() < 0.3 ? palmeira() : arvore(aleat(0.75, 0.95));
+};
 const MOLDES = [
-  { passo: 7, lados: [-1, 1], d: 7.75, criar: (lado) => segmentoTorcida(lado), folga: 7.4, vao: 8 },
-  { passo: 13, lados: [-1, 1], d: () => aleat(10.5, 12.5), criar: () => (Math.random() < 0.3 ? palmeira() : arvore(aleat(0.75, 0.95))), folga: 9.5, vao: 7 },
-  { passo: 17, lados: [-1, 1], d: () => aleat(19, 24), criar: () => predio(), folga: 14, vao: 13 }
+  { passo: 7, d: 7.75, criar: (lado) => segmentoTorcida(lado), folga: 7.4, vao: 8, densidade: { parque: 0.3, livre: 0.75, cidade: 1 } },
+  { passo: 15, d: () => aleat(10.5, 12.5), criar: arvoreDaBeira, folga: 9.5, vao: 7, densidade: { parque: 1, livre: 0.9, cidade: 0.6 } },
+  { passo: 17, d: () => aleat(19, 24), criar: () => predio(!!prova), folga: 14, vao: 13, densidade: { parque: 0, livre: 0.12, cidade: 0.6 } },
+  { passo: 30, d: 8.6, criar: () => prop('poste'), folga: 8, vao: 4, densidade: { parque: 1, livre: 0.4, cidade: 0 }, rot: (lado) => lado * Math.PI / 2 },
+  { passo: 44, d: 9.8, criar: () => prop('banco'), folga: 9, vao: 4, densidade: { parque: 1, livre: 0.3, cidade: 0 }, rot: (lado) => lado * Math.PI / 2 }
 ];
+// sorteio fixo por posição: o mesmo trecho mostra sempre a mesma coisa
+const sorteio = (s, k) => { const v = Math.sin(s * 12.9898 + k * 78.233) * 43758.5453; return v - Math.floor(v); };
 
 function posicionarCenario(item, s) {
   item.s = s;
@@ -589,26 +620,31 @@ function posicionarCenario(item, s) {
   if (!fora && Number.isFinite(pista.total)) invade = Math.abs(pista.projetar(x, z, Math.max(0, s), 60, 60).d) < item.folga;
   // abre espaço na grade, nas árvores e nos prédios onde chega uma travessa
   const naTravessa = travessas.some((t) => Math.abs(t.s - s) < item.vao && t.lados.includes(Math.sign(item.d)));
-  item.obj.visible = !fora && !invade && !naTravessa;
+  // sem dados do mapa (treino) vale "cidade"; com dados, cada trecho mostra o que combina com ele
+  const zona = zonas ? zonaEm(zonas, s, Math.sign(item.d)) : (item.molde.densidade.cidade ? 'cidade' : 'nenhuma');
+  const combina = sorteio(s, item.k) < (item.molde.densidade[zona] ?? 0);
+  item.obj.visible = !fora && !invade && !naTravessa && combina;
   item.obj.position.set(x, p.y, z);
-  item.obj.rotation.y = -p.ang;
+  item.obj.rotation.y = -p.ang + (item.rot || 0);
 }
 
 function construirCenario() {
   for (const it of cenario) scene.remove(it.obj);
   cenario = [];
-  for (const m of MOLDES) {
+  MOLDES.forEach((m, k) => {
     const n = Math.ceil(JANELA / m.passo);
-    for (const lado of m.lados) {
+    for (const lado of [-1, 1]) {
       for (let i = 0; i < n; i++) {
-        const obj = achatar(m.criar(lado));
+        const criado = m.criar(lado);
+        if (!criado) return; // modelo 3D ainda não carregou: esse tipo fica de fora desta vez
+        const obj = achatar(criado);
         scene.add(obj);
-        const it = { obj, d: lado * (typeof m.d === 'function' ? m.d() : m.d), folga: m.folga, vao: m.vao, ciclo: n * m.passo };
+        const it = { obj, molde: m, k, d: lado * (typeof m.d === 'function' ? m.d() : m.d), rot: m.rot?.(lado), folga: m.folga, vao: m.vao, ciclo: n * m.passo };
         posicionarCenario(it, -30 + i * m.passo + aleat(0, m.passo * 0.3));
         cenario.push(it);
       }
     }
-  }
+  });
 }
 
 function atualizarCenario(sCorredor) {
@@ -885,6 +921,246 @@ async function carregarTravessas(distancia, pistaAlvo) {
   definirTravessas((lista || travessasGenericas(pistaAlvo.total)).map((t) => ({ ...t, carro: false })));
 }
 
+// ─── CENÁRIO REAL (OPENSTREETMAP), NO ESTILO CLARO DO MAPBOX STANDARD ─────────
+
+const CORES_AREA = { bairro: 0xd9d3c6, esporte: 0x86c766, grama: 0xa3d77f, parque: 0x93d071, mata: 0x5ea64a, agua: 0x5bb8ee };
+const ORDEM_AREA = { bairro: -2.6, esporte: -2.4, grama: -2.4, parque: -2.4, mata: -2.3, agua: -2.2 };
+const matsArea = Object.fromEntries(Object.entries(CORES_AREA).map(([k, cor]) => [k, k === 'agua'
+  ? new THREE.MeshStandardMaterial({ color: cor, roughness: 0.08, metalness: 0.15, depthWrite: false })
+  : new THREE.MeshStandardMaterial({ color: cor, roughness: 1, depthWrite: false })]));
+const matCaminho = new THREE.MeshStandardMaterial({ color: 0xeee4cf, roughness: 1, depthWrite: false });
+const matRio = matsArea.agua;
+const CORES_PAREDE = [0xf6f1e9, 0xece5da, 0xf1e4d4, 0xe3e8ee, 0xefe6ef, 0xf3ead0];
+const matPredioOSM = new THREE.MeshStandardMaterial({ vertexColors: true, map: texJanelas, roughness: 0.9 });
+
+let osm = null;
+let grupoOSM = new THREE.Group();
+scene.add(grupoOSM);
+let chunksArvores = [];
+let pedalinhos = [];
+
+const alturaChao = (x, z) => pista.pertoDe(x, z).y;
+
+function malhaDePoligono(listas, material, dy, ordem) {
+  const pos = [];
+  for (const pts of listas) {
+    const contorno = pts.slice();
+    if (contorno.length > 3 && contorno[0][0] === contorno.at(-1)[0] && contorno[0][1] === contorno.at(-1)[1]) contorno.pop();
+    if (contorno.length < 3) continue;
+    const v2 = contorno.map(([x, z]) => new THREE.Vector2(x, z));
+    const faces = THREE.ShapeUtils.triangulateShape(v2, []);
+    const ys = contorno.map(([x, z]) => alturaChao(x, z) + dy);
+    for (const f of faces) for (const i of [f[0], f[2], f[1]]) pos.push(contorno[i][0], ys[i], contorno[i][1]);
+  }
+  if (!pos.length) return null;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, material);
+  m.renderOrder = ordem;
+  m.receiveShadow = true;
+  return m;
+}
+
+function malhaDeLinhas(linhas, largura, material, dy, ordem) {
+  const pos = [];
+  for (const l of linhas) {
+    const ys = l.map(([x, z]) => alturaChao(x, z) + dy);
+    for (let i = 0; i < l.length - 1; i++) {
+      const [ax, az] = l[i], [bx, bz] = l[i + 1];
+      const len = Math.hypot(bx - ax, bz - az) || 1;
+      const nx = (-(bz - az) / len) * largura / 2, nz = ((bx - ax) / len) * largura / 2;
+      const a1 = [ax + nx, ys[i], az + nz], a2 = [ax - nx, ys[i], az - nz], b1 = [bx + nx, ys[i + 1], bz + nz], b2 = [bx - nx, ys[i + 1], bz - nz];
+      pos.push(...a1, ...b1, ...a2, ...a2, ...b1, ...b2);
+    }
+  }
+  if (!pos.length) return null;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, material);
+  m.material.side = THREE.DoubleSide;
+  m.renderOrder = ordem;
+  return m;
+}
+
+function alturaPredio(b) {
+  if (b.h) return b.h;
+  if (b.n) return b.n * 3.2;
+  const t = b.t || 'yes';
+  if (/apartments|hotel|office/.test(t)) return 15;
+  if (/commercial|retail|school|hospital|public|civic|church/.test(t)) return 8;
+  if (/industrial|warehouse|hangar/.test(t)) return 9;
+  if (/roof|shed|garage|kiosk/.test(t)) return 3.5;
+  return 5.5;
+}
+
+// prédios reais levantados a partir do contorno; paredes com janelas, telhado liso
+function malhaDePredios(predios) {
+  const pos = [], cor = [], uv = [];
+  const c = new THREE.Color(), cTelhado = new THREE.Color();
+  for (const b of predios) {
+    const pts = b.pts.slice();
+    if (pts.length > 3 && pts[0][0] === pts.at(-1)[0] && pts[0][1] === pts.at(-1)[1]) pts.pop();
+    if (pts.length < 3) continue;
+    let cx = 0, cz = 0;
+    for (const [x, z] of pts) { cx += x; cz += z; }
+    cx /= pts.length; cz /= pts.length;
+    const perto = pista.pertoDe(cx, cz);
+    if (perto.dist < 12 || pts.some(([x, z]) => pista.pertoDe(x, z).dist < 9)) continue; // nada em cima da rua
+    const H = alturaPredio(b), y0 = perto.y - 0.6, y1 = perto.y + H;
+    c.setHex(CORES_PAREDE[Math.abs(Math.round(cx * 7 + cz * 13)) % CORES_PAREDE.length]);
+    cTelhado.setHex(H < 7 ? 0xc9744e : 0xb9b4ac);
+    let area2 = 0;
+    for (let i = 0; i < pts.length; i++) { const [x0, z0] = pts[i], [x1, z1] = pts[(i + 1) % pts.length]; area2 += x0 * z1 - x1 * z0; }
+    const sentido = area2 > 0 ? 1 : -1;
+    let u = 0;
+    for (let i = 0; i < pts.length; i++) {
+      let [ax, az] = pts[i], [bx, bz] = pts[(i + 1) % pts.length];
+      if (sentido < 0) [ax, az, bx, bz] = [bx, bz, ax, az];
+      const len = Math.hypot(bx - ax, bz - az);
+      const u0 = u / 12, u1 = (u + len) / 12, v0 = 0, v1 = H / 24;
+      u += len;
+      const q = [[ax, y0, az, u0, v0], [bx, y0, bz, u1, v0], [bx, y1, bz, u1, v1], [ax, y1, az, u0, v1]];
+      for (const k of [0, 2, 1, 0, 3, 2]) { pos.push(q[k][0], q[k][1], q[k][2]); uv.push(q[k][3], q[k][4]); cor.push(c.r, c.g, c.b); }
+    }
+    const faces = THREE.ShapeUtils.triangulateShape(pts.map(([x, z]) => new THREE.Vector2(x, z)), []);
+    for (const f of faces) for (const i of [f[0], f[2], f[1]]) { pos.push(pts[i][0], y1, pts[i][1]); uv.push(0.01, 0.01); cor.push(cTelhado.r, cTelhado.g, cTelhado.b); }
+  }
+  if (!pos.length) return null;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(cor, 3));
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, matPredioOSM);
+  m.castShadow = true; m.receiveShadow = true;
+  m.material.side = THREE.DoubleSide;
+  return m;
+}
+
+// árvores espalhadas nas áreas verdes: instanciadas em blocos de 120 m que somem de longe
+function plantarArvores() {
+  const DENS = { mata: 1 / 90, parque: 1 / 200, grama: 1 / 700 };
+  const pontos = [];
+  let semente = 1;
+  const rnd = () => { semente = (semente * 16807) % 2147483647; return semente / 2147483647; };
+  for (const a of osm.areas) {
+    const dens = DENS[a.tipo];
+    if (!dens) continue;
+    const [x0, z0, x1, z1] = a.caixa;
+    const n = Math.min(1500, Math.round(a.area * dens));
+    for (let i = 0, plantadas = 0; i < n * 3 && plantadas < n && pontos.length < 4000; i++) {
+      const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0);
+      if (!pontoNoPoligono(x, z, a.pts)) continue;
+      const perto = pista.pertoDe(x, z, 200);
+      if (perto.dist < 13 || perto.dist > 170) continue;
+      const aqui = areaEm(osm, x, z);
+      if (aqui && (aqui.tipo === 'agua' || aqui.tipo === 'esporte')) continue;
+      pontos.push([x, perto.y, z]);
+      plantadas++;
+    }
+  }
+  for (const [x, z] of osm.arvores) { const perto = pista.pertoDe(x, z); if (perto.dist > 12) pontos.push([x, perto.y, z]); }
+  const variantes = [0, 1, 2].map(() => {
+    const g = achatar(arvore(1)).children[0].geometry;
+    return g;
+  });
+  const blocos = new Map();
+  pontos.forEach((p, i) => {
+    const k = `${Math.floor(p[0] / 120)},${Math.floor(p[2] / 120)},${i % 3}`;
+    if (!blocos.has(k)) blocos.set(k, []);
+    blocos.get(k).push(p);
+  });
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), v = new THREE.Vector3();
+  for (const [k, lista] of blocos) {
+    const variante = Number(k.split(',')[2]);
+    const im = new THREE.InstancedMesh(variantes[variante], matVertice, lista.length);
+    let cx = 0, cz = 0;
+    lista.forEach(([x, y, z], i) => {
+      const esc = 0.8 + rnd() * 0.6;
+      m4.compose(v.set(x, y, z), q.setFromEuler(e.set(0, rnd() * 6.28, 0)), sc.set(esc, esc * (0.9 + rnd() * 0.3), esc));
+      im.setMatrixAt(i, m4);
+      cx += x; cz += z;
+    });
+    im.castShadow = true;
+    im.computeBoundingSphere();
+    im.userData.centro = [cx / lista.length, cz / lista.length];
+    grupoOSM.add(im);
+    chunksArvores.push(im);
+  }
+  return pontos.length;
+}
+
+function colocarPedalinhos() {
+  const lagos = osm.areas.filter((a) => a.tipo === 'agua' && a.area > 2500);
+  for (const lago of lagos) {
+    const [x0, z0, x1, z1] = lago.caixa;
+    const n = Math.min(4, Math.max(1, Math.round(lago.area / 6000)));
+    for (let i = 0, tent = 0; i < n && tent < 60; tent++) {
+      const x = x0 + Math.random() * (x1 - x0), z = z0 + Math.random() * (z1 - z0);
+      if (!pontoNoPoligono(x, z, lago.pts) || pista.pertoDe(x, z).dist < 15) continue;
+      const b = prop('pedalinho');
+      if (!b) return;
+      b.position.set(x, alturaChao(x, z) - 0.05, z);
+      b.rotation.y = Math.random() * 6.28;
+      b.userData.base = b.position.y; b.userData.fase = Math.random() * 6;
+      grupoOSM.add(b); pedalinhos.push(b);
+      i++;
+    }
+  }
+}
+
+function construirOSM() {
+  scene.remove(grupoOSM);
+  grupoOSM = new THREE.Group();
+  chunksArvores = []; pedalinhos = [];
+  scene.add(grupoOSM);
+  if (!osm) return;
+  const porTipo = {};
+  for (const a of osm.areas) (porTipo[a.tipo] ||= []).push(a.pts);
+  for (const [tipo, listas] of Object.entries(porTipo)) {
+    const m = malhaDePoligono(listas, matsArea[tipo], tipo === 'agua' ? -0.05 : -0.08, ORDEM_AREA[tipo]);
+    if (m) grupoOSM.add(m);
+  }
+  const rios = malhaDeLinhas(osm.rios, 5, matRio, -0.06, -2.1);
+  if (rios) grupoOSM.add(rios);
+  const trilhas = malhaDeLinhas(osm.caminhos, 2.2, matCaminho, -0.03, -0.9);
+  if (trilhas) grupoOSM.add(trilhas);
+  const predios = malhaDePredios(osm.predios);
+  if (predios) grupoOSM.add(predios);
+  plantarArvores();
+  colocarPedalinhos();
+  // com o mapa real, a faixa de grama da beira fica estreita para os parques e lagos aparecerem
+  for (const gr of visual.userData.grama || []) visual.remove(gr);
+  const amostras = visual.userData.amostras;
+  if (amostras) for (const [a, b] of [[-13, -R.LIMITE_CALCADA], [R.LIMITE_CALCADA, 13]]) {
+    const gr = fita(amostras, a, b, matGrama, { vCada: 4, dy: -0.04 });
+    gr.renderOrder = -1;
+    visual.add(gr);
+  }
+}
+
+const cacheOSM = new Map();
+async function carregarOSM(distancia, pistaAlvo) {
+  if (!cacheOSM.has(PROVA_SLUG)) {
+    cacheOSM.set(PROVA_SLUG, fetch(`/osm/${PROVA_SLUG}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null));
+  }
+  const dados = await cacheOSM.get(PROVA_SLUG);
+  if (pista !== pistaAlvo) return;
+  if (!dados) return carregarTravessas(distancia, pistaAlvo);
+  osm = prepararOSM(dados, pistaAlvo.paraLocal);
+  zonas = zonasDoPercurso(osm, pistaAlvo);
+  construirOSM();
+  definirTravessas(encontrarTravessas(pistaAlvo, osm.vias).map((t) => ({ ...t, carro: false })));
+}
+
+function atualizarOSM(dt, t) {
+  const lim = [300, 220, 160][nivel];
+  for (const c of chunksArvores) c.visible = Math.hypot(c.userData.centro[0] - estado.x, c.userData.centro[1] - estado.z) < lim;
+  for (const b of pedalinhos) { b.position.y = b.userData.base + Math.sin(t * 1.6 + b.userData.fase) * 0.05; b.rotation.y += dt * 0.05; }
+}
+
 // ─── ESTADO ───────────────────────────────────────────────────────────────────
 
 const corredor = criarCorredor();
@@ -927,7 +1203,9 @@ function prepararPercurso(escolha) {
     prova = null;
   }
   definirFaixas(prova ? prova.nome : 'CORRIDA DE RUA');
+  osm = null; zonas = null;
   construirVisual();
+  construirOSM();
   definirTravessas([]);
   construirCenario();
   if (prova) {
@@ -936,7 +1214,7 @@ function prepararPercurso(escolha) {
     portico(pista.total, 'CHEGADA', { cor: '#e63946', corTexto: '#ffffff' });
     for (const p of postosDaProva(prova.rotulo)) postoHidratacao(p.s, p.lado);
     desenharMapaBase();
-    carregarTravessas(escolha.distancia, pista);
+    carregarOSM(escolha.distancia, pista);
   }
   $('#mapa').hidden = !prova;
 }
@@ -1370,6 +1648,7 @@ function passo(dt) {
   if (km > s.kmAvisado) { s.kmAvisado = km; aviso(`${km} KM · ${R.formatarTempo(s.tempoReal)}`, 'km'); }
 
   atualizarCenario(s.s);
+  atualizarOSM(dt, s.t);
   if (!prova) { visual.position.z = -Math.floor(s.s / 40) * 40; fundo.position.z = s.z; }
 
   hudTimer -= dt;
@@ -1411,6 +1690,8 @@ function desenhar(dt) {
   }
   const alvo = emEst(s.s + cam.olhar);
   camera.lookAt(s.x + fx * cam.olhar, (alvo.y + chao) / 2 + 1.4, s.z + fz * cam.olhar);
+  // câmera livre só para os testes automáticos (fotos aéreas)
+  if (s.camTeste) { camera.position.set(...s.camTeste.pos); camera.lookAt(...s.camTeste.alvo); scene.fog.far = 2000; }
   renderer.render(scene, camera);
 }
 
@@ -1491,4 +1772,4 @@ carregarProva();
 loop();
 
 // ganchos para testes automatizados
-window.__jogo = { qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };
+window.__jogo = { osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };

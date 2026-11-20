@@ -327,3 +327,6 @@ kbd {
 }
 .placar small { display: block; opacity: 0.8; font-size: 13px; }
 .placar b { font-size: 20px; white-space: nowrap; }
+
+.creditos { opacity: 0.7; font-size: 12px; }
+.creditos a { color: inherit; }

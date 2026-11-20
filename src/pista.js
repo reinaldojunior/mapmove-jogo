@@ -134,6 +134,27 @@ export class PistaReal {
     return this.projetar(x, z, this.total / 2, this.total, this.total);
   }
 
+  // ponto do percurso mais próximo de (x, z) em qualquer trecho: altura visual e distância até a rua
+  pertoDe(x, z, raioMax = 400) {
+    const C = 40;
+    this.segmentosPerto(x, z);
+    const cx = Math.floor(x / C), cz = Math.floor(z / C);
+    let melhor = null;
+    for (let r = 1; r * C <= raioMax + C; r++) {
+      for (let a = cx - r; a <= cx + r; a++) for (let b = cz - r; b <= cz + r; b++) {
+        if (Math.max(Math.abs(a - cx), Math.abs(b - cz)) !== r && r > 1) continue;
+        for (const i of this.grade.get(a + ',' + b) || []) {
+          const ax = this.x[i], az = this.z[i], dx = this.x[i + 1] - ax, dz = this.z[i + 1] - az;
+          const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
+          const dist = Math.hypot(x - ax - dx * t, z - az - dz * t);
+          if (!melhor || dist < melhor.dist) melhor = { dist, y: this.y[i] + (this.y[i + 1] - this.y[i]) * t, s: this.s[i] + (this.s[i + 1] - this.s[i]) * t };
+        }
+      }
+      if (melhor && melhor.dist <= (r - 1) * C) break;
+    }
+    return melhor || { dist: Infinity, y: 0, s: 0 };
+  }
+
   // índices dos segmentos que passam perto de (x, z), via grade de 40 m
   segmentosPerto(x, z) {
     const C = 40;
