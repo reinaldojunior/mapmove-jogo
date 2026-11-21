@@ -463,3 +463,9 @@ kbd {
 .logado small { opacity: 0.8; white-space: nowrap; }
 .logado .link { margin-left: auto; border: 0; background: none; color: #ffd27a; font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
 .conta-dica { opacity: 0.8; font-size: 12px; }
+
+.strava { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.strava[hidden], .btn-strava[hidden] { display: none; }
+.btn-strava { padding: 6px 12px; border: 0; border-radius: 999px; background: #fc4c02; color: #fff; font: inherit; font-weight: 800; font-size: 13px; cursor: pointer; }
+#stravaInfo { opacity: 0.9; }
+.strava .link { margin-left: auto; border: 0; background: none; color: #ffd27a; font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }

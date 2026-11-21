@@ -67,3 +67,39 @@ export async function salvarPerfilNuvem(u, perfil) {
     .upsert({ user_id: u.id, nome, foto, perfil, atualizado_em: new Date().toISOString() }, { onConflict: 'user_id' });
   if (error) throw error;
 }
+
+// ── Strava (via função do servidor api/strava.js) ──
+async function tokenAtual() {
+  const { data } = await cliente().auth.getSession();
+  return data.session?.access_token || null;
+}
+async function api(acao, corpo) {
+  const token = await tokenAtual();
+  const r = await fetch(`/api/strava?acao=${acao}`, {
+    method: corpo ? 'POST' : 'GET',
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: corpo ? JSON.stringify(corpo) : undefined
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.erro || `Erro ${r.status}`);
+  return j;
+}
+export const ESTADO_STRAVA = 'mapmove-jogo-strava';
+export async function irParaStrava() {
+  const { clientId } = await api('config');
+  if (!clientId) throw new Error('Strava ainda não configurado no servidor.');
+  const u = new URL('https://www.strava.com/oauth/authorize');
+  u.search = new URLSearchParams({ client_id: clientId, redirect_uri: window.location.origin + '/', response_type: 'code', approval_prompt: 'auto', scope: 'activity:read', state: ESTADO_STRAVA }).toString();
+  window.location.href = u.toString();
+}
+export const stravaStatus = () => api('status');
+export const stravaConectar = (code, scope) => api('conectar', { code, scope });
+export const stravaDesconectar = () => api('desconectar', {});
+export const stravaSincronizar = () => api('sincronizar', {});
+
+// XP e Move$ das corridas reais (10 XP e 1 Move$ por km válido; limite diário já aplicado no servidor)
+export const XP_POR_KM_REAL = 10;
+export function ganhoStrava(novas) {
+  const km = novas.reduce((a, n) => a + Number(n.km_valido || 0), 0);
+  return { km, xp: Math.round(km * XP_POR_KM_REAL), moves: Math.floor(km) };
+}

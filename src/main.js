@@ -2548,8 +2548,51 @@ function agendarNuvem() {
     catch { $('#contaSync').textContent = '⚠️ sem conexão'; }
   }, 1500);
 }
+// ── Strava: corridas reais viram XP e Move$ ──
+let stravaConectado = false, ultimaSyncStrava = 0;
+function mostrarStrava(nome) {
+  $('#strava').hidden = !usuario;
+  $('#btnStrava').hidden = stravaConectado;
+  $('#btnStravaSair').hidden = !stravaConectado;
+  $('#stravaInfo').textContent = stravaConectado ? `🟠 Strava${nome ? ` de ${nome.split(' ')[0]}` : ''} conectado · corridas reais viram XP` : 'Corridas reais viram XP (10 por km)';
+}
+async function sincronizarStrava(forcar = false) {
+  if (!usuario || !stravaConectado) return;
+  if (!forcar && Date.now() - ultimaSyncStrava < 120000) return;
+  ultimaSyncStrava = Date.now();
+  try {
+    const r = await Conta.stravaSincronizar();
+    if (!r.novas?.length) return;
+    const g = Conta.ganhoStrava(r.novas);
+    const antes = P.situacao(perfil.xp);
+    perfil = { ...perfil, xp: perfil.xp + g.xp, moves: perfil.moves + g.moves, kmStrava: (perfil.kmStrava || 0) + g.km };
+    salvarPerfil();
+    const depois = P.situacao(perfil.xp);
+    const premios = entregarPremios();
+    const subiu = depois.indice > antes.indice ? ` · ⬆️ ${depois.rotulo}!` : '';
+    aviso(`🟠 Strava: ${r.novas.length} ${r.novas.length > 1 ? 'corridas' : 'corrida'}, ${g.km.toFixed(1).replace('.', ',')} km · +${g.xp} XP +${g.moves} Move$${subiu}`, 'km', 4000);
+    if (premios.length) setTimeout(() => aviso(premios[0], 'km', 3000), 4200);
+    if (estado.modo === 'inicio') { mostrarPerfil(); mostrarTreinoDoDia(); }
+  } catch (e) { console.warn('strava', e); }
+}
+async function iniciarStrava() {
+  if (!usuario) { stravaConectado = false; mostrarStrava(); return; }
+  // voltando da autorização do Strava?
+  const q = new URLSearchParams(window.location.search);
+  if (q.get('state') === Conta.ESTADO_STRAVA) {
+    history.replaceState(null, '', window.location.pathname);
+    if (q.get('code')) {
+      try { const r = await Conta.stravaConectar(q.get('code'), q.get('scope')); aviso('🟠 Strava conectado! As corridas a partir de agora viram XP.', 'km', 3500); stravaConectado = true; mostrarStrava(r.nome); }
+      catch (e) { aviso(`Não deu para conectar o Strava: ${e.message}`, 'alerta', 3500); }
+    }
+  }
+  try { const s = await Conta.stravaStatus(); stravaConectado = !!s.conectado; mostrarStrava(s.nome); } catch { mostrarStrava(); }
+  sincronizarStrava(true);
+}
+
 function mostrarConta() {
   const logado = !!usuario;
+  if (!logado) { stravaConectado = false; mostrarStrava(); }
   $('#btnGoogle').hidden = logado; $('#contaDica').hidden = logado; $('#logado').hidden = !logado;
   if (logado) {
     const d = Conta.dadosDoUsuario(usuario);
@@ -2560,6 +2603,7 @@ function mostrarConta() {
 async function entrouNaConta(u) {
   if (!u || usuario?.id === u.id) { usuario = u; mostrarConta(); return; }
   usuario = u; mostrarConta();
+  iniciarStrava();
   try {
     const nuvem = await Conta.lerPerfilNuvem(u);
     perfil = Conta.mesclarPerfis(perfil, nuvem);
@@ -2572,6 +2616,8 @@ Conta.aoMudarLogin((u) => { if (u) entrouNaConta(u); else { usuario = null; most
 Conta.usuarioAtual().then((u) => entrouNaConta(u));
 $('#btnGoogle').addEventListener('click', () => Conta.entrarComGoogle().catch((e) => aviso(`Não foi possível entrar: ${e.message}`, 'alerta', 3000)));
 $('#btnSairConta').addEventListener('click', async () => { await Conta.sair(); usuario = null; mostrarConta(); });
+$('#btnStrava').addEventListener('click', () => Conta.irParaStrava().catch((e) => aviso(e.message, 'alerta', 3000)));
+$('#btnStravaSair').addEventListener('click', async () => { try { await Conta.stravaDesconectar(); stravaConectado = false; mostrarStrava(); } catch (e) { aviso(e.message, 'alerta', 2500); } });
 // situação de hoje, já com a perda de forma de quem ficou parado
 const formaAtual = () => P.xpComDestreino(perfil.xp, perfil.ultimaCorrida);
 function paceDoPerfil() { return P.situacao(formaAtual().xp).pace; }
@@ -2803,6 +2849,7 @@ async function vestirAtleta() {
 }
 
 function mostrarInicio() {
+  sincronizarStrava();
   entregarPremios(); // quem já tinha subido de nível antes da loja existir também ganha
   mostrarPerfil();
   mostrarTreinoDoDia();
