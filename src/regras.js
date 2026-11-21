@@ -81,8 +81,9 @@ export const colide = (c, o) =>
   c.y + c.altura > (o.base || 0);
 
 // pegar água: só no verde (mesa ao lado) e encostado do lado da mesa
-// a janela é em metros no pace inicial; mais rápido, ela cresce para durar o mesmo tempo
-export const janelaAgua = (pace = PACE_BASE) => JANELA_AGUA_M * Math.max(1, PACE_BASE / pace);
+// a gota fica verde por ~1 segundo de tela (meio segundo antes e meio depois da mesa), em qualquer pace
+export const JANELA_AGUA_S = 0.5;
+export const janelaAgua = (pace = PACE_BASE) => JANELA_AGUA_S * mps(pace) * ESCALA_TEMPO;
 
 export function resultadoAgua(sCorredor, dCorredor, mesa, janela = JANELA_AGUA_M) {
   if (dCorredor * mesa.lado < PERTO_DA_MESA) return 'longe';
