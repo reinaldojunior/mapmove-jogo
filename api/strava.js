@@ -76,7 +76,9 @@ export default async function handler(req, res) {
         await db(`jogo_strava?user_id=eq.${u.id}`, { method: 'PATCH', body: JSON.stringify({ access_token: c.access_token, refresh_token: c.refresh_token, expires_at: c.expires_at }) });
       }
       // só corridas feitas depois de conectar
-      const depois = Math.floor(new Date(c.conectado_em).getTime() / 1000);
+      // vale desde a meia-noite (horário de Brasília, UTC-3) do dia em que conectou
+      const BRT = 3 * 3600, conectou = Math.floor(new Date(c.conectado_em).getTime() / 1000);
+      const depois = Math.floor((conectou - BRT) / 86400) * 86400 + BRT;
       const r = await fetch(`https://www.strava.com/api/v3/athlete/activities?after=${depois}&per_page=100`, { headers: { Authorization: `Bearer ${c.access_token}` } });
       if (!r.ok) throw new Error(`Strava ${r.status}`);
       const atividades = (await r.json()).filter((a) => TIPOS_CORRIDA.has(a.sport_type || a.type) && a.distance > 0);

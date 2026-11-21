@@ -2582,7 +2582,7 @@ async function iniciarStrava() {
   if (q.get('state') === Conta.ESTADO_STRAVA) {
     history.replaceState(null, '', window.location.pathname);
     if (q.get('code')) {
-      try { const r = await Conta.stravaConectar(q.get('code'), q.get('scope')); aviso('🟠 Strava conectado! As corridas a partir de agora viram XP.', 'km', 3500); stravaConectado = true; mostrarStrava(r.nome); }
+      try { const r = await Conta.stravaConectar(q.get('code'), q.get('scope')); aviso('🟠 Strava conectado! As corridas de hoje em diante viram XP.', 'km', 3500); stravaConectado = true; mostrarStrava(r.nome); }
       catch (e) { aviso(`Não deu para conectar o Strava: ${e.message}`, 'alerta', 3500); }
     }
   }
