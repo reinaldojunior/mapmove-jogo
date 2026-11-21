@@ -1612,9 +1612,9 @@ function barcoRaia() {
 function colocarMarcos() {
   areasSemArvore = [];
   const marcos = [
-    [/escultura da árvore/i, () => arvoreEspacial()],
-    [/letreiro/i, () => letreiro()],
-    [/barco da raia/i, () => barcoRaia(), 'proaContraOCorredor', 17] // trazido para perto da rua (no mapa fica a ~30 m)
+    [/escultura da árvore/i, () => arvoreEspacial(), null, 13],
+    [/letreiro/i, () => letreiro(), null, 13],
+    [/barco da raia/i, () => barcoRaia(), 'proaContraOCorredor', 15] // marcos ficam colados na rua para o corredor ver (não é a distância real)
   ];
   for (const [nome, criar, giro, distRua] of marcos) {
     const p = osm.pontos.find((q) => nome.test(q.nome));

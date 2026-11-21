@@ -433,3 +433,22 @@ kbd {
 .item button[disabled] { opacity: 0.5; cursor: default; }
 .item .tag { font-size: 11px; font-weight: 800; color: #ffd21f; }
 .item.personagem .emoji { font-size: 64px; line-height: 84px; }
+
+/* HUD fixo: a coluna da direita fica presa na borda e os números têm largura fixa (nada "anda" quando muda) */
+.hud-dir { position: absolute; top: max(10px, env(safe-area-inset-top)); right: 10px; }
+.pilula b { font-variant-numeric: tabular-nums; }
+#hudKm { min-width: 3.4ch; text-align: right; }
+#hudTempo { min-width: 4.4ch; }
+#hudPace { min-width: 3.6ch; }
+#hudAguaTxt, #hudEnergiaTxt { min-width: 4ch; text-align: right; }
+#hudPontos { min-width: 4.6ch; text-align: right; }
+.pilula.botao { padding: 3px 9px; }
+@media (max-width: 400px) {
+  .pilula { font-size: 14px; padding: 2px 9px 2px 6px; gap: 4px; }
+  .pilula .ico { font-size: 13px; }
+  .pilula small { font-size: 11px; }
+  .barra { width: 48px; }
+  .pilula.botao { padding: 2px 7px; }
+  #palco #minimapa { width: 70px; height: 70px; }
+  #palco #perfil { width: 70px; height: 20px; }
+}

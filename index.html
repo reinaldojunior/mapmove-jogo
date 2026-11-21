@@ -23,12 +23,14 @@
       </div>
       <div class="hud-dir">
         <div class="linha">
-          <div class="pilula"><span class="ico">🏆</span><b id="hudPontos">0</b></div>
           <button id="btnMusica" class="pilula botao" aria-label="Ligar ou desligar o som">🔊</button>
           <button id="btnCamera" class="pilula botao" aria-label="Trocar câmera">🎥</button>
           <button id="btnPausa" class="pilula botao" aria-label="Pausar">❚❚</button>
         </div>
-        <div class="pilula" id="hudPenal"><span class="ico">⚠️</span><b id="hudPenalTxt">0/3</b></div>
+        <div class="linha">
+          <div class="pilula pontos"><span class="ico">🏆</span><b id="hudPontos">0</b></div>
+          <div class="pilula" id="hudPenal"><span class="ico">⚠️</span><b id="hudPenalTxt">0/3</b></div>
+        </div>
         <div id="mapa" hidden>
           <canvas id="minimapa" width="192" height="192" aria-label="Mapa do percurso"></canvas>
           <canvas id="perfil" width="192" height="56" aria-label="Altimetria"></canvas>
