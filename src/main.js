@@ -455,7 +455,14 @@ function prepararMalhaAtleta(model) {
     if (!o.isMesh) return;
     o.castShadow = true; o.frustumCulled = false;
     for (const m of [].concat(o.material)) {
-      if (!m?.isMeshStandardMaterial || !m.metalnessMap) continue;
+      if (!m?.isMeshStandardMaterial) continue;
+      // as peças da textura (pele, roupa) ficam coladas no atlas: com mipmaps, o branco da borda "escorre"
+      // para a pele quando o boneco fica pequeno na tela (riscos brancos no celular). Sem mipmaps não vaza.
+      for (const t of [m.map, m.normalMap, m.roughnessMap]) {
+        if (!t) continue;
+        t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.needsUpdate = true;
+      }
+      if (!m.metalnessMap) continue;
       m.metalness = 0; m.metalnessMap = null;
       m.roughness = 1; m.envMapIntensity = 0.6;
       m.needsUpdate = true;
