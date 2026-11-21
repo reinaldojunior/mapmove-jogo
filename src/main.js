@@ -15,6 +15,7 @@ import * as L from './loja.js';
 import * as Conta from './conta.js';
 import { rigarQuadrupede, animarQuadrupede } from './quadrupede.js';
 import { preencherBordas } from './textura.js';
+import { criarVitrine } from './vitrine.js';
 import { clone as clonarComOssos } from 'three/addons/utils/SkeletonUtils.js';
 import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono, placasDoPercurso, abreviarRua } from './osm.js';
 
@@ -349,6 +350,7 @@ const PERSONAGENS = {
   maratonista: { nome: 'Maratonista', desc: 'Feito no Meshy a partir das fichas de 3 vistas.', emoji: '🏃🏾',
     anims: [['correr', 'maratonista-corrida.glb', 0], ['parado', 'maratonista-parado.glb', 0], ['comemorar', 'maratonista-comemora.glb', 0]] }
 };
+let vitrine = null; // vitrine 3D dos personagens (loja), criada na primeira vez
 const gltfLoader = new GLTFLoader();
 // modelos exportados do Meshy vêm com a malha comprimida (Draco)
 gltfLoader.setDRACOLoader(new DRACOLoader().setDecoderPath('/draco/'));
@@ -2053,6 +2055,7 @@ function aviso(txt, classe = '', ms = 1500) {
 }
 
 function mostrar(tela) {
+  if (tela !== 'telaLoja') vitrine?.desligar();
   for (const id of ['telaInicio', 'telaPausa', 'telaFim', 'telaTreino', 'telaLoja']) $('#' + id).hidden = id !== tela;
   $('#hud').hidden = ['telaInicio', 'telaFim', 'telaTreino', 'telaLoja'].includes(tela);
   $('#controles').hidden = tela !== null;
@@ -2766,12 +2769,26 @@ function abrirLoja(cat = abaLoja) {
   $('#lojaSaldo').textContent = perfil.moves;
   if (cat === 'personagem') {
     // por enquanto (fase de testes) todos os personagens são livres
-    const atual = perfil.personagem || 'portal';
-    $('#lojaItens').innerHTML = Object.entries(PERSONAGENS).map(([id, p]) => `<div class="item personagem"><span class="emoji">${p.emoji}</span><b>${p.nome}</b><small>${p.desc}</small>${id === atual
-      ? '<button class="usando" disabled>Jogando com ele ✓</button>' : `<button class="neutro" data-acao="personagem" data-id="${id}">Escolher</button>`}</div>`).join('');
+    if (!IDS_PERSONAGENS.includes(idVitrine)) idVitrine = perfil.personagem || 'portal';
+    $('#lojaItens').innerHTML = `<div class="vitrine">
+      <div class="vitrine-palco" id="vitrinePalco">
+        <button class="vitrine-seta esq" data-passo="-1" aria-label="Personagem anterior">‹</button>
+        <button class="vitrine-seta dir" data-passo="1" aria-label="Próximo personagem">›</button>
+        <span class="vitrine-dica">↔ arraste para girar</span>
+      </div>
+      <div class="vitrine-pontos" id="vitrinePontos"></div>
+      <b class="vitrine-nome" id="vitrineNome"></b>
+      <small class="vitrine-desc" id="vitrineDesc"></small>
+      <div id="vitrineBotao"></div>
+    </div>`;
     mostrar('telaLoja');
+    vitrine ||= criarVitrine({ loader: gltfLoader, preparar: prepararMalhaAtleta, personagens: PERSONAGENS });
+    $('#vitrinePalco').prepend(vitrine.canvas);
+    vitrine.ligar();
+    mostrarNaVitrine();
     return;
   }
+  vitrine?.desligar();
   const nivelNome = (n) => L.NOMES_NIVEL[n];
   const mochila = perfil.consumiveis || {};
   $('#lojaItens').innerHTML = L.ITENS.filter((it) => it.cat === cat).map((it) => {
@@ -2792,14 +2809,36 @@ function abrirLoja(cat = abaLoja) {
   mostrar('telaLoja');
 }
 
+// vitrine de personagens: um de cada vez, no centro, com setas dos lados
+const IDS_PERSONAGENS = Object.keys(PERSONAGENS);
+let idVitrine = null;
+function mostrarNaVitrine() {
+  const p = PERSONAGENS[idVitrine], i = IDS_PERSONAGENS.indexOf(idVitrine), atual = perfil.personagem || 'portal';
+  $('#vitrineNome').textContent = `${p.emoji} ${p.nome}`;
+  $('#vitrineDesc').textContent = p.desc;
+  $('#vitrinePontos').innerHTML = IDS_PERSONAGENS.map((id, k) => `<i class="${k === i ? 'ativo' : ''}${id === atual ? ' meu' : ''}"></i>`).join('');
+  $('#vitrineBotao').innerHTML = idVitrine === atual
+    ? '<button class="usando" disabled>Jogando com ele ✓</button>'
+    : `<button data-acao="personagem" data-id="${idVitrine}">Escolher este</button>`;
+  vitrine.mostrar(idVitrine);
+  // já busca os vizinhos para a troca ser rápida
+  for (const d of [-1, 1]) vitrine.preCarregar(IDS_PERSONAGENS[(i + d + IDS_PERSONAGENS.length) % IDS_PERSONAGENS.length]);
+}
 $('#lojaItens').addEventListener('click', (e) => {
+  const seta = e.target.closest('.vitrine-seta');
+  if (seta) {
+    const n = IDS_PERSONAGENS.length, i = IDS_PERSONAGENS.indexOf(idVitrine);
+    idVitrine = IDS_PERSONAGENS[(i + Number(seta.dataset.passo) + n) % n];
+    mostrarNaVitrine();
+    return;
+  }
   const b = e.target.closest('button[data-acao]');
   if (!b) return;
   const id = b.dataset.id;
   if (b.dataset.acao === 'personagem') {
     perfil = { ...perfil, personagem: id }; salvarPerfil();
     carregarAtleta(corredor, id).catch((err) => console.error('personagem', err));
-    abrirLoja('personagem');
+    mostrarNaVitrine();
     return;
   }
   if (b.dataset.acao === 'comprar') {
