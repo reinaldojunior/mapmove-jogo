@@ -86,11 +86,12 @@ test('janela da água cresce com o pace do nível', () => {
   assert.equal(R.resultadoAgua(100, 2, { s: 104, lado: 1 }), 'cedo');
 });
 
-test('salto sobre o carro: só com carro de 3 a 13 m à frente, e passa por cima', () => {
-  assert.equal(R.carroParaSaltar(100, [{ s: 108 }]), true);
+test('salto sobre o carro: só com carro de 3 a 9 m à frente, e passa por cima', () => {
+  assert.equal(R.carroParaSaltar(100, [{ s: 107 }]), true);
+  assert.equal(R.carroParaSaltar(100, [{ s: 112 }]), false);
   assert.equal(R.carroParaSaltar(100, [{ s: 101 }, { s: 130 }]), false);
   const alturaMax = R.SALTO_CARRO.velocidade ** 2 / (2 * -R.PULO.gravidade);
-  assert.ok(alturaMax > 2.2 + 0.8, `altura ${alturaMax}`);
+  assert.ok(alturaMax > 2.2 + 0.3 && alturaMax < 3, `altura ${alturaMax}`);
 });
 
 test('deslizar para baixo reduz o ritmo e poupa energia', () => {

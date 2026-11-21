@@ -13,9 +13,10 @@ export const MEIA_RUA = 4; // rua com 8 m de largura
 export const LIMITE_CALCADA = 7.6; // além disso saiu do percurso
 export const PENALIDADES_MAX = 3;
 
-export const PULO = { velocidade: 9.5, gravidade: -26 };
-// salto sobre o carro da travessa: pulo bem mais alto quando há um carro logo à frente (sobe ~3,2 m, carro tem 2,2 m)
-export const SALTO_CARRO = { velocidade: 13, de: 3, ate: 13 };
+export const PULO = { velocidade: 8.6, gravidade: -26 }; // sobe ~1,4 m: passa cone e cavalete (1,1 m)
+// salto sobre o carro da travessa: mais alto que o pulo normal, só o bastante para passar o carro (sobe ~2,6 m; carro tem 2,2 m)
+// o carro precisa estar perto (3 a 9 m), para o corredor estar no alto quando passar por ele
+export const SALTO_CARRO = { velocidade: 11.6, de: 3, ate: 9 };
 export const carroParaSaltar = (sCorredor, carros) =>
   carros.some((c) => c.s - sCorredor >= SALTO_CARRO.de && c.s - sCorredor <= SALTO_CARRO.ate);
 export const ALTURA_EM_PE = 2.1;
