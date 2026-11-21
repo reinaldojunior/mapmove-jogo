@@ -89,7 +89,7 @@ export async function irParaStrava() {
   const { clientId } = await api('config');
   if (!clientId) throw new Error('Strava ainda não configurado no servidor.');
   const u = new URL('https://www.strava.com/oauth/authorize');
-  u.search = new URLSearchParams({ client_id: clientId, redirect_uri: 'https://jogo.mapmove.com.br/', response_type: 'code', approval_prompt: 'auto', scope: 'activity:read', state: ESTADO_STRAVA }).toString();
+  u.search = new URLSearchParams({ client_id: clientId, redirect_uri: window.location.origin + '/', response_type: 'code', approval_prompt: 'auto', scope: 'activity:read', state: ESTADO_STRAVA }).toString();
   window.location.href = u.toString();
 }
 export const stravaStatus = () => api('status');
