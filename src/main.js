@@ -13,6 +13,7 @@ import * as P from './perfil.js';
 import * as TR from './treinos.js';
 import * as L from './loja.js';
 import { rigarQuadrupede, animarQuadrupede } from './quadrupede.js';
+import { preencherBordas } from './textura.js';
 import { clone as clonarComOssos } from 'three/addons/utils/SkeletonUtils.js';
 import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono, placasDoPercurso, abreviarRua } from './osm.js';
 
@@ -456,12 +457,17 @@ function prepararMalhaAtleta(model) {
     o.castShadow = true; o.frustumCulled = false;
     for (const m of [].concat(o.material)) {
       if (!m?.isMeshStandardMaterial) continue;
-      // as peças da textura (pele, roupa) ficam coladas no atlas: com mipmaps, o branco da borda "escorre"
-      // para a pele quando o boneco fica pequeno na tela (riscos brancos no celular). Sem mipmaps não vaza.
+      // as peças da textura (pele, roupa) ficam coladas no atlas com uma borda branca entre elas, que vazava
+      // e virava manchas brancas no celular: preenche a borda com a cor da peça vizinha
+      preencherBordas([m.map, m.normalMap, m.roughnessMap], [o.geometry], 8);
+      // o Meshy picota o boneco em centenas de pedacinhos no atlas: ler sem misturar vizinhos (nem mipmaps)
+      // evita que o branco da regata invada a pele quando o corredor fica pequeno na tela
       for (const t of [m.map, m.normalMap, m.roughnessMap]) {
         if (!t) continue;
-        t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.needsUpdate = true;
+        t.generateMipmaps = false; t.minFilter = THREE.NearestFilter; t.magFilter = THREE.LinearFilter; t.needsUpdate = true;
       }
+      // o relevo picotado também gera brilhos falsos nas emendas: dispensa
+      if (m.normalMap) { m.normalMap = null; m.needsUpdate = true; }
       if (!m.metalnessMap) continue;
       m.metalness = 0; m.metalnessMap = null;
       m.roughness = 1; m.envMapIntensity = 0.6;
