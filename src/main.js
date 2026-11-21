@@ -2786,6 +2786,7 @@ $('#btnMusica').addEventListener('pointerdown', (e) => { e.stopPropagation(); e.
 $('#btnTrocar').addEventListener('click', () => { tocarMusica(false); som.pararLoops(); });
 $('#btnSair').addEventListener('click', () => { tocarMusica(false); som.pararLoops(); som.pausar(false); });
 $('#btnContinuar').addEventListener('click', continuar);
+$('#btnRecomecar').addEventListener('click', () => { som.pausar(false); iniciar(); });
 $('#btnTreinoDia').addEventListener('click', () => fazerTreino(false));
 $('#btnComprarTreino').addEventListener('click', () => fazerTreino(true));
 $('#btnTreinoOk').addEventListener('click', mostrarInicio);
