@@ -1593,9 +1593,9 @@ function colocarMarcos() {
   const marcos = [
     [/escultura da árvore/i, () => arvoreEspacial()],
     [/letreiro/i, () => letreiro()],
-    [/barco da raia/i, () => barcoRaia()]
+    [/barco da raia/i, () => barcoRaia(), 'proaContraOCorredor']
   ];
-  for (const [nome, criar] of marcos) {
+  for (const [nome, criar, giro] of marcos) {
     const p = osm.pontos.find((q) => nome.test(q.nome));
     if (!p) continue;
     const perto = pista.pertoDe(p.x, p.z, 400);
@@ -1610,7 +1610,12 @@ function colocarMarcos() {
       x = q.x + (dx / d) * 14 * lado; z = q.z + (dz / d) * 14 * lado;
     }
     obj.position.set(x, pista.pertoDe(x, z).y - 0.05, z);
-    virarParaPercurso(obj, x, z);
+    const pertoFinal = virarParaPercurso(obj, x, z);
+    if (giro === 'proaContraOCorredor') {
+      // como no monumento real: a proa (+x do barco) aponta para quem vem correndo, isto é, contra o sentido da prova
+      const ang = pista.em(pertoFinal.s).ang;
+      obj.rotation.y = Math.atan2(-Math.cos(ang), -Math.sin(ang));
+    }
     obj.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     grupoOSM.add(obj);
   }
