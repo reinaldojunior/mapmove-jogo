@@ -741,6 +741,7 @@ function construirVisual() {
 // cenário reciclado numa janela à frente do corredor
 const JANELA = 300;
 let cenario = [];
+let areasSemArvore = []; // [x, z, raio] dos marcos da cidade: sem árvores nem enfeites em volta
 let zonas = null; // zonas do percurso (parque, cidade, livre) quando há dados do OpenStreetMap
 const giroAleatorio = () => aleat(0, Math.PI * 2);
 const arvoreDaBeira = () => {
@@ -773,7 +774,9 @@ function posicionarCenario(item, s) {
   // sem dados do mapa (treino) vale "cidade"; com dados, cada trecho mostra o que combina com ele
   const zona = zonas ? zonaEm(zonas, s, Math.sign(item.d)) : (item.molde.densidade.cidade ? 'cidade' : 'nenhuma');
   const combina = sorteio(s, item.k) < (item.molde.densidade[zona] ?? 0);
-  item.obj.visible = !fora && !invade && !naTravessa && combina;
+  // nada de enfeite (árvore, poste, banco) na frente dos marcos da cidade
+  const naFrenteDeMarco = areasSemArvore.some(([ax, az, r]) => (x - ax) ** 2 + (z - az) ** 2 < (r + 6) * (r + 6));
+  item.obj.visible = !fora && !invade && !naTravessa && combina && !naFrenteDeMarco;
   item.obj.position.set(x, p.y, z);
   item.obj.rotation.y = -p.ang + (item.rot || 0);
 }
@@ -1252,13 +1255,17 @@ function plantarArvores() {
       if (!pontoNoPoligono(x, z, a.pts)) continue;
       const perto = pista.pertoDe(x, z, 200);
       if (perto.dist < 13 || perto.dist > 170) continue;
+      if (areasSemArvore.some(([ax, az, r]) => (x - ax) ** 2 + (z - az) ** 2 < r * r)) continue;
       const aqui = areaEm(osm, x, z);
       if (aqui && (aqui.tipo === 'agua' || aqui.tipo === 'esporte')) continue;
       pontos.push([x, perto.y, z]);
       plantadas++;
     }
   }
-  for (const [x, z] of osm.arvores) { const perto = pista.pertoDe(x, z); if (perto.dist > 12) pontos.push([x, perto.y, z]); }
+  for (const [x, z] of osm.arvores) {
+    const perto = pista.pertoDe(x, z);
+    if (perto.dist > 12 && !areasSemArvore.some(([ax, az, r]) => (x - ax) ** 2 + (z - az) ** 2 < r * r)) pontos.push([x, perto.y, z]);
+  }
   const variantes = [0, 1, 2].map(() => {
     const g = achatar(arvore(1)).children[0].geometry;
     return g;
@@ -1590,12 +1597,13 @@ function barcoRaia() {
 }
 
 function colocarMarcos() {
+  areasSemArvore = [];
   const marcos = [
     [/escultura da árvore/i, () => arvoreEspacial()],
     [/letreiro/i, () => letreiro()],
-    [/barco da raia/i, () => barcoRaia(), 'proaContraOCorredor']
+    [/barco da raia/i, () => barcoRaia(), 'proaContraOCorredor', 17] // trazido para perto da rua (no mapa fica a ~30 m)
   ];
-  for (const [nome, criar, giro] of marcos) {
+  for (const [nome, criar, giro, distRua] of marcos) {
     const p = osm.pontos.find((q) => nome.test(q.nome));
     if (!p) continue;
     const perto = pista.pertoDe(p.x, p.z, 400);
@@ -1604,12 +1612,16 @@ function colocarMarcos() {
     if (!obj) continue;
     // marco colado na rua da prova vai um pouco para trás, para não ficar em cima da calçada
     let { x, z } = p;
-    if (perto.dist < 14) {
+    if (distRua) {
+      const q = pista.em(perto.s), dx = x - q.x, dz = z - q.z, d = Math.hypot(dx, dz) || 1;
+      x = q.x + (dx / d) * distRua; z = q.z + (dz / d) * distRua;
+    } else if (perto.dist < 14) {
       const q = pista.em(perto.s), dx = x - q.x, dz = z - q.z, d = Math.hypot(dx, dz) || 1;
       const lado = d > 0.5 ? 1 : 1;
       x = q.x + (dx / d) * 14 * lado; z = q.z + (dz / d) * 14 * lado;
     }
     obj.position.set(x, pista.pertoDe(x, z).y - 0.05, z);
+    areasSemArvore.push([x, z, distRua ? 16 : 6]); // nenhuma árvore nasce dentro do marco
     const pertoFinal = virarParaPercurso(obj, x, z);
     if (giro === 'proaContraOCorredor') {
       // como no monumento real: a proa (+x do barco) aponta para quem vem correndo, isto é, contra o sentido da prova
