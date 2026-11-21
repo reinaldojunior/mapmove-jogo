@@ -2890,3 +2890,6 @@ loop();
 
 // ganchos para testes automatizados
 window.__jogo = { L, vestirAtleta, abrirLoja, ACESSORIOS_3D, corredor, camera, perfil: () => perfil, P, TR, fazerTreino, definirPerfil: (p) => { perfil = p; salvarPerfil(); mostrarInicio(); }, criar: { cone, barreira, cachorro }, osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, placas: () => placas, semaforos: () => semaforos, atualizarPlacas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };
+
+// voltou para o jogo (ex.: depois de abrir o Strava): busca corridas novas
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && estado.modo === 'inicio') sincronizarStrava(); });
