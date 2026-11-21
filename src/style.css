@@ -469,3 +469,14 @@ kbd {
 .btn-strava { padding: 6px 12px; border: 0; border-radius: 999px; background: #fc4c02; color: #fff; font: inherit; font-weight: 800; font-size: 13px; cursor: pointer; }
 #stravaInfo { opacity: 0.9; }
 .strava .link { margin-left: auto; border: 0; background: none; color: #ffd27a; font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
+
+.strava-acoes { display: flex; gap: 6px; width: 100%; flex-wrap: wrap; }
+.strava-acoes[hidden], .strava-lista[hidden] { display: none; }
+.btn-strava-sec { padding: 5px 10px; border: 1px solid #fc4c02; border-radius: 999px; background: rgba(252, 76, 2, 0.12); color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.btn-strava-sec:disabled { opacity: 0.6; cursor: default; }
+.strava-lista { list-style: none; margin: 0; padding: 0; width: 100%; max-height: 190px; overflow-y: auto; display: grid; gap: 4px; }
+.strava-lista li { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.08); font-size: 12px; }
+.strava-lista .nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.strava-lista .nome small { display: block; opacity: 0.7; }
+.strava-lista .xp { font-weight: 800; color: #ffd27a; font-variant-numeric: tabular-nums; text-align: right; }
+.strava-lista .vazia { grid-template-columns: 1fr; opacity: 0.8; }

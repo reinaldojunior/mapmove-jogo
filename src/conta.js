@@ -96,6 +96,7 @@ export const stravaStatus = () => api('status');
 export const stravaConectar = (code, scope) => api('conectar', { code, scope });
 export const stravaDesconectar = () => api('desconectar', {});
 export const stravaSincronizar = () => api('sincronizar', {});
+export const stravaLista = () => api('lista');
 
 // XP e Move$ das corridas reais (10 XP e 1 Move$ por km válido; limite diário já aplicado no servidor)
 export const XP_POR_KM_REAL = 10;

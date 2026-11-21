@@ -6,7 +6,8 @@
 const SUPABASE_URL = 'https://ssfsxdmzbubvygctdjgf.supabase.co';
 const SUPABASE_PUBLICA = 'sb_publishable_s2yoUApfYl_ZvSUkqYYrVw_uXwKsybM';
 const KM_DIA_MAX = 21;
-const TIPOS_CORRIDA = new Set(['Run', 'TrailRun', 'VirtualRun']);
+// corrida e caminhada (trilha a pé conta como caminhada)
+const TIPOS_VALIDOS = new Set(['Run', 'TrailRun', 'VirtualRun', 'Walk', 'Hike']);
 
 const db = (caminho, opcoes = {}) => fetch(`${SUPABASE_URL}/rest/v1/${caminho}`, {
   ...opcoes,
@@ -75,13 +76,12 @@ export default async function handler(req, res) {
         c = { ...c, access_token: t.access_token, refresh_token: t.refresh_token, expires_at: t.expires_at };
         await db(`jogo_strava?user_id=eq.${u.id}`, { method: 'PATCH', body: JSON.stringify({ access_token: c.access_token, refresh_token: c.refresh_token, expires_at: c.expires_at }) });
       }
-      // só corridas feitas depois de conectar
       // vale desde a meia-noite (horário de Brasília, UTC-3) do dia em que conectou
       const BRT = 3 * 3600, conectou = Math.floor(new Date(c.conectado_em).getTime() / 1000);
       const depois = Math.floor((conectou - BRT) / 86400) * 86400 + BRT;
       const r = await fetch(`https://www.strava.com/api/v3/athlete/activities?after=${depois}&per_page=100`, { headers: { Authorization: `Bearer ${c.access_token}` } });
       if (!r.ok) throw new Error(`Strava ${r.status}`);
-      const atividades = (await r.json()).filter((a) => TIPOS_CORRIDA.has(a.sport_type || a.type) && a.distance > 0);
+      const atividades = (await r.json()).filter((a) => TIPOS_VALIDOS.has(a.sport_type || a.type) && a.distance > 0);
       if (!atividades.length) return res.json({ conectado: true, novas: [] });
       // já contadas
       const ids = atividades.map((a) => a.id).join(',');
@@ -98,15 +98,19 @@ export default async function handler(req, res) {
         const dia = a.start_date_local.slice(0, 10), km = a.distance / 1000;
         const valido = Math.max(0, Math.min(km, KM_DIA_MAX - (porDia[dia] || 0)));
         porDia[dia] = (porDia[dia] || 0) + valido;
-        return { activity_id: a.id, user_id: u.id, dia, km: +km.toFixed(2), km_valido: +valido.toFixed(2), nome: a.name };
+        return { activity_id: a.id, user_id: u.id, dia, km: +km.toFixed(2), km_valido: +valido.toFixed(2), nome: a.name, tipo: a.sport_type || a.type, inicio: a.start_date, segundos: a.moving_time };
       });
       const ins = await db('jogo_strava_atividades?on_conflict=activity_id', {
         method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=representation' },
-        body: JSON.stringify(novas.map(({ nome, ...x }) => x))
+        body: JSON.stringify(novas)
       });
       const gravadas = new Set((await ins.json()).map((x) => Number(x.activity_id)));
       await db(`jogo_strava?user_id=eq.${u.id}`, { method: 'PATCH', body: JSON.stringify({ ultima_sync: new Date().toISOString() }) });
       return res.json({ conectado: true, novas: novas.filter((n) => gravadas.has(n.activity_id)).map(({ user_id, ...n }) => n) });
+    }
+    if (acao === 'lista') {
+      const r = await db(`jogo_strava_atividades?user_id=eq.${u.id}&select=activity_id,dia,km,km_valido,nome,tipo,inicio,segundos&order=dia.desc,inicio.desc.nullslast&limit=30`);
+      return res.json({ atividades: await r.json() });
     }
     return res.status(400).json({ erro: 'Ação desconhecida.' });
   } catch (e) {

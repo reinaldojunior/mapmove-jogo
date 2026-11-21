@@ -2554,15 +2554,35 @@ function mostrarStrava(nome) {
   $('#strava').hidden = !usuario;
   $('#btnStrava').hidden = stravaConectado;
   $('#btnStravaSair').hidden = !stravaConectado;
-  $('#stravaInfo').textContent = stravaConectado ? `🟠 Strava${nome ? ` de ${nome.split(' ')[0]}` : ''} conectado · corridas reais viram XP` : 'Corridas reais viram XP (10 por km)';
+  $('#stravaAcoes').hidden = !stravaConectado;
+  if (!stravaConectado) $('#stravaLista').hidden = true;
+  $('#stravaInfo').textContent = stravaConectado ? `🟠 Strava${nome ? ` de ${nome.split(' ')[0]}` : ''} conectado · corrida e caminhada viram XP` : 'Corrida e caminhada reais viram XP (10 por km)';
 }
-async function sincronizarStrava(forcar = false) {
+const ICONE_ATIV = { Run: '🏃', TrailRun: '⛰️', VirtualRun: '🏃', Walk: '🚶', Hike: '🥾' };
+const escHtml = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+async function listarStrava() {
+  const ul = $('#stravaLista');
+  ul.hidden = false;
+  ul.innerHTML = '<li class="vazia">Carregando…</li>';
+  try {
+    const { atividades } = await Conta.stravaLista();
+    if (!atividades?.length) { ul.innerHTML = '<li class="vazia">Nenhuma atividade contada ainda. Vale corrida e caminhada de hoje em diante.</li>'; return; }
+    ul.innerHTML = atividades.map((a) => {
+      const [ano, mes, dia] = a.dia.split('-');
+      const km = Number(a.km), kmv = Number(a.km_valido), xp = Math.round(kmv * Conta.XP_POR_KM_REAL);
+      const limite = kmv < km ? ` · ${kmv.toFixed(1).replace('.', ',')} km valeram (limite do dia)` : '';
+      return `<li><span>${ICONE_ATIV[a.tipo] || '🏃'}</span><span class="nome">${escHtml(a.nome || 'Atividade')}<small>${dia}/${mes} · ${km.toFixed(1).replace('.', ',')} km${limite}</small></span><span class="xp">+${xp} XP<br>+${Math.floor(kmv)} M$</span></li>`;
+    }).join('');
+  } catch (e) { ul.innerHTML = `<li class="vazia">Não deu para carregar: ${escHtml(e.message)}</li>`; }
+}
+async function sincronizarStrava(forcar = false, manual = false) {
   if (!usuario || !stravaConectado) return;
   if (!forcar && Date.now() - ultimaSyncStrava < 120000) return;
   ultimaSyncStrava = Date.now();
   try {
     const r = await Conta.stravaSincronizar();
-    if (!r.novas?.length) return;
+    if (!$('#stravaLista').hidden) listarStrava();
+    if (!r.novas?.length) { if (manual) aviso('🟠 Nenhuma atividade nova no Strava', 'km', 2500); return; }
     const g = Conta.ganhoStrava(r.novas);
     const antes = P.situacao(perfil.xp);
     perfil = { ...perfil, xp: perfil.xp + g.xp, moves: perfil.moves + g.moves, kmStrava: (perfil.kmStrava || 0) + g.km };
@@ -2570,10 +2590,10 @@ async function sincronizarStrava(forcar = false) {
     const depois = P.situacao(perfil.xp);
     const premios = entregarPremios();
     const subiu = depois.indice > antes.indice ? ` · ⬆️ ${depois.rotulo}!` : '';
-    aviso(`🟠 Strava: ${r.novas.length} ${r.novas.length > 1 ? 'corridas' : 'corrida'}, ${g.km.toFixed(1).replace('.', ',')} km · +${g.xp} XP +${g.moves} Move$${subiu}`, 'km', 4000);
+    aviso(`🟠 Strava: ${r.novas.length} ${r.novas.length > 1 ? 'atividades' : 'atividade'}, ${g.km.toFixed(1).replace('.', ',')} km · +${g.xp} XP +${g.moves} Move$${subiu}`, 'km', 4000);
     if (premios.length) setTimeout(() => aviso(premios[0], 'km', 3000), 4200);
     if (estado.modo === 'inicio') { mostrarPerfil(); mostrarTreinoDoDia(); }
-  } catch (e) { console.warn('strava', e); }
+  } catch (e) { console.warn('strava', e); if (manual) aviso(`Não deu para buscar no Strava: ${e.message}`, 'alerta', 3500); }
 }
 async function iniciarStrava() {
   if (!usuario) { stravaConectado = false; mostrarStrava(); return; }
@@ -2582,7 +2602,7 @@ async function iniciarStrava() {
   if (q.get('state') === Conta.ESTADO_STRAVA) {
     history.replaceState(null, '', window.location.pathname);
     if (q.get('code')) {
-      try { const r = await Conta.stravaConectar(q.get('code'), q.get('scope')); aviso('🟠 Strava conectado! As corridas de hoje em diante viram XP.', 'km', 3500); stravaConectado = true; mostrarStrava(r.nome); }
+      try { const r = await Conta.stravaConectar(q.get('code'), q.get('scope')); aviso('🟠 Strava conectado! Corridas e caminhadas de hoje em diante viram XP.', 'km', 3500); stravaConectado = true; mostrarStrava(r.nome); }
       catch (e) { aviso(`Não deu para conectar o Strava: ${e.message}`, 'alerta', 3500); }
     }
   }
@@ -2616,6 +2636,12 @@ Conta.aoMudarLogin((u) => { if (u) entrouNaConta(u); else { usuario = null; most
 Conta.usuarioAtual().then((u) => entrouNaConta(u));
 $('#btnGoogle').addEventListener('click', () => Conta.entrarComGoogle().catch((e) => aviso(`Não foi possível entrar: ${e.message}`, 'alerta', 3000)));
 $('#btnSairConta').addEventListener('click', async () => { await Conta.sair(); usuario = null; mostrarConta(); });
+$('#btnStravaBuscar').addEventListener('click', async (ev) => {
+  const b = ev.currentTarget; b.disabled = true; b.textContent = '🔄 Buscando…';
+  await sincronizarStrava(true, true);
+  b.disabled = false; b.textContent = '🔄 Buscar atividades';
+});
+$('#btnStravaLista').addEventListener('click', () => { if ($('#stravaLista').hidden) listarStrava(); else $('#stravaLista').hidden = true; });
 $('#btnStrava').addEventListener('click', () => Conta.irParaStrava().catch((e) => aviso(e.message, 'alerta', 3000)));
 $('#btnStravaSair').addEventListener('click', async () => { try { await Conta.stravaDesconectar(); stravaConectado = false; mostrarStrava(); } catch (e) { aviso(e.message, 'alerta', 2500); } });
 // situação de hoje, já com a perda de forma de quem ficou parado
