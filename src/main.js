@@ -2045,6 +2045,9 @@ function aviso(txt, classe = '', ms = 1500) {
   const el = $('#aviso');
   el.hidden = true; void el.offsetWidth;
   el.className = classe; el.textContent = txt; el.hidden = false;
+  // fora da corrida (telas por cima do jogo) o aviso sobe para o topo
+  if (document.querySelector('.tela:not([hidden])')) el.classList.add('sobre-tela');
+  el.style.animationDuration = `${Math.max(1500, ms)}ms`;
   clearTimeout(avisoTimer);
   avisoTimer = setTimeout(() => { el.hidden = true; }, ms);
 }
