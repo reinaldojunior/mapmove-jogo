@@ -784,7 +784,8 @@ function posicionarCenario(item, s) {
   const x = p.x + rx * item.d, z = p.z + rz * item.d;
   // nas esquinas o objeto pode cair em cima de outro trecho da rua: esconde
   let invade = false;
-  if (!fora && Number.isFinite(pista.total)) invade = Math.abs(pista.projetar(x, z, Math.max(0, s), 60, 60).d) < item.folga;
+  // (confere o percurso inteiro: ida e volta e voltas passam de novo perto do mesmo lugar)
+  if (!fora && Number.isFinite(pista.total)) invade = pista.pertoDe(x, z, item.folga + 40).dist < item.folga;
   // abre espaço na grade, nas árvores e nos prédios onde chega uma travessa
   const naTravessa = travessas.some((t) => Math.abs(t.s - s) < item.vao + (t.vao || 0) / 2 && t.lados.includes(Math.sign(item.d)));
   // sem dados do mapa (treino) vale "cidade"; com dados, cada trecho mostra o que combina com ele
