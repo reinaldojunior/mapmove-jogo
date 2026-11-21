@@ -12,6 +12,7 @@ import { criarSom } from './som.js';
 import * as P from './perfil.js';
 import * as TR from './treinos.js';
 import * as L from './loja.js';
+import * as Conta from './conta.js';
 import { rigarQuadrupede, animarQuadrupede } from './quadrupede.js';
 import { preencherBordas } from './textura.js';
 import { clone as clonarComOssos } from 'three/addons/utils/SkeletonUtils.js';
@@ -2531,7 +2532,46 @@ async function carregarProva() {
 // ─── PERFIL DO CORREDOR (salvo no aparelho; conta e ranking vêm depois) ────────
 const CHAVE_PERFIL = 'mapmove-perfil-v1';
 let perfil = (() => { try { return P.lerPerfil(localStorage.getItem(CHAVE_PERFIL)); } catch { return P.perfilNovo(); } })();
-function salvarPerfil() { try { localStorage.setItem(CHAVE_PERFIL, JSON.stringify(perfil)); } catch { /* sem storage */ } }
+function salvarPerfil() {
+  try { localStorage.setItem(CHAVE_PERFIL, JSON.stringify(perfil)); } catch { /* sem storage */ }
+  agendarNuvem();
+}
+
+// ─── CONTA (login Google) E PERFIL NA NUVEM ───────────────────────────────────
+let usuario = null, timerNuvem = 0;
+function agendarNuvem() {
+  if (!usuario) return;
+  clearTimeout(timerNuvem);
+  $('#contaSync').textContent = '☁️ salvando…';
+  timerNuvem = setTimeout(async () => {
+    try { await Conta.salvarPerfilNuvem(usuario, perfil); $('#contaSync').textContent = '☁️ salvo'; }
+    catch { $('#contaSync').textContent = '⚠️ sem conexão'; }
+  }, 1500);
+}
+function mostrarConta() {
+  const logado = !!usuario;
+  $('#btnGoogle').hidden = logado; $('#contaDica').hidden = logado; $('#logado').hidden = !logado;
+  if (logado) {
+    const d = Conta.dadosDoUsuario(usuario);
+    $('#contaNome').textContent = d.nome.split(' ')[0];
+    if (d.foto) $('#contaFoto').src = d.foto; else $('#contaFoto').removeAttribute('src');
+  }
+}
+async function entrouNaConta(u) {
+  if (!u || usuario?.id === u.id) { usuario = u; mostrarConta(); return; }
+  usuario = u; mostrarConta();
+  try {
+    const nuvem = await Conta.lerPerfilNuvem(u);
+    perfil = Conta.mesclarPerfis(perfil, nuvem);
+    salvarPerfil();
+    if (estado.modo === 'inicio') mostrarInicio();
+    if (perfil.personagem && corredor.atleta?.id !== perfil.personagem) carregarAtleta(corredor, perfil.personagem).catch(() => {});
+  } catch (e) { console.warn('perfil na nuvem', e); $('#contaSync').textContent = '⚠️ sem conexão'; }
+}
+Conta.aoMudarLogin((u) => { if (u) entrouNaConta(u); else { usuario = null; mostrarConta(); } });
+Conta.usuarioAtual().then((u) => entrouNaConta(u));
+$('#btnGoogle').addEventListener('click', () => Conta.entrarComGoogle().catch((e) => aviso(`Não foi possível entrar: ${e.message}`, 'alerta', 3000)));
+$('#btnSairConta').addEventListener('click', async () => { await Conta.sair(); usuario = null; mostrarConta(); });
 // situação de hoje, já com a perda de forma de quem ficou parado
 const formaAtual = () => P.xpComDestreino(perfil.xp, perfil.ultimaCorrida);
 function paceDoPerfil() { return P.situacao(formaAtual().xp).pace; }

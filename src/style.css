@@ -452,3 +452,14 @@ kbd {
   #palco #minimapa { width: 70px; height: 70px; }
   #palco #perfil { width: 70px; height: 20px; }
 }
+
+/* conta Google */
+.conta { display: flex; flex-direction: column; gap: 4px; padding-bottom: 6px; margin-bottom: 2px; border-bottom: 1px solid rgba(255, 255, 255, 0.15); }
+.btn-google { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 14px; border: 0; border-radius: 999px; background: #fff; color: #1f1f1f; font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
+.logado { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.logado[hidden], .btn-google[hidden], .conta-dica[hidden] { display: none; }
+.logado img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: rgba(255, 255, 255, 0.2); }
+.logado span { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.logado small { opacity: 0.8; white-space: nowrap; }
+.logado .link { margin-left: auto; border: 0; background: none; color: #ffd27a; font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+.conta-dica { opacity: 0.8; font-size: 12px; }
