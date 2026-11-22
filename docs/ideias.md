@@ -13,6 +13,22 @@ Onde poderia entrar no jogo:
 - Nuvens se mexendo devagar no céu.
 - Asfalto com variação de tom e desgaste.
 
+## Shaders
+
+Pequenos programas que rodam na placa de vídeo (GPU) e decidem a forma (vertex shader) e a cor de cada pixel
+(fragment shader) de tudo que aparece na tela. No Three.js os materiais já são shaders prontos; dá para
+escrever os próprios (`ShaderMaterial`) ou mexer nos prontos (`onBeforeCompile`).
+
+Onde poderia entrar no jogo:
+- Água do lago com ondas e reflexo se mexendo.
+- Grama balançando com o vento (vertex shader), sem custo de animar cada folha.
+- Céu com degradê e nuvens (junto com o Perlin noise).
+- Asfalto quente com "miragem" no horizonte em dia de sol.
+- Linhas de velocidade e brilho quando toma o gel; tela piscando quando a energia está baixa.
+- Contorno (outline) no corredor para destacar do cenário.
+
+Cuidado: shader pesado derruba o FPS no celular; testar sempre no aparelho mais simples.
+
 ## Pendentes
 
 - Reformular pontos, XP e Move$ (inspirado no Subway Surfers: multiplicador por missões, moedas na pista,
