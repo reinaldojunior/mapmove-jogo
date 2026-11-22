@@ -344,10 +344,13 @@ const PERSONAGENS = {
     anims: [['correr', 'atleta-corrida.glb', 0], ['parado', 'atleta-parado.glb', 37], ['comemorar', 'atleta-comemora.glb', 0]] },
   liso: { nome: 'Corredor liso', desc: 'Experimental: regata e shorts lisos, ideal para os acessórios da loja.', emoji: '🏃‍♂️',
     anims: [['correr', 'corredor-corrida.glb', 0], ['parado', 'corredor-parado.glb', 0], ['comemorar', 'corredor-comemora.glb', 0]] },
-  corredora: { nome: 'Corredora', desc: 'Feita no Meshy: aquece com polichinelos e pula os carros com rolamento.', emoji: '🏃🏾‍♀️',
+  corredora: { nome: 'Corredora',
+    // a cabeça dela fica mais baixa no osso que a do corredor liso (onde os acessórios foram calibrados)
+    cabeca: { dx: -0.006, dy: -0.034, dz: -0.018, rx: -4, esc: 0.93, oculos: { pos: [-0.006, 0.046, 0.048], tam: 0.08 }, bandana: { pos: [-0.006, 0.066, 0.004], rot: [-12, -90, 0], tam: 0.108 } }, desc: 'Feita no Meshy: aquece com polichinelos e pula os carros com rolamento.', emoji: '🏃🏾‍♀️',
     // um arquivo com várias animações: estado do jogo → nome da animação no arquivo
     arquivo: 'corredora.glb', clipes: { caminhar: 'Walking', correr: 'Run_02', parado: 'jumping_jacks', aquecer: 'jumping_jacks', comemorar: 'Cheer_with_Both_Hands_Up', pular: 'Run_Jump_and_Roll' } },
-  maratonista: { nome: 'Maratonista', desc: 'Feito no Meshy a partir das fichas de 3 vistas.', emoji: '🏃🏾',
+  maratonista: { nome: 'Maratonista',
+    cabeca: { dx: 0, dy: -0.028, dz: -0.014, rx: -4, esc: 0.96, oculos: { pos: [0, 0.056, 0.05], tam: 0.085 }, bandana: { pos: [0, 0.07, 0.006], rot: [-12, -90, 0], tam: 0.112 } }, desc: 'Feito no Meshy a partir das fichas de 3 vistas.', emoji: '🏃🏾',
     anims: [['correr', 'maratonista-corrida.glb', 0], ['parado', 'maratonista-parado.glb', 0], ['comemorar', 'maratonista-comemora.glb', 0]] }
 };
 let vitrine = null; // vitrine 3D dos personagens (loja), criada na primeira vez
@@ -2880,6 +2883,12 @@ function carregarAcessorio(id) {
   return cacheAcessorios.get(id);
 }
 
+// cada personagem tem a cabeça num ponto diferente do osso: desloca o que vai na cabeça
+function ajustarNaCabeca(cfg, id, aj) {
+  if (!aj || cfg.osso !== 'Head') return cfg;
+  if (aj[id]) return { ...cfg, ...aj[id] };
+  return { ...cfg, pos: [cfg.pos[0] + aj.dx, cfg.pos[1] + aj.dy, cfg.pos[2] + aj.dz], rot: [cfg.rot[0] + aj.rx, cfg.rot[1], cfg.rot[2]], tam: cfg.tam * aj.esc };
+}
 let versaoVestir = 0;
 async function vestirAtleta() {
   const a = corredor.atleta;
@@ -2897,9 +2906,11 @@ async function vestirAtleta() {
     // cada acessório fica no sistema de eixos do osso (y ao longo do osso), compensando a escala do osso
     parte.model.updateMatrixWorld(true);
     const escModelo = parte.model.getWorldScale(new THREE.Vector3()).x;
+    const ajuste = PERSONAGENS[a.id]?.cabeca;
     ids.forEach((id, k) => {
       if (!modelos[k]) return;
-      for (const cfg of ACESSORIOS_3D[id]) {
+      for (const cfg0 of ACESSORIOS_3D[id]) {
+        const cfg = ajustarNaCabeca(cfg0, id, ajuste);
         const osso = parte.model.getObjectByName(cfg.osso);
         if (!osso) continue;
         const u = parte.h * escModelo / osso.getWorldScale(v).x; // 1 altura do corredor em unidades do osso
