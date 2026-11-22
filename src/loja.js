@@ -17,7 +17,7 @@ export const ITENS = [
   { id: 'bandana', cat: 'visual', nome: 'Bandana', preco: 40, slot: 'cabeca', desc: 'Segura o suor com estilo.' },
   { id: 'gel', cat: 'consumivel', nome: 'Gel avulso', preco: 20, consumo: { gel: 1 }, desc: 'Começa a próxima corrida com +1 gel no bolso.' },
   { id: 'kit-geis', cat: 'consumivel', nome: 'Kit de 3 géis', preco: 50, consumo: { gel: 3 }, desc: 'Começa a próxima corrida com +3 géis no bolso.' },
-  { id: 'isotonico', cat: 'consumivel', nome: 'Isotônico', preco: 25, consumo: { isotonico: 1 }, desc: 'Na próxima prova, o primeiro copo de água vale em dobro.' },
+  { id: 'isotonico', cat: 'consumivel', nome: 'Isotônico', preco: 25, consumo: { isotonico: 1 }, desc: 'Vai na mochila. Na corrida, toque no 🥤 para tomar: +30% de água e +15% de energia.' },
   { id: 'medalha-6k', cat: 'conquista', nome: 'Medalha 6K', desc: 'Termine a prova de 6K.' },
   { id: 'medalha-10k', cat: 'conquista', nome: 'Medalha 10K', desc: 'Termine a prova de 10K.' },
   { id: 'medalha-21k', cat: 'conquista', nome: 'Medalha 21K', desc: 'Termine a meia maratona.' },
@@ -93,14 +93,19 @@ export function efeitos(perfil) {
   return e;
 }
 
-// na largada: os consumíveis comprados vão para o bolso (até o limite) e o isotônico fica ativo
-export function usarConsumiveis(perfil, { gelMax, prova }) {
+// na largada: os géis comprados vão para o bolso (até o limite); os isotônicos ficam na mochila até serem tomados
+export function usarConsumiveis(perfil, { gelMax }) {
   const p = base(perfil), c = { ...p.consumiveis };
   const geis = Math.min(gelMax, c.gel || 0);
   c.gel = (c.gel || 0) - geis;
-  const isotonico = prova && (c.isotonico || 0) > 0;
-  if (isotonico) c.isotonico -= 1;
-  return { perfil: { ...p, consumiveis: c }, geis, isotonico };
+  return { perfil: { ...p, consumiveis: c }, geis, isotonicos: c.isotonico || 0 };
+}
+
+// tomou um isotônico durante a corrida (em prova ou treino)
+export function tomarIsotonico(perfil) {
+  const p = base(perfil), n = p.consumiveis.isotonico || 0;
+  if (n <= 0) return { perfil: p, ok: false };
+  return { perfil: { ...p, consumiveis: { ...p.consumiveis, isotonico: n - 1 } }, ok: true };
 }
 
 // conquistas de uma prova concluída

@@ -54,8 +54,11 @@ test('consumíveis vão para o bolso na largada, até o limite', () => {
   const r = L.usarConsumiveis(p, { gelMax: 5, prova: true });
   assert.equal(r.geis, 5);
   assert.equal(r.perfil.consumiveis.gel, 1);
-  assert.equal(r.isotonico, true);
-  assert.equal(L.usarConsumiveis(r.perfil, { gelMax: 5, prova: false }).isotonico, false);
+  assert.equal(r.isotonicos, 1); // fica na mochila até tomar
+  const t = L.tomarIsotonico(r.perfil);
+  assert.equal(t.ok, true);
+  assert.equal(t.perfil.consumiveis.isotonico, 0);
+  assert.equal(L.tomarIsotonico(t.perfil).ok, false);
 });
 
 test('conquistas da prova: medalha da distância e camiseta finisher, uma vez', () => {

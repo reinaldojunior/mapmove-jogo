@@ -37,6 +37,9 @@ export const ENERGIA_SUBIDA = 2.5; // a mais por segundo a cada 100% de inclina�
 export const ENERGIA_GEL = 35;
 export const ENERGIA_AGUA = 3;
 export const ENERGIA_BAIXA = 30;
+// isotônico: um gole de água e um pouco de energia (mais fraco que o gel, que dá 35 e acelera)
+export const ISOTONICO_AGUA = 30;
+export const ISOTONICO_ENERGIA = 15;
 
 // deslizar para baixo: reduz o ritmo por um tempo (e poupa energia)
 export const FREIO = { fator: 0.7, duracao: 2.5, economia: 0.5 };

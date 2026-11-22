@@ -1903,7 +1903,7 @@ function reiniciar() {
     t: 0, tempoReal: 0, x: p.x, z: p.z, ang: p.ang, camAng: p.ang, s: 0, sMax: 0, d: 0, v: 0, y: 0, vy: 0,
     agachado: 0, geis: 0, gelAtivo: 0, giroPend: 0, parado: 0, voltar: false, fase: 0, agua: 100, pontos: 0,
     energia: 100, energiaAvisada: false, passoIdx: 0, tropecos: 0, coposPegos: 0, paceBase: paceDoPerfil(),
-    fatorTenis: 1, gelMax: R.GEL_MAX, relogio: false, isotonico: false, saltoAnim: 0, saltandoCarro: false, freio: 0,
+    fatorTenis: 1, gelMax: R.GEL_MAX, relogio: false, isotonicos: 0, saltoAnim: 0, saltandoCarro: false, freio: 0,
     penal: 0, proximoSpawn: 70, proximoPosto: 1000, proximoKm: 1000, proximaTravessa: 140, tremor: 0, kmAvisado: 0
   });
   fundo.position.z = 0;
@@ -2015,6 +2015,8 @@ function atualizarHud() {
   hud.incTxt.textContent = pct >= 1 ? `subida ${pct}%` : pct <= -1 ? `descida ${-pct}%` : 'plano';
   hud.penal.textContent = `${s.penal}/${R.PENALIDADES_MAX}`;
   hud.gelQtd.textContent = s.geis;
+  $('#btnIso').hidden = !s.isotonicos;
+  $('#isoQtd').textContent = s.isotonicos;
   hud.gel.disabled = !s.geis || s.gelAtivo > 0;
   hud.gel.style.setProperty('--gel', `${(s.gelAtivo / R.GEL_DURACAO) * 360}deg`);
   hud.dica.classList.toggle('some', s.t > 7);
@@ -2090,10 +2092,10 @@ function alternarMusica() {
 // efeitos do que está vestido e consumíveis da mochila, aplicados na largada
 function aplicarEquipamento() {
   const ef = L.efeitos(perfil);
-  const r = L.usarConsumiveis(perfil, { gelMax: R.GEL_MAX + ef.gelMax, prova: !!prova });
+  const r = L.usarConsumiveis(perfil, { gelMax: R.GEL_MAX + ef.gelMax });
   perfil = r.perfil; salvarPerfil();
-  Object.assign(estado, { fatorTenis: ef.velocidade, gelMax: R.GEL_MAX + ef.gelMax, relogio: ef.distanciaAgua, geis: r.geis, isotonico: r.isotonico });
-  const extras = [r.geis ? `⚡ ${r.geis} ${r.geis > 1 ? 'géis' : 'gel'} no bolso` : '', r.isotonico ? '🥤 isotônico' : '', ef.velocidade > 1 ? '👟 placa de carbono +3%' : ''].filter(Boolean);
+  Object.assign(estado, { fatorTenis: ef.velocidade, gelMax: R.GEL_MAX + ef.gelMax, relogio: ef.distanciaAgua, geis: r.geis, isotonicos: r.isotonicos });
+  const extras = [r.geis ? `⚡ ${r.geis} ${r.geis > 1 ? 'géis' : 'gel'} no bolso` : '', r.isotonicos ? `🥤 ${r.isotonicos} ${r.isotonicos > 1 ? 'isotônicos' : 'isotônico'}` : '', ef.velocidade > 1 ? '👟 placa de carbono +3%' : ''].filter(Boolean);
   if (extras.length) setTimeout(() => aviso(extras.join(' · '), 'km', 2200), 2600);
 }
 
@@ -2214,7 +2216,6 @@ function beber() {
   gotaFeedback = 0.6;
   if (res === 'pegou') {
     s.coposPegos++;
-    if (s.isotonico) { s.isotonico = false; s.agua = R.hidratar(s.agua); aviso(`🥤 Isotônico! +${R.AGUA_GOLE * 2} de água`); }
     s.agua = R.hidratar(s.agua);
     s.energia = R.reporEnergia(s.energia, R.ENERGIA_AGUA);
     s.pontos += 20;
@@ -2234,6 +2235,19 @@ function usarGel() {
   s.energia = R.reporEnergia(s.energia, R.ENERGIA_GEL);
   s.energiaAvisada = false;
   aviso(`⚡ Gel! ${R.formatarPace(R.mps(R.paceDoGel(s.paceBase)))}/km por 15 s · 🔋 +${R.ENERGIA_GEL}`);
+  atualizarHud();
+}
+
+function tomarIsotonico() {
+  const s = estado;
+  const r = L.tomarIsotonico(perfil);
+  if (!r.ok) return;
+  perfil = r.perfil; salvarPerfil(); // sai da mochila na hora (o que não tomar continua guardado)
+  s.isotonicos = perfil.consumiveis.isotonico || 0;
+  s.agua = R.hidratar(s.agua, R.ISOTONICO_AGUA);
+  s.energia = R.reporEnergia(s.energia, R.ISOTONICO_ENERGIA);
+  s.energiaAvisada = false;
+  aviso(`🥤 Isotônico! 💧 +${R.ISOTONICO_AGUA}% · 🔋 +${R.ISOTONICO_ENERGIA}%`);
   atualizarHud();
 }
 
@@ -2264,10 +2278,11 @@ function acao(tipo) {
   }
   else if (tipo === 'agua') beber();
   else if (tipo === 'gel') usarGel();
+  else if (tipo === 'iso') tomarIsotonico();
 }
 
 const controles = criarControles({ area: palco, onAcao: acao });
-for (const [id, tipo] of [['#btnGel', 'gel'], ['#btnAgua', 'agua'], ['#btnCamera', 'camera']]) {
+for (const [id, tipo] of [['#btnGel', 'gel'], ['#btnIso', 'iso'], ['#btnAgua', 'agua'], ['#btnCamera', 'camera']]) {
   $(id).addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); acao(tipo); });
 }
 

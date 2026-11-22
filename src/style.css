@@ -505,3 +505,15 @@ kbd {
 .vitrine #vitrineBotao { margin-top: 6px; }
 .vitrine #vitrineBotao button { min-width: 200px; padding: 10px 22px; border: 0; border-radius: 999px; font: inherit; font-weight: 800; font-size: 16px; cursor: pointer; background: #ffd21f; color: #2a1a00; }
 .vitrine #vitrineBotao button.usando { background: #34c759; color: #fff; cursor: default; }
+
+/* isotônico: acima do gel, só aparece para quem tem na mochila */
+.iso {
+  left: 18px;
+  bottom: max(204px, calc(env(safe-area-inset-bottom) + 184px));
+  width: 60px; height: 60px;
+  background: rgba(64, 196, 255, 0.88);
+  box-shadow: 0 4px 0 #0a6fa8, 0 8px 18px rgba(0, 0, 0, 0.25);
+}
+.iso[hidden] { display: none; }
+.iso .ico { font-size: 24px; line-height: 1; margin-top: -10px; }
+.iso b { position: absolute; bottom: 5px; font-size: 15px; color: #06263a; }
