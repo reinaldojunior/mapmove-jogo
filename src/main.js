@@ -2321,8 +2321,8 @@ function aviso(txt, classe = '', ms = 1500) {
 
 function mostrar(tela) {
   if (tela !== 'telaLoja') vitrine?.desligar();
-  for (const id of ['telaInicio', 'telaPausa', 'telaFim', 'telaTreino', 'telaLoja']) $('#' + id).hidden = id !== tela;
-  $('#hud').hidden = ['telaInicio', 'telaFim', 'telaTreino', 'telaLoja'].includes(tela);
+  for (const id of ['telaInicio', 'telaPausa', 'telaFim', 'telaTreino', 'telaLoja', 'telaClima']) $('#' + id).hidden = id !== tela;
+  $('#hud').hidden = ['telaInicio', 'telaFim', 'telaTreino', 'telaLoja', 'telaClima'].includes(tela);
   $('#controles').hidden = tela !== null;
 }
 
@@ -2358,14 +2358,36 @@ function aplicarEquipamento() {
   if (extras.length) setTimeout(() => aviso(extras.join(' · '), 'km', 2200), 5300);
 }
 
-function iniciar(escolha) {
+// previsão do tempo antes da largada: sorteia o clima, mostra os efeitos e os cuidados, e o céu já muda atrás
+let climaDaLargada = null, escolhaDaLargada = null;
+function abrirClima(escolha) {
+  escolhaDaLargada = escolha;
+  climaDaLargada = CL.sortearClima();
+  aplicarClima(climaDaLargada);
+  const c = climaDaLargada, x = CL.explicarClima(c, perfil.consumiveis || {});
+  const alvo = escolha || ultimaEscolha;
+  $('#climaProva').textContent = alvo?.tipo === 'prova' && alvo.distancia ? `Previsão para a largada · ${alvo.distancia.rotulo}` : 'Previsão para o treino';
+  $('#climaEmoji').textContent = c.emoji;
+  $('#climaNome').textContent = c.nome;
+  $('#climaDados').textContent = `🌡️ ${c.temp} °C · 💧 ${c.umidade}% umidade · 💨 ${c.vento} m/s`;
+  $('#climaEfeitos').innerHTML = x.efeitos.map((t) => `<li>${t}</li>`).join('');
+  $('#climaCuidados').innerHTML = x.cuidados.map((t) => `<li>${t}</li>`).join('');
+  mostrar('telaClima');
+}
+$('#btnLargar').addEventListener('click', () => iniciar(escolhaDaLargada, climaDaLargada));
+$('#btnClimaVoltar').addEventListener('click', () => {
+  // voltou da previsão no meio da corrida (pausa): o céu volta a ser o da corrida em andamento
+  if (estado.modo === 'pausa') { aplicarClima(estado.clima); mostrar('telaPausa'); } else mostrarInicio();
+});
+
+function iniciar(escolha, clima) {
   som.iniciar();
   som.pararLoops();
   som.pausar(false);
   tocarMusica(true);
   if (escolha) ultimaEscolha = escolha;
   reiniciar();
-  estado.clima = CL.sortearClima();
+  estado.clima = clima || CL.sortearClima();
   aplicarClima(estado.clima);
   aplicarEquipamento();
   atualizarHud();
@@ -2817,7 +2839,7 @@ async function carregarProva() {
       const b = document.createElement('button');
       const rec = lerRecorde(`mapmove-recorde-${PROVA_SLUG}-${d.rotulo}`);
       b.innerHTML = `${d.rotulo}<small>↗ ${d.subida_m ?? '?'} m${rec ? ` · 🏅 ${R.formatarTempo(rec)}` : ''}</small>`;
-      b.addEventListener('click', () => iniciar({ tipo: 'prova', distancia: d }));
+      b.addEventListener('click', () => abrirClima({ tipo: 'prova', distancia: d }));
       box.appendChild(b);
     }
   } catch {
@@ -3232,8 +3254,8 @@ function mostrarInicio() {
   mostrar('telaInicio');
 }
 
-$('#btnTreino').addEventListener('click', () => iniciar({ tipo: 'treino' }));
-$('#btnDeNovo').addEventListener('click', () => iniciar());
+$('#btnTreino').addEventListener('click', () => abrirClima({ tipo: 'treino' }));
+$('#btnDeNovo').addEventListener('click', () => abrirClima());
 $('#btnTrocar').addEventListener('click', mostrarInicio);
 $('#btnSair').addEventListener('click', mostrarInicio);
 $('#btnPausa').addEventListener('click', pausar);
@@ -3242,7 +3264,7 @@ $('#btnMusica').addEventListener('pointerdown', (e) => { e.stopPropagation(); e.
 $('#btnTrocar').addEventListener('click', () => { tocarMusica(false); som.pararLoops(); });
 $('#btnSair').addEventListener('click', () => { tocarMusica(false); som.pararLoops(); som.pausar(false); });
 $('#btnContinuar').addEventListener('click', continuar);
-$('#btnRecomecar').addEventListener('click', () => { som.pausar(false); iniciar(); });
+$('#btnRecomecar').addEventListener('click', () => abrirClima());
 $('#btnTreinoDia').addEventListener('click', () => fazerTreino(false));
 $('#btnComprarTreino').addEventListener('click', () => fazerTreino(true));
 $('#btnTreinoOk').addEventListener('click', mostrarInicio);

@@ -126,6 +126,19 @@
       <small class="creditos">Mapa © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">colaboradores do OpenStreetMap</a></small>
     </section>
 
+    <section id="telaClima" class="tela" hidden>
+      <div class="clima-card">
+        <small class="clima-prova" id="climaProva"></small>
+        <div class="clima-topo"><span class="clima-emoji" id="climaEmoji"></span><div><h2 id="climaNome"></h2><span id="climaDados"></span></div></div>
+        <h3>Como afeta a corrida</h3>
+        <ul id="climaEfeitos"></ul>
+        <h3>Cuidados</h3>
+        <ul id="climaCuidados" class="cuidados"></ul>
+      </div>
+      <button id="btnLargar" class="cta">🏁 Largar</button>
+      <button id="btnClimaVoltar" class="cta secundario">Voltar</button>
+    </section>
+
     <section id="telaTreino" class="tela" hidden>
       <div class="resultado-treino" id="resultadoTreino"></div>
       <button id="btnTreinoOk" class="cta" hidden>Continuar</button>

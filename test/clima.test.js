@@ -37,3 +37,17 @@ test('chuva escorrega e dá bônus; bônus limitado a 25%', () => {
   assert.equal(C.bonusClima(clima('chuva')), 0.15);
   assert.equal(C.bonusClima({ temp: 33, umidade: 90, chuva: 1, vento: 8 }), 0.25);
 });
+
+test('explicação do clima: efeitos e cuidados de acordo com o tempo', () => {
+  const calor = C.explicarClima(clima('abafado'), { isotonico: 2 });
+  assert.ok(calor.efeitos.some((t) => t.includes('água acaba')));
+  assert.ok(calor.cuidados.some((t) => t.includes('todos os postos')));
+  assert.ok(calor.cuidados.some((t) => t.includes('2 na mochila')));
+  const chuva = C.explicarClima(clima('chuva'));
+  assert.ok(chuva.efeitos.some((t) => t.includes('escorrega')));
+  assert.ok(chuva.cuidados.some((t) => t.includes('curvas mais cedo')));
+  const frio = C.explicarClima(clima('frio'));
+  assert.ok(frio.efeitos.some((t) => t.includes('dura mais')));
+  const sol = C.explicarClima(clima('sol'));
+  assert.ok(sol.efeitos.some((t) => t.includes('recorde')));
+});

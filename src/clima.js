@@ -57,3 +57,30 @@ export function bonusClima(c) {
 
 // texto curto para o aviso e o HUD
 export const resumoClima = (c) => `${c.emoji} ${c.nome} · ${c.temp} °C · 💧${c.umidade}%${c.vento >= 3 ? ` · 💨 ${c.vento} m/s` : ''}`;
+
+// o que o clima faz com o corredor e como se preparar (tela antes da largada)
+export function explicarClima(c, mochila = {}) {
+  const pct = (f) => Math.round(Math.abs(f - 1) * 100);
+  const efeitos = [], cuidados = [];
+  const sede = fatorSede(c), energia = fatorEnergiaClima(c), bonus = bonusClima(c);
+  const porCalor = Math.max(0, c.temp - 20) * 0.035 > 0.02, porUmidade = Math.max(0, c.umidade - 60) * 0.008 > 0.02;
+  const motivo = porCalor && porUmidade ? 'calor e umidade' : porUmidade ? 'umidade' : 'calor';
+  if (sede >= 1.15) efeitos.push(`💧 A água acaba ${pct(sede)}% mais rápido (${motivo})`);
+  else if (sede <= 0.95) efeitos.push(`💧 A água dura mais: seca ${pct(sede)}% mais devagar`);
+  else efeitos.push('💧 Hidratação quase normal');
+  if (energia > 1) efeitos.push(`🔋 O calor gasta ${pct(energia)}% mais energia`);
+  if (c.vento >= 3) efeitos.push(`💨 Vento de ${c.vento} m/s: de frente segura o ritmo (até ${Math.round(c.vento * 1.1)}% mais lento), nas costas ajuda`);
+  if (c.chuva) efeitos.push('🌧️ Pista molhada: o tênis escorrega, as curvas ficam mais lentas e o pulo mais curto');
+  if (bonus) efeitos.push(`⭐ Clima difícil: +${Math.round(bonus * 100)}% de XP no fim`);
+  else efeitos.push('⭐ Clima bom para buscar recorde');
+
+  if (sede >= 1.2) cuidados.push('Pegue água em todos os postos, sem pular nenhum');
+  else if (sede <= 0.95) cuidados.push('A água dura mais: com mais de 60% dá para passar um posto');
+  if (sede >= 1.2 || energia > 1.1) cuidados.push((mochila.isotonico || 0) > 0 ? `Guarde o isotônico (${mochila.isotonico} na mochila) para a segunda metade` : 'Um isotônico da loja ajuda no fim da prova (água + energia)');
+  if (energia > 1) cuidados.push('Use o gel antes da energia ficar baixa, não espere o alerta');
+  if (energia > 1.2) cuidados.push('Largue mais leve: deslize para baixo nas subidas para poupar');
+  if (c.vento >= 3) cuidados.push('Vento contra: segure o ritmo e economize; vento a favor: é hora de acelerar');
+  if (c.chuva) cuidados.push('Comece as curvas mais cedo e pule os obstáculos com antecedência');
+  if (!cuidados.length) cuidados.push('Mantenha o ritmo e hidrate nos postos de costume');
+  return { efeitos, cuidados, bonus };
+}
