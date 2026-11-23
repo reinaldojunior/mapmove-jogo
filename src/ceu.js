@@ -17,6 +17,7 @@ uniform float uTempo;
 uniform vec3 uSol;
 uniform vec3 uZenite, uMeio, uHorizonte;
 uniform float uCobertura;
+uniform float uEscuro;
 varying vec3 vDir;
 float h(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float ruido(vec2 p) {
@@ -42,6 +43,7 @@ void main() {
     float dens = smoothstep(1.0 - uCobertura, 1.0 - uCobertura + 0.2, n);
     float base = fbm(uv * 1.7 + 3.1); // parte de baixo um pouco mais escura
     vec3 nuvem = mix(vec3(0.78, 0.82, 0.88), vec3(1.0), smoothstep(0.35, 0.75, base));
+    nuvem = mix(nuvem, nuvem * vec3(0.55, 0.58, 0.62), uEscuro); // nuvem de chuva, carregada
     nuvem += vec3(1.0, 0.92, 0.75) * pow(sol, 6.0) * 0.25; // borda iluminada perto do sol
     float some = smoothstep(0.0, 0.07, d.y); // somem bem rente ao horizonte, na névoa
     ceu = mix(ceu, nuvem, dens * some * 0.95);
@@ -58,7 +60,7 @@ export function criarCeu({ oitavas = 5, cobertura = 0.5 } = {}) {
     uniforms: {
       uTempo: tempoVento, uSol: { value: new THREE.Vector3(0.4, 0.6, -0.7).normalize() },
       uZenite: { value: c(0x2f86f0) }, uMeio: { value: c(0x8ccaff) }, uHorizonte: { value: c(0xcfe9ff) },
-      uCobertura: { value: cobertura }
+      uCobertura: { value: cobertura }, uEscuro: { value: 0 }
     },
     side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false
   });

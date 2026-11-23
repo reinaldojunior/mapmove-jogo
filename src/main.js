@@ -18,6 +18,7 @@ import { preencherBordas } from './textura.js';
 import { criarVitrine } from './vitrine.js';
 import { criarBandana } from './bandana.js';
 import { criarCeu } from './ceu.js';
+import * as CL from './clima.js';
 import { manchasDeGrama, criarTufos, balancoDeArvore } from './grama.js';
 import { clone as clonarComOssos } from 'three/addons/utils/SkeletonUtils.js';
 import { pistasDuplas, duplaEm } from './osm.js';
@@ -122,6 +123,48 @@ scene.background = textura(16, 256, (g, w, h) => {
 const ceu = criarCeu();
 ceu.material.uniforms.uSol.value.copy(SOL_OFFSET).normalize(); // sol do céu no mesmo lugar da luz do jogo
 scene.add(ceu);
+
+// ─── CLIMA: céu, névoa, luz, asfalto molhado e chuva caindo ─────────────────────
+const CEU_PADRAO = { zen: 0x2f86f0, meio: 0x8ccaff, hor: 0xcfe9ff };
+const CEU_FECHADO = { zen: 0x76828f, meio: 0xa3adb8, hor: 0xc3cad1 };
+const chuva = (() => {
+  const N = 1400, pos = new Float32Array(N * 6);
+  for (let i = 0; i < N; i++) {
+    const x = (Math.random() - 0.5) * 50, y = Math.random() * 26, z = (Math.random() - 0.5) * 50;
+    pos.set([x, y, z, x + 0.05, y - 0.7, z + 0.05], i * 6);
+  }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const l = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0xc8d4e0, transparent: true, opacity: 0.45, fog: false }));
+  l.frustumCulled = false; l.visible = false;
+  return l;
+})();
+scene.add(chuva);
+function aplicarClima(c) {
+  const fechado = c ? Math.max(0, (c.nuvens - 0.5) / 0.5) : 0; // 0 = céu aberto, 1 = fechado
+  const u = ceu.material.uniforms, mistura = (a, b) => new THREE.Color(a).lerp(new THREE.Color(b), fechado);
+  u.uZenite.value.copy(mistura(CEU_PADRAO.zen, CEU_FECHADO.zen));
+  u.uMeio.value.copy(mistura(CEU_PADRAO.meio, CEU_FECHADO.meio));
+  u.uHorizonte.value.copy(mistura(CEU_PADRAO.hor, CEU_FECHADO.hor));
+  u.uCobertura.value = c ? 0.32 + c.nuvens * 0.45 : 0.5;
+  u.uEscuro.value = c?.chuva ? 0.9 : fechado * 0.4;
+  scene.fog.color.copy(u.uHorizonte.value);
+  scene.fog.near = c?.chuva ? 45 : 80; scene.fog.far = c?.chuva ? 160 : 230;
+  sol.intensity = 3.1 * (1 - 0.6 * fechado);
+  // asfalto molhado: mais escuro e brilhante
+  for (const m of [matRua, matRuaFaixas, matRuaOutra]) { m.roughness = c?.chuva ? 0.38 : 0.95; m.color.setScalar(c?.chuva ? 0.78 : 1); }
+  chuva.visible = !!c?.chuva;
+  chuva.geometry.setDrawRange(0, [2800, 1600, 700][nivel] || 700);
+}
+function animarChuva(dt) {
+  if (!chuva.visible) return;
+  chuva.position.set(camera.position.x, camera.position.y - 6, camera.position.z);
+  const a = chuva.geometry.attributes.position, p = a.array, queda = 24 * dt;
+  for (let i = 0; i < p.length; i += 6) {
+    p[i + 1] -= queda; p[i + 4] -= queda;
+    if (p[i + 4] < 0) { const y = 26 + Math.random() * 2; p[i + 1] = y; p[i + 4] = y - 0.7; }
+  }
+  a.needsUpdate = true;
+}
 
 // asfalto de 8 m de largura por 8 m de comprimento por repetição
 const texAsfalto = textura(512, 512, (g, w, h) => {
@@ -899,7 +942,7 @@ function atualizarCenario(sCorredor) {
 // ─── OBSTÁCULOS E ITENS (EM COORDENADAS DA PISTA: s AO LONGO, d PARA OS LADOS) ─
 
 let entidades = [];
-if (import.meta.env.DEV) window.__dbg = { ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s) }; // só no modo de desenvolvimento, para testes
+if (import.meta.env.DEV) window.__dbg = { ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); } }; // só no modo de desenvolvimento, para testes
 let postos = [];
 let travessas = [];
 
@@ -2198,6 +2241,16 @@ function desenharMinimapa() {
 
 let hudTimer = 0;
 function atualizarHud() {
+  {
+    // clima: temperatura e de onde vem o vento em relação ao corredor
+    const c = estado.clima, el = $('#hudClima');
+    el.hidden = !c;
+    if (c) {
+      const contra = c.vento >= 3 ? CL.ventoRelativo(c, estado.ang) : 0;
+      const vento = contra > 0.5 ? ' 💨 contra' : contra < -0.5 ? ' 💨 a favor' : '';
+      $('#hudClimaTxt').textContent = `${c.emoji} ${c.temp}°${vento}`;
+    }
+  }
   const s = estado;
   hud.km.textContent = R.formatarKm(prova ? Math.min(s.sMax, pista.total) : s.sMax);
   hud.kmTotal.textContent = prova ? `/ ${R.formatarKm(pista.total)} km` : 'km';
@@ -2302,7 +2355,7 @@ function aplicarEquipamento() {
   perfil = r.perfil; salvarPerfil();
   Object.assign(estado, { fatorTenis: ef.velocidade, gelMax: R.GEL_MAX + ef.gelMax, relogio: ef.distanciaAgua, geis: r.geis, isotonicos: r.isotonicos });
   const extras = [r.geis ? `⚡ ${r.geis} ${r.geis > 1 ? 'géis' : 'gel'} no bolso` : '', r.isotonicos ? `🥤 ${r.isotonicos} ${r.isotonicos > 1 ? 'isotônicos' : 'isotônico'}` : '', ef.velocidade > 1 ? '👟 placa de carbono +3%' : ''].filter(Boolean);
-  if (extras.length) setTimeout(() => aviso(extras.join(' · '), 'km', 2200), 2600);
+  if (extras.length) setTimeout(() => aviso(extras.join(' · '), 'km', 2200), 5300);
 }
 
 function iniciar(escolha) {
@@ -2312,6 +2365,8 @@ function iniciar(escolha) {
   tocarMusica(true);
   if (escolha) ultimaEscolha = escolha;
   reiniciar();
+  estado.clima = CL.sortearClima();
+  aplicarClima(estado.clima);
   aplicarEquipamento();
   atualizarHud();
   estado.modo = 'contagem';
@@ -2322,6 +2377,8 @@ function iniciar(escolha) {
   mostrar(null);
   atualizarHud();
   aviso(prova ? `${prova.rotulo} · ${prova.nome}` : 'Treino de reta', 'km', 2400);
+  const bonus = CL.bonusClima(estado.clima);
+  setTimeout(() => aviso(`${CL.resumoClima(estado.clima)}${bonus ? ` · +${Math.round(bonus * 100)}% XP` : ''}`, 'km', 2600), 2500);
 }
 
 // antes da largada: o corredor chega caminhando até a linha, aquece no 3-2-1 e sai correndo no VAI!
@@ -2473,8 +2530,9 @@ function acao(tipo) {
   if (tipo === 'pular' && s.y === 0) {
     // carro da travessa logo à frente: salto alto com rolamento
     const carros = entidades.filter((e) => e.tipo === 'carro' && !e.atingido);
-    if (R.carroParaSaltar(s.s, carros)) { s.vy = R.SALTO_CARRO.velocidade; s.saltoAnim = SALTO_ANIM.duracao; s.saltandoCarro = true; }
-    else s.vy = R.PULO.velocidade;
+    const pulo = CL.fatorPulo(estado.clima || CL.CLIMAS[0]); // na chuva o pulo sai mais curto
+    if (R.carroParaSaltar(s.s, carros)) { s.vy = R.SALTO_CARRO.velocidade * pulo; s.saltoAnim = SALTO_ANIM.duracao; s.saltandoCarro = true; }
+    else s.vy = R.PULO.velocidade * pulo;
     s.agachado = 0;
   }
   else if (tipo === 'abaixar') {
@@ -2509,7 +2567,8 @@ function passo(dt) {
   const s = estado;
   s.t += dt;
   s.tempoReal += dt * R.ESCALA_TEMPO;
-  s.agua = R.desidratar(s.agua, dt);
+  const cl = s.clima || CL.CLIMAS[0];
+  s.agua = R.desidratar(s.agua, dt * CL.fatorSede(cl)); // calor e umidade secam mais rápido
   if (s.agua <= 0) return terminar('Desidratou! 💧');
 
   const p = emEst(s.s);
@@ -2524,25 +2583,26 @@ function passo(dt) {
   } else {
     const giro = controles.giro();
     s.giroPend += controles.consumirToques() * GIRO_POR_TOQUE;
-    s.ang += giro * GIRO_RAD_S * dt;
+    const ader = CL.aderencia(cl); // na chuva o tênis escorrega: a curva sai mais lenta
+    s.ang += giro * GIRO_RAD_S * ader * dt;
     if (s.giroPend) {
-      const passoGiro = Math.sign(s.giroPend) * Math.min(Math.abs(s.giroPend), GIRO_RAD_S * 1.2 * dt);
+      const passoGiro = Math.sign(s.giroPend) * Math.min(Math.abs(s.giroPend), GIRO_RAD_S * 1.2 * ader * dt);
       s.ang += passoGiro; s.giroPend -= passoGiro;
     }
     // sem comando, alinha sozinho só quando já está quase reto (as esquinas são com você)
     if (Math.abs(giro) < 0.1 && Math.abs(s.giroPend) < 0.01) {
       const dif = difAngulo(p.ang, s.ang);
-      if (Math.abs(dif) < 0.35) s.ang += dif * Math.min(1, 2.5 * dt);
+      if (Math.abs(dif) < 0.35) s.ang += dif * Math.min(1, 2.5 * ader * dt);
     }
     s.gelAtivo = Math.max(0, s.gelAtivo - dt);
     s.freio = Math.max(0, (s.freio || 0) - dt);
-    s.energia = R.gastarEnergia(s.energia, dt, { inclinacao: p.inclinacao, gel: s.gelAtivo > 0, sede: s.agua < 25, freando: s.freio > 0 });
+    s.energia = R.gastarEnergia(s.energia, dt, { inclinacao: p.inclinacao, gel: s.gelAtivo > 0, sede: s.agua < 25, freando: s.freio > 0, calor: CL.fatorEnergiaClima(cl) });
     if (s.energia < R.ENERGIA_BAIXA && !s.energiaAvisada) {
       s.energiaAvisada = true;
       aviso(s.geis ? '🔋 Energia baixa! Use um gel ⚡' : '🔋 Energia baixa! Pegue um gel ⚡', 'alerta', 1800);
     }
     const alvo = R.velocidadeAlvo({ gel: s.gelAtivo > 0, inclinacao: p.inclinacao, naCalcada: Math.abs(s.d) > R.MEIA_RUA, energia: s.energia, pace: s.paceBase / s.fatorTenis, freando: s.freio > 0 });
-    s.v = R.aproximarVelocidade(s.v, alvo, dt);
+    s.v = R.aproximarVelocidade(s.v, alvo * CL.fatorVento(cl, s.ang), dt); // vento de frente segura, a favor empurra
     const W = s.v * R.ESCALA_TEMPO;
     const [fx, fz] = frente(s.ang);
     s.x += fx * W * dt; s.z += fz * W * dt;
@@ -2711,6 +2771,7 @@ function desenhar(dt) {
   // câmera livre só para os testes automáticos (fotos aéreas)
   if (s.camTeste) { camera.position.set(...s.camTeste.pos); camera.lookAt(...s.camTeste.alvo); scene.fog.far = 2000; }
   ceu.position.copy(camera.position);
+  animarChuva(Math.min(dt || 0.016, 0.05));
   renderer.render(scene, camera);
 }
 
@@ -2901,7 +2962,8 @@ function mostrarEvolucao(metros, concluiu) {
   if (metros < 50) { el.hidden = true; return; }
   const r = P.registrarCorrida(perfil, {
     metros, prova: prova ? prova.rotulo : null, concluiu, penalidades: estado.penal, tropecos: estado.tropecos,
-    copos: prova ? postos.length : 0, coposPegos: estado.coposPegos, agua: estado.agua
+    copos: prova ? postos.length : 0, coposPegos: estado.coposPegos, agua: estado.agua,
+    clima: estado.clima ? { nome: estado.clima.nome, emoji: estado.clima.emoji, bonus: CL.bonusClima(estado.clima) } : null
   });
   perfil = r.perfil;
   salvarPerfil();
@@ -3155,6 +3217,7 @@ async function vestirAtleta() {
 }
 
 function mostrarInicio() {
+  estado.clima = null; aplicarClima(null); // tela inicial com o céu de sempre
   sincronizarStrava();
   entregarPremios(); // quem já tinha subido de nível antes da loja existir também ganha
   mostrarPerfil();

@@ -60,3 +60,9 @@ test('registrar corrida soma XP, Move$, e avisa quando sobe de nível', () => {
   assert.ok(r.perfil.moves > 0);
   assert.deepEqual(P.lerPerfil('lixo'), P.perfilNovo());
 });
+
+test('clima difícil dá bônus de XP sobre os km e a prova', () => {
+  const sem = P.ganhoDaCorrida({ metros: 10000, prova: '10K', concluiu: true, penalidades: 1, tropecos: 5, agua: 10 });
+  const com = P.ganhoDaCorrida({ metros: 10000, prova: '10K', concluiu: true, penalidades: 1, tropecos: 5, agua: 10, clima: { nome: 'Chuva', emoji: '🌧️', bonus: 0.15 } });
+  assert.equal(com.xp - sem.xp, Math.round((100 + 80) * 0.15));
+});

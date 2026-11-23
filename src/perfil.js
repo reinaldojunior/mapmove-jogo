@@ -75,6 +75,12 @@ export function ganhoDaCorrida(c) {
     const base = itens.reduce((a, i) => a + i.xp, 0);
     if (extra) itens.push({ rotulo: 'Desempenho na prova', xp: Math.round(base * extra) });
   }
+  // clima difícil (calor, chuva, vento forte) vale um extra sobre o que já ganhou
+  if (c.clima?.bonus > 0) {
+    const base = itens.reduce((a, i) => a + i.xp, 0);
+    const xp = Math.round(base * c.clima.bonus);
+    if (xp > 0) itens.push({ rotulo: `Clima: ${c.clima.emoji} ${c.clima.nome} (+${Math.round(c.clima.bonus * 100)}%)`, xp });
+  }
   const ms = missoes(c);
   for (const m of ms) if (m.ok) itens.push({ rotulo: `Missão: ${m.nome}`, xp: XP_MISSAO });
   const xp = itens.reduce((a, i) => a + i.xp, 0);

@@ -44,8 +44,8 @@ export const ISOTONICO_ENERGIA = 15;
 // deslizar para baixo: reduz o ritmo por um tempo (e poupa energia)
 export const FREIO = { fator: 0.7, duracao: 2.5, economia: 0.5 };
 
-export function gastarEnergia(e, dt, { inclinacao = 0, gel = false, sede = false, freando = false } = {}) {
-  let gasto = ENERGIA_GASTO + Math.max(0, inclinacao) * ENERGIA_SUBIDA;
+export function gastarEnergia(e, dt, { inclinacao = 0, gel = false, sede = false, freando = false, calor = 1 } = {}) {
+  let gasto = (ENERGIA_GASTO + Math.max(0, inclinacao) * ENERGIA_SUBIDA) * calor;
   if (freando) gasto *= FREIO.economia;
   if (gel) gasto *= 0.3; // com gel fazendo efeito, quase não gasta
   if (sede) gasto *= 1.8; // com pouca água, gasta quase o dobro
