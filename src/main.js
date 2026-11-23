@@ -817,7 +817,9 @@ function construirVisual() {
 // cenário reciclado numa janela à frente do corredor
 const JANELA = 300;
 let cenario = [];
-let areasSemArvore = []; // [x, z, raio] dos marcos da cidade: sem árvores nem enfeites em volta
+let areasSemArvore = [];
+let vistasLivres = []; // [s0, s1, lado]: trecho da beira sem árvores para ver um prédio marcante que vem chegando
+const naVistaLivre = (s, lado) => vistasLivres.some(([a, b, l]) => s >= a && s <= b && l === lado); // [x, z, raio] dos marcos da cidade: sem árvores nem enfeites em volta
 let zonas = null; // zonas do percurso (parque, cidade, livre) quando há dados do OpenStreetMap
 let duplas = []; // trechos de avenida com canteiro e outra pista ao lado (ver pistasDuplas)
 const giroAleatorio = () => aleat(0, Math.PI * 2);
@@ -857,7 +859,8 @@ function posicionarCenario(item, s) {
   // avenida dupla: nada de torcida, árvore ou prédio no canteiro e na outra pista
   const du = duplaEm(duplas, s);
   const naAvenida = du && Math.sign(item.d) === du.lado && Math.abs(item.d) < du.dist + 7;
-  item.obj.visible = !fora && !invade && !naTravessa && combina && !naFrenteDeMarco && !naAvenida;
+  const tampaVista = item.molde.criar === arvoreDaBeira && naVistaLivre(s, Math.sign(item.d));
+  item.obj.visible = !fora && !invade && !naTravessa && combina && !naFrenteDeMarco && !naAvenida && !tampaVista;
   item.obj.position.set(x, p.y, z);
   item.obj.rotation.y = -p.ang + (item.rot || 0);
 }
@@ -888,7 +891,7 @@ function atualizarCenario(sCorredor) {
 // ─── OBSTÁCULOS E ITENS (EM COORDENADAS DA PISTA: s AO LONGO, d PARA OS LADOS) ─
 
 let entidades = [];
-if (import.meta.env.DEV) window.__dbg = { ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado }; // só no modo de desenvolvimento, para testes
+if (import.meta.env.DEV) window.__dbg = { ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s) }; // só no modo de desenvolvimento, para testes
 let postos = [];
 let travessas = [];
 
@@ -1364,6 +1367,7 @@ function plantarArvores() {
       const perto = pista.pertoDe(x, z, 200);
       if (perto.dist < 13 || perto.dist > 170) continue;
       if (areasSemArvore.some(([ax, az, r]) => (x - ax) ** 2 + (z - az) ** 2 < r * r)) continue;
+      if (perto.dist < 45 && vistasLivres.length) { const q = pista.em(perto.s), [rx, rz] = direita(q.ang); if (naVistaLivre(perto.s, Math.sign((x - q.x) * rx + (z - q.z) * rz))) continue; }
       const aqui = areaEm(osm, x, z);
       if (aqui && (aqui.tipo === 'agua' || aqui.tipo === 'esporte')) continue;
       pontos.push([x, perto.y, z]);
@@ -1621,6 +1625,49 @@ function colocarLocais() {
 }
 
 // letreiro "EU ♥ INDAIATUBA": letras em blocos coloridos com a letra na frente e em cima
+// Centro Cultural Hermenegildo Pinto, o "Piano": paredão branco com faixas pretas (teclas), telhado ondulado
+// e o bloco preto da ponta com o nome. A frente (+z) olha para o percurso.
+function centroPiano() {
+  const g = new THREE.Group();
+  const L = 46, H = 8, PROF = 16, ONDA = 1.4;
+  const topo = (x) => H + ONDA * Math.sin(((x + L / 2) / L) * Math.PI * 3.5);
+  const forma = new THREE.Shape();
+  forma.moveTo(-L / 2, 0); forma.lineTo(L / 2, 0);
+  for (let i = 40; i >= 0; i--) { const x = -L / 2 + (i / 40) * L; forma.lineTo(x, topo(x)); }
+  forma.closePath();
+  // fachada com as teclas: pretas em grupos de 2 e 3, como no teclado, mais estreitas que as brancas
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 256;
+  const k = c.getContext('2d');
+  k.fillStyle = '#f4f4f2'; k.fillRect(0, 0, 1024, 256);
+  const teclas = 23, lw = 1024 / teclas;
+  k.fillStyle = '#1c1c1e';
+  for (let i = 0; i < teclas; i++) { const n = i % 7; if (n === 2 || n === 6) continue; k.fillRect((i + 0.68) * lw, 0, lw * 0.5, 210); }
+  k.fillStyle = '#2a2a2c'; k.fillRect(0, 214, 1024, 42); // muro escuro embaixo
+  k.fillStyle = 'rgba(120,130,140,0.55)';
+  for (let x = 30; x < 1024; x += 64) k.fillRect(x, 150, 34, 34); // janelinhas
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const geoFrente = new THREE.ShapeGeometry(forma);
+  const uv = geoFrente.attributes.uv, pos = geoFrente.attributes.position;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, (pos.getX(i) + L / 2) / L, pos.getY(i) / (H + ONDA));
+  const frente = new THREE.Mesh(geoFrente, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 }));
+  frente.position.z = PROF / 2 + 0.02; g.add(frente);
+  const corpo = new THREE.Mesh(new THREE.ExtrudeGeometry(forma, { depth: PROF, bevelEnabled: false }), new THREE.MeshStandardMaterial({ color: 0xeeeeec, roughness: 0.9 }));
+  corpo.position.z = -PROF / 2; g.add(corpo);
+  // bloco preto da ponta, com o nome
+  const cn = document.createElement('canvas'); cn.width = 512; cn.height = 256;
+  const t = cn.getContext('2d');
+  t.fillStyle = '#18181a'; t.fillRect(0, 0, 512, 256);
+  t.fillStyle = '#ffffff'; t.textAlign = 'center'; t.font = 'bold 44px sans-serif';
+  t.fillText('CENTRO CULTURAL', 256, 110); t.font = 'bold 40px sans-serif'; t.fillText('"PIANO"', 256, 165);
+  const texNome = new THREE.CanvasTexture(cn); texNome.colorSpace = THREE.SRGBColorSpace;
+  const preto = new THREE.MeshStandardMaterial({ color: 0x18181a, roughness: 0.8 });
+  const bloco = new THREE.Mesh(new THREE.BoxGeometry(9, H + 2.2, PROF + 1), [preto, preto, preto, preto, new THREE.MeshStandardMaterial({ map: texNome, roughness: 0.8 }), preto]);
+  bloco.position.set(-L / 2 - 4.5, (H + 2.2) / 2, 0); g.add(bloco);
+  g.userData.prof = PROF; g.userData.raio = L / 2 + 8; g.userData.vista = L / 2 + 6;
+  g.traverse((o) => { if (o.isMesh) o.receiveShadow = true; });
+  return g;
+}
+
 function letreiro() {
   const g = new THREE.Group();
   const texto = ['E', 'U', '♥', 'I', 'N', 'D', 'A', 'I', 'A', 'T', 'U', 'B', 'A'];
@@ -1751,11 +1798,12 @@ function barcoRaia() {
 }
 
 function colocarMarcos() {
-  areasSemArvore = [];
+  areasSemArvore = []; vistasLivres = [];
   const marcos = [
     [/escultura da árvore/i, () => arvoreEspacial(), null, 13],
     [/letreiro/i, () => letreiro(), null, 13],
-    [/barco da raia/i, () => barcoRaia(), 'proaContraOCorredor', 15] // marcos ficam colados na rua para o corredor ver (não é a distância real)
+    [/barco da raia/i, () => barcoRaia(), 'proaContraOCorredor', 15], // marcos ficam colados na rua para o corredor ver (não é a distância real)
+    [/centro cultural hermenegildo/i, () => centroPiano(), null, 22]
   ];
   for (const [nome, criar, giro, distRua] of marcos) {
     const p = osm.pontos.find((q) => nome.test(q.nome));
@@ -1768,14 +1816,22 @@ function colocarMarcos() {
     let { x, z } = p;
     if (distRua) {
       const q = pista.em(perto.s), dx = x - q.x, dz = z - q.z, d = Math.hypot(dx, dz) || 1;
-      x = q.x + (dx / d) * distRua; z = q.z + (dz / d) * distRua;
+      // do lado da outra pista de uma avenida dupla, o marco vai para além dela
+      const [rx, rz] = direita(q.ang), lado = Math.sign(dx * rx + dz * rz) || 1, du = duplaEm(duplas, perto.s);
+      const dist = du && du.lado === lado ? Math.max(distRua, du.dist + 7 + (obj.userData.prof || 6) / 2) : distRua;
+      x = q.x + (dx / d) * dist; z = q.z + (dz / d) * dist;
     } else if (perto.dist < 14) {
       const q = pista.em(perto.s), dx = x - q.x, dz = z - q.z, d = Math.hypot(dx, dz) || 1;
       const lado = d > 0.5 ? 1 : 1;
       x = q.x + (dx / d) * 14 * lado; z = q.z + (dz / d) * 14 * lado;
     }
     obj.position.set(x, pista.pertoDe(x, z).y - 0.05, z);
-    areasSemArvore.push([x, z, distRua ? 16 : 6]); // nenhuma árvore nasce dentro do marco
+    areasSemArvore.push([x, z, obj.userData.raio || (distRua ? 16 : 6)]); // nenhuma árvore nasce dentro do marco
+    if (obj.userData.vista) {
+      // prédio comprido: nada de árvore na beira desse lado desde uns 70 m antes até o fim dele
+      const q = pista.em(perto.s), [rx, rz] = direita(q.ang), lado = Math.sign((x - q.x) * rx + (z - q.z) * rz) || 1;
+      vistasLivres.push([perto.s - obj.userData.vista - 70, perto.s + obj.userData.vista, lado]);
+    }
     const pertoFinal = virarParaPercurso(obj, x, z);
     if (giro === 'proaContraOCorredor') {
       // como no monumento real: a proa (+x do barco) aponta para quem vem correndo, isto é, contra o sentido da prova
