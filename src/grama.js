@@ -65,10 +65,46 @@ function geometriaTufo() {
   return g;
 }
 
+// relógio do vento, o mesmo para tufos e árvores (atualizado pelos tufos a cada quadro)
+export const tempoVento = { value: 0 };
+
+// árvores balançando: quanto mais alto o ponto, mais ele mexe (o pé do tronco fica parado);
+// cada árvore tem sua fase, e rajadas lentas passam por todas. Funciona em malha comum e instanciada.
+export function balancoDeArvore(material, { altura = 7, forca = 1 } = {}) {
+  const antes = material.onBeforeCompile;
+  material.onBeforeCompile = (sh, r) => {
+    antes?.(sh, r);
+    sh.uniforms.uTempo = tempoVento;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform float uTempo;')
+      .replace('#include <project_vertex>', `
+      vec4 mvPosition = vec4(transformed, 1.0);
+      vec4 origemA = vec4(0.0, 0.0, 0.0, 1.0);
+      #ifdef USE_INSTANCING
+        mvPosition = instanceMatrix * mvPosition;
+        origemA = instanceMatrix * origemA;
+      #endif
+      vec4 mundoA = modelMatrix * mvPosition;
+      origemA = modelMatrix * origemA;
+      float hA = max(0.0, mundoA.y - origemA.y);
+      float wA = pow(clamp(hA / ${altura.toFixed(1)}, 0.0, 1.0), 2.0) * ${forca.toFixed(2)};
+      float rajadaA = sin(uTempo * 0.45 + origemA.x * 0.04 + origemA.z * 0.03) * 0.5 + 0.5;
+      float ondaA = sin(uTempo * 1.25 + origemA.x * 0.13 + origemA.z * 0.11);
+      mundoA.x += ondaA * wA * (0.07 + 0.2 * rajadaA) + sin(uTempo * 3.3 + mundoA.y * 1.9 + origemA.x) * wA * 0.025;
+      mundoA.z += ondaA * wA * (0.04 + 0.12 * rajadaA) + cos(uTempo * 2.9 + mundoA.x * 1.3) * wA * 0.025;
+      mvPosition = viewMatrix * mundoA;
+      gl_Position = projectionMatrix * mvPosition;`);
+  };
+  const chave = material.customProgramCacheKey?.bind(material);
+  material.customProgramCacheKey = () => `arvore-${altura}-${forca}-${chave ? chave() : ''}`;
+  material.needsUpdate = true;
+  return material;
+}
+
 // tufos que acompanham o corredor: cada um tem um "s" (metros do percurso); quem fica para trás vai para a frente
 export function criarTufos(maximo) {
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
-  const tempo = { value: 0 };
+  const tempo = tempoVento;
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.uTempo = tempo;
     sh.vertexShader = sh.vertexShader

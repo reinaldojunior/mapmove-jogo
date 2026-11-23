@@ -16,7 +16,7 @@ import * as Conta from './conta.js';
 import { rigarQuadrupede, animarQuadrupede } from './quadrupede.js';
 import { preencherBordas } from './textura.js';
 import { criarVitrine } from './vitrine.js';
-import { manchasDeGrama, criarTufos } from './grama.js';
+import { manchasDeGrama, criarTufos, balancoDeArvore } from './grama.js';
 import { clone as clonarComOssos } from 'three/addons/utils/SkeletonUtils.js';
 import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono, placasDoPercurso, abreviarRua } from './osm.js';
 
@@ -260,6 +260,7 @@ const aleat = (a, b) => a + Math.random() * (b - a);
 
 // junta as peças sem textura num único mesh com cores por vértice: 1 desenho por objeto
 const matVertice = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 });
+const matArvore = balancoDeArvore(matVertice.clone()); // copa balançando com o vento
 function achatar(grupo) {
   grupo.updateMatrixWorld(true);
   const inv = grupo.matrixWorld.clone().invert();
@@ -278,7 +279,7 @@ function achatar(grupo) {
   // as peças ficam relativas ao grupo; o grupo novo herda a escala dele (posição e giro vêm de quem usa)
   const novo = new THREE.Group();
   novo.scale.copy(grupo.scale);
-  if (geos.length) { const m = new THREE.Mesh(mergeGeometries(geos), matVertice); m.castShadow = true; novo.add(m); }
+  if (geos.length) { const m = new THREE.Mesh(mergeGeometries(geos), grupo.userData.balanca ? matArvore : matVertice); m.castShadow = true; novo.add(m); }
   for (const o of comTextura) {
     new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld).decompose(o.position, o.quaternion, o.scale);
     novo.add(o);
@@ -413,9 +414,9 @@ const PROPS = {
   mesa: { arquivo: 'mesa-agua.glb', altura: 1.0, eixo: 'z', giro: 0 },
   barreira: { arquivo: 'barreira.glb', altura: 1.12, eixo: 'x', giro: 0 },
   // cenário de parque
-  ipe: { arquivo: 'ipe2.glb', altura: 6.5 },
+  ipe: { arquivo: 'ipe2.glb', altura: 6.5, balanca: true },
   placa: { arquivo: 'placa.glb', altura: 4.2 },
-  arvoreGrande: { arquivo: 'arvore.glb', altura: 8 },
+  arvoreGrande: { arquivo: 'arvore.glb', altura: 8, balanca: true },
   banco: { arquivo: 'banco.glb', comprimento: 1.8, eixo: 'x', giro: 0 },
   poste: { arquivo: 'poste.glb', altura: 5 },
   pedalinho: { arquivo: 'pedalinho.glb', comprimento: 2.4, eixo: 'z', giro: 0 },
@@ -432,6 +433,7 @@ async function carregarProp(nome) {
   const cfg = PROPS[nome];
   const gltf = await gltfLoader.loadAsync(`/modelos/${cfg.arquivo}`);
   const model = gltf.scene;
+  if (cfg.balanca) model.traverse((o) => { if (o.isMesh) o.material = balancoDeArvore(o.material.clone(), { altura: cfg.altura || 7 }); });
   model.updateMatrixWorld(true);
   let box = new THREE.Box3().setFromObject(model, true);
   const tam = box.getSize(new THREE.Vector3());
@@ -448,6 +450,7 @@ async function carregarProp(nome) {
   g.add(model);
   g.scale.setScalar(escala);
   g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  if (cfg.balanca) g.userData.balanca = true; // peças sem textura, ao serem juntadas, também balançam
   cfg.modelo = g;
   cfg.tamanho = t2.multiplyScalar(escala);
 }
@@ -634,6 +637,7 @@ function arvore(escala = 1) {
     c.scale.setScalar(r * aleat(0.9, 1.1)); c.rotation.set(aleat(0, 3), aleat(0, 3), 0); g.add(c);
   }
   g.scale.setScalar(escala);
+  g.userData.balanca = true;
   return g;
 }
 
@@ -645,6 +649,7 @@ function palmeira() {
     const f = malha(G.esfera, folha, 0, 5.3, 0); f.scale.set(1.5, 0.12, 0.35);
     f.rotation.y = (i / 7) * Math.PI * 2; f.rotation.z = -0.35; f.translateX(1.1); g.add(f);
   }
+  g.userData.balanca = true;
   return g;
 }
 
@@ -1322,7 +1327,7 @@ function plantarArvores() {
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), v = new THREE.Vector3();
   for (const [k, lista] of blocos) {
     const variante = Number(k.split(',')[2]);
-    const im = new THREE.InstancedMesh(variantes[variante], matVertice, lista.length);
+    const im = new THREE.InstancedMesh(variantes[variante], matArvore, lista.length);
     let cx = 0, cz = 0;
     lista.forEach(([x, y, z], i) => {
       const esc = 0.8 + rnd() * 0.6;
