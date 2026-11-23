@@ -16,6 +16,7 @@ import * as Conta from './conta.js';
 import { rigarQuadrupede, animarQuadrupede } from './quadrupede.js';
 import { preencherBordas } from './textura.js';
 import { criarVitrine } from './vitrine.js';
+import { manchasDeGrama, criarTufos } from './grama.js';
 import { clone as clonarComOssos } from 'three/addons/utils/SkeletonUtils.js';
 import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono, placasDoPercurso, abreviarRua } from './osm.js';
 
@@ -71,6 +72,7 @@ function aplicarQualidade(n) {
   renderer.setPixelRatio(NIVEIS[n].pr);
   sol.castShadow = NIVEIS[n].sombra;
   try { localStorage.setItem('mapmove-qualidade', String(n)); } catch { /* sem storage */ }
+  if (typeof montarTufos === 'function' && typeof estado !== 'undefined') montarTufos();
   if (typeof redimensionar === 'function') redimensionar();
 }
 
@@ -727,6 +729,25 @@ const texChao = texGramado.clone(); texChao.repeat.set(9000 / 9, 9000 / 9);
 const matChao = new THREE.MeshStandardMaterial({ color: 0x7fc062, map: texChao, roughness: 1, depthWrite: false });
 // a grama repete a textura a cada 4 m nos dois sentidos
 texGrama.repeat.set(6, 1);
+// manchas naturais (mais verde / mais seca) calculadas na placa de vídeo: some o "papel de parede" repetido
+manchasDeGrama(matGrama); manchasDeGrama(matChao);
+
+// tufos de grama balançando na beira da pista, perto do corredor (menos no gráfico médio, nenhum no baixo)
+const TUFOS_POR_NIVEL = [1500, 700, 0];
+const tufos = criarTufos(TUFOS_POR_NIVEL[0]);
+scene.add(tufos.malha);
+function ondeTufo(s, d) {
+  const fora = Number.isFinite(pista.total) && (s > pista.total + 60 || s < -40);
+  if (fora) return { ok: false };
+  const p = emEst(s);
+  const [rx, rz] = direita(p.ang);
+  const x = p.x + rx * d, z = p.z + rz * d;
+  // nada de grama nas ruas que cruzam nem em cima de outro trecho do percurso
+  if (travessas.some((t) => Math.abs(t.s - s) < 5 + (t.vao || 0) / 2 && t.lados.includes(Math.sign(d)))) return { ok: false };
+  if (Number.isFinite(pista.total) && pista.pertoDe(x, z, 20).dist < R.LIMITE_CALCADA + 0.3) return { ok: false };
+  return { ok: true, x, y: p.y - 0.02, z };
+}
+function montarTufos() { tufos.montar(TUFOS_POR_NIVEL[nivel] || 0, estado?.s || 0, ondeTufo); }
 
 function construirVisual() {
   scene.remove(visual);
@@ -1126,6 +1147,7 @@ function definirTravessas(lista) {
   travessas = lista;
   for (const t of travessas) adicionarTravessa(t);
   for (const it of cenario) posicionarCenario(it, it.s);
+  montarTufos();
 }
 
 async function carregarTravessas(distancia, pistaAlvo) {
@@ -1146,6 +1168,7 @@ const ORDEM_AREA = { bairro: -2.6, esporte: -2.4, grama: -2.4, parque: -2.4, mat
 const matsArea = Object.fromEntries(Object.entries(CORES_AREA).map(([k, cor]) => [k, k === 'agua'
   ? new THREE.MeshStandardMaterial({ color: 0x3f9fd6, roughness: 0.14, metalness: 0.25, envMapIntensity: 1.4, normalMap: texAguaNormal, normalScale: new THREE.Vector2(0.55, 0.55), depthWrite: false })
   : new THREE.MeshStandardMaterial({ color: cor, map: k === 'bairro' ? null : texGramado, roughness: 1, depthWrite: false })]));
+for (const k of ['esporte', 'grama', 'parque', 'mata']) manchasDeGrama(matsArea[k], 0.8);
 const matMargem = new THREE.MeshStandardMaterial({ color: 0xcdbf98, roughness: 1, depthWrite: false });
 const matCaminho = new THREE.MeshStandardMaterial({ color: 0xeee4cf, roughness: 1, depthWrite: false });
 const matRio = matsArea.agua;
@@ -2464,6 +2487,7 @@ function passo(dt) {
 
 function desenhar(dt) {
   const s = estado;
+  tufos.atualizar(s.s, performance.now() / 1000, ondeTufo);
   const chao = emEst(s.s).y;
   corredor.g.position.set(s.x, chao + s.y, s.z);
   corredor.g.rotation.y = -s.ang;
