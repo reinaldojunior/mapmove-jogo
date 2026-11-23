@@ -16,6 +16,7 @@ import * as Conta from './conta.js';
 import { rigarQuadrupede, animarQuadrupede } from './quadrupede.js';
 import { preencherBordas } from './textura.js';
 import { criarVitrine } from './vitrine.js';
+import { criarBandana } from './bandana.js';
 import { manchasDeGrama, criarTufos, balancoDeArvore } from './grama.js';
 import { clone as clonarComOssos } from 'three/addons/utils/SkeletonUtils.js';
 import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono, placasDoPercurso, abreviarRua } from './osm.js';
@@ -349,11 +350,11 @@ const PERSONAGENS = {
     anims: [['correr', 'corredor-corrida.glb', 0], ['parado', 'corredor-parado.glb', 0], ['comemorar', 'corredor-comemora.glb', 0]] },
   corredora: { nome: 'Corredora',
     // a cabeça dela fica mais baixa no osso que a do corredor liso (onde os acessórios foram calibrados)
-    cabeca: { dx: -0.006, dy: -0.034, dz: -0.018, rx: -4, esc: 0.93, oculos: { pos: [-0.006, 0.046, 0.048], tam: 0.08 }, bandana: { pos: [-0.006, 0.066, 0.004], rot: [-12, -90, 0], tam: 0.108 } }, desc: 'Feita no Meshy: aquece com polichinelos e pula os carros com rolamento.', emoji: '🏃🏾‍♀️',
+    cabeca: { dx: -0.006, dy: -0.034, dz: -0.018, rx: -4, esc: 0.93, oculos: { pos: [-0.006, 0.046, 0.048], tam: 0.08 }, bandana: { pos: [-0.006, 0.07, 0.02], rot: [-8, 0, 0], tam: 0.15, largura: 0.62 } }, desc: 'Feita no Meshy: aquece com polichinelos e pula os carros com rolamento.', emoji: '🏃🏾‍♀️',
     // um arquivo com várias animações: estado do jogo → nome da animação no arquivo
     arquivo: 'corredora.glb', clipes: { caminhar: 'Walking', correr: 'Run_02', parado: 'jumping_jacks', aquecer: 'jumping_jacks', comemorar: 'Cheer_with_Both_Hands_Up', pular: 'Run_Jump_and_Roll' } },
   maratonista: { nome: 'Maratonista',
-    cabeca: { dx: 0, dy: -0.028, dz: -0.014, rx: -4, esc: 0.96, oculos: { pos: [0, 0.056, 0.05], tam: 0.085 }, bandana: { pos: [0, 0.07, 0.006], rot: [-12, -90, 0], tam: 0.112 } }, desc: 'Feito no Meshy a partir das fichas de 3 vistas.', emoji: '🏃🏾',
+    cabeca: { dx: 0, dy: -0.028, dz: -0.014, rx: -4, esc: 0.96, oculos: { pos: [0, 0.056, 0.05], tam: 0.085 }, bandana: { pos: [0, 0.075, 0.02], rot: [-8, 0, 0], tam: 0.142, largura: 0.72 } }, desc: 'Feito no Meshy a partir das fichas de 3 vistas.', emoji: '🏃🏾',
     anims: [['correr', 'maratonista-corrida.glb', 0], ['parado', 'maratonista-parado.glb', 0], ['comemorar', 'maratonista-comemora.glb', 0]] }
 };
 let vitrine = null; // vitrine 3D dos personagens (loja), criada na primeira vez
@@ -2940,7 +2941,8 @@ for (const b of document.querySelectorAll('.aba')) b.addEventListener('click', (
 const ACESSORIOS_3D = {
   bone: [{ osso: 'Head', pos: [0, 0.128, 0.03], rot: [-10, 0, 0], tam: 0.135 }],
   viseira: [{ osso: 'Head', pos: [0, 0.118, 0.04], rot: [-10, 0, 0], tam: 0.125 }],
-  bandana: [{ osso: 'Head', pos: [0, 0.122, 0.008], rot: [-10, 0, 0], tam: 0.115 }],
+  // bandana feita no código (faixa justa + nó atrás); tam = profundidade da faixa, largura = proporção lado/frente
+  bandana: [{ osso: 'Head', pos: [0, 0.095, 0.015], rot: [-8, 0, 0], tam: 0.13, largura: 0.78 }],
   oculos: [{ osso: 'Head', pos: [0, 0.088, 0.066], rot: [0, -90, 0], tam: 0.088 }],
   relogio: [{ osso: 'LeftHand', pos: [0, -0.015, 0], rot: [90, 0, 0], tam: 0.05 }],
   pochete: [{ osso: 'Hips', pos: [0, -0.01, 0.02], rot: [0, -90, 0], tam: 0.21 }],
@@ -2976,7 +2978,7 @@ async function vestirAtleta() {
   if (!a || !Object.keys(a.partes).length) return;
   const versao = ++versaoVestir;
   const ids = Object.values(perfil.usando || {}).filter((id) => ACESSORIOS_3D[id]);
-  const modelos = await Promise.all(ids.map(carregarAcessorio));
+  const modelos = await Promise.all(ids.map((id) => (id === 'bandana' ? true : carregarAcessorio(id))));
   if (versao !== versaoVestir) return;
   const v = new THREE.Vector3(), q = new THREE.Quaternion();
   // personagem de arquivo único: as partes dividem o mesmo boneco, veste uma vez só
@@ -2997,7 +2999,7 @@ async function vestirAtleta() {
         const u = parte.h * escModelo / osso.getWorldScale(v).x; // 1 altura do corredor em unidades do osso
         q.setFromEuler(new THREE.Euler(...cfg.rot.map((g) => (g * Math.PI) / 180)));
         const local = new THREE.Matrix4().compose(new THREE.Vector3(...cfg.pos).multiplyScalar(u), q, new THREE.Vector3(1, 1, 1).multiplyScalar(cfg.tam * u));
-        const obj = modelos[k].clone();
+        const obj = id === 'bandana' ? criarBandana({ largura: cfg.largura }) : modelos[k].clone();
         const casca = new THREE.Group();
         casca.matrixAutoUpdate = false;
         casca.matrix.copy(local);
