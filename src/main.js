@@ -17,6 +17,7 @@ import { rigarQuadrupede, animarQuadrupede } from './quadrupede.js';
 import { preencherBordas } from './textura.js';
 import { criarVitrine } from './vitrine.js';
 import { criarBandana } from './bandana.js';
+import { criarCeu } from './ceu.js';
 import { manchasDeGrama, criarTufos, balancoDeArvore } from './grama.js';
 import { clone as clonarComOssos } from 'three/addons/utils/SkeletonUtils.js';
 import { pistasDuplas, duplaEm } from './osm.js';
@@ -116,6 +117,11 @@ scene.background = textura(16, 256, (g, w, h) => {
   gr.addColorStop(0, '#3d9bff'); gr.addColorStop(0.6, '#9fd6ff'); gr.addColorStop(1, '#e6f6ff');
   g.fillStyle = gr; g.fillRect(0, 0, w, h);
 });
+
+// céu de verdade: degradê, sol e nuvens de ruído andando (o degradê acima fica de reserva)
+const ceu = criarCeu();
+ceu.material.uniforms.uSol.value.copy(SOL_OFFSET).normalize(); // sol do céu no mesmo lugar da luz do jogo
+scene.add(ceu);
 
 // asfalto de 8 m de largura por 8 m de comprimento por repetição
 const texAsfalto = textura(512, 512, (g, w, h) => {
@@ -2704,6 +2710,7 @@ function desenhar(dt) {
   camera.lookAt(s.x + fx * cam.olhar, (alvo.y + chao) / 2 + 1.4, s.z + fz * cam.olhar);
   // câmera livre só para os testes automáticos (fotos aéreas)
   if (s.camTeste) { camera.position.set(...s.camTeste.pos); camera.lookAt(...s.camTeste.alvo); scene.fog.far = 2000; }
+  ceu.position.copy(camera.position);
   renderer.render(scene, camera);
 }
 
