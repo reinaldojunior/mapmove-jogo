@@ -863,6 +863,7 @@ function atualizarCenario(sCorredor) {
 // ─── OBSTÁCULOS E ITENS (EM COORDENADAS DA PISTA: s AO LONGO, d PARA OS LADOS) ─
 
 let entidades = [];
+if (import.meta.env.DEV) window.__dbg = { ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado }; // só no modo de desenvolvimento, para testes
 let postos = [];
 let travessas = [];
 
@@ -1026,6 +1027,8 @@ function carro(s, lado) {
   const modelo = prop(nome) || prop('carro');
   const rodas = [];
   modelo?.traverse((o) => { if (/^wheel_(front|rear)_(left|right)$/.test(o.name)) rodas.push(o); });
+  // raio da roda em metros, já com a escala do carro (sem isso o giro saía ~100× mais lento)
+  modelo?.updateMatrixWorld(true);
   const raioRoda = rodas.length ? new THREE.Box3().setFromObject(rodas[0]).getSize(new THREE.Vector3()).y / 2 : 0.35;
   if (modelo && PINTA.has(nome)) {
     // a pintura principal (o material "body" de cor) ganha uma cor sorteada, só neste carro
