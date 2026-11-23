@@ -29,6 +29,16 @@ Onde poderia entrar no jogo:
 
 Cuidado: shader pesado derruba o FPS no celular; testar sempre no aparelho mais simples.
 
+## Ferramentas 3D (do vídeo do André Elias)
+
+- **Blender** (grátis): editor 3D completo. Para o jogo: ajustar modelos do Meshy/Higgsfield (tirar polígonos,
+  corrigir textura, juntar animações num GLB só), criar cenário próprio (Prefeitura, Parque Mall) e exportar GLB.
+- **Assets 3D prontos**: modelos já feitos, muitos grátis (Kenney, Quaternius, Poly Pizza, Sketchfab com licença
+  CC0/CC-BY). Bons para cenário (bancos, postes, carros, placas) no estilo low-poly do jogo. Conferir a licença.
+- **AccuRIG** (ActorCore, grátis): coloca esqueleto automático em personagem humano, alternativa ao rig do Meshy.
+- **Mixamo** (Adobe, grátis): rig automático + biblioteca enorme de animações (correr, pular, comemorar, tropeçar,
+  alongar). Fluxo: personagem em pose A → Mixamo → baixar cada animação em FBX → Blender → GLB.
+
 ## Pendentes
 
 - Reformular pontos, XP e Move$ (inspirado no Subway Surfers: multiplicador por missões, moedas na pista,
