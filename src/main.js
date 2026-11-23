@@ -410,13 +410,16 @@ async function carregarAtleta(c, id = 'portal') {
 // objetos 3D (carro, mesa de água, barreira): carregados uma vez e clonados para cada uso
 const PROPS = {
   carro: { arquivo: 'carro.glb', comprimento: 3.6, eixo: 'x', giro: 0 },
-  // carros da Kenney (Car Kit, CC0): rodas são peças separadas e giram no jogo; a frente vai para +x
-  'carro-sedan': { arquivo: 'carros/sedan.glb', comprimento: 4.2, eixo: 'x', giro: 0 },
-  'carro-hatch': { arquivo: 'carros/hatchback-sports.glb', comprimento: 4.0, eixo: 'x', giro: 0 },
-  'carro-suv': { arquivo: 'carros/suv.glb', comprimento: 4.5, eixo: 'x', giro: 0 },
-  'carro-taxi': { arquivo: 'carros/taxi.glb', comprimento: 4.3, eixo: 'x', giro: 0 },
-  'carro-van': { arquivo: 'carros/van.glb', comprimento: 4.6, eixo: 'x', giro: 0 },
-  'carro-policia': { arquivo: 'carros/police.glb', comprimento: 4.4, eixo: 'x', giro: 0 },
+  // carros do pacote Free Low Poly Vehicles (Rgsdev, CC0): rodas separadas que giram no jogo; a frente vai para +x
+  'carro-sedan': { arquivo: 'carros/sedan.glb', comprimento: 4.4, eixo: 'x', giro: 0 },
+  'carro-hatch': { arquivo: 'carros/hatchback.glb', comprimento: 4.2, eixo: 'x', giro: 0 },
+  'carro-suv': { arquivo: 'carros/suv.glb', comprimento: 4.6, eixo: 'x', giro: 0 },
+  'carro-taxi': { arquivo: 'carros/taxi.glb', comprimento: 4.5, eixo: 'x', giro: 0 },
+  'carro-picape': { arquivo: 'carros/pickup.glb', comprimento: 5.0, eixo: 'x', giro: 0 },
+  'carro-van': { arquivo: 'carros/van.glb', comprimento: 5.0, eixo: 'x', giro: 0 },
+  'carro-classico': { arquivo: 'carros/muscle.glb', comprimento: 4.8, eixo: 'x', giro: 0 },
+  'carro-esporte': { arquivo: 'carros/sports.glb', comprimento: 4.5, eixo: 'x', giro: 0 },
+  'carro-policia': { arquivo: 'carros/police-sedan.glb', comprimento: 4.6, eixo: 'x', giro: 0 },
   // mesa e cavalete vão pela altura real; o comprimento sai da proporção do modelo
   mesa: { arquivo: 'mesa-agua.glb', altura: 1.0, eixo: 'z', giro: 0 },
   barreira: { arquivo: 'barreira.glb', altura: 1.12, eixo: 'x', giro: 0 },
@@ -1004,7 +1007,10 @@ function ciclista(s, d) {
   });
 }
 
-const CARROS = ['carro-sedan', 'carro-sedan', 'carro-hatch', 'carro-hatch', 'carro-suv', 'carro-suv', 'carro-taxi', 'carro-van', 'carro-policia'];
+const CARROS = ['carro-sedan', 'carro-sedan', 'carro-hatch', 'carro-hatch', 'carro-suv', 'carro-suv', 'carro-picape', 'carro-taxi', 'carro-van', 'carro-classico', 'carro-esporte', 'carro-policia'];
+// cores de carro de rua para variar a pintura (táxi e polícia ficam com as cores deles)
+const PINTURAS = [0xf2f2f2, 0xc9ced6, 0x8a929c, 0x2b2f36, 0x1f3f8f, 0xb3202a, 0x2f6b3a, 0xd9c7a1, 0x5a2a7a, 0xe07b24];
+const PINTA = new Set(['carro-sedan', 'carro-hatch', 'carro-suv', 'carro-picape', 'carro-van', 'carro-classico', 'carro-esporte']);
 function carro(s, lado) {
   const g = new THREE.Group();
   const cor = mat(escolher([0xd9d9d9, 0xe63946, 0x1d4ed8, 0xfacc15, 0x111827]), { roughness: 0.35, metalness: 0.3 });
@@ -1019,8 +1025,20 @@ function carro(s, lado) {
   const nome = prontos.length ? escolher(prontos) : 'carro';
   const modelo = prop(nome) || prop('carro');
   const rodas = [];
-  modelo?.traverse((o) => { if (/^wheel-(front|back)-(left|right)$/.test(o.name)) rodas.push(o); });
-  const raioRoda = 0.3 * (modelo?.scale.x || 1);
+  modelo?.traverse((o) => { if (/^wheel_(front|rear)_(left|right)$/.test(o.name)) rodas.push(o); });
+  const raioRoda = rodas.length ? new THREE.Box3().setFromObject(rodas[0]).getSize(new THREE.Vector3()).y / 2 : 0.35;
+  if (modelo && PINTA.has(nome)) {
+    // a pintura principal (o material "body" de cor) ganha uma cor sorteada, só neste carro
+    const cor = escolher(PINTURAS);
+    modelo.traverse((o) => {
+      if (!o.isMesh) return;
+      const ms = [].concat(o.material).map((m) => {
+        if (!/^body(?!.*(white|black))/i.test(m.name)) return m;
+        const n = m.clone(); n.color.setHex(cor); return n;
+      });
+      o.material = Array.isArray(o.material) ? ms : ms[0];
+    });
+  }
   return addEntidade({ tipo: 'carro', motivo: 'Bateu no carro', obj: modelo || achatar(g), s, d: lado * 16, rot: lado > 0 ? Math.PI : 0, larg: 3.4, prof: 1.7, h: 2.2, gatilho: 55, rodas, raioRoda });
 }
 
