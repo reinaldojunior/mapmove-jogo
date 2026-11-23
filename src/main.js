@@ -19,6 +19,7 @@ import { criarVitrine } from './vitrine.js';
 import { criarBandana } from './bandana.js';
 import { criarCeu } from './ceu.js';
 import * as CL from './clima.js';
+import * as PL from './pelotao.js';
 import { manchasDeGrama, criarTufos, balancoDeArvore } from './grama.js';
 import { clone as clonarComOssos } from 'three/addons/utils/SkeletonUtils.js';
 import { pistasDuplas, duplaEm } from './osm.js';
@@ -488,6 +489,7 @@ const PROPS = {
   'carro-classico': { arquivo: 'carros/muscle.glb', comprimento: 4.8, eixo: 'x', giro: 0 },
   'carro-esporte': { arquivo: 'carros/sports.glb', comprimento: 4.5, eixo: 'x', giro: 0 },
   'carro-policia': { arquivo: 'carros/police-sedan.glb', comprimento: 4.6, eixo: 'x', giro: 0 },
+  ambulancia: { arquivo: 'carros/ambulance.glb', comprimento: 5.6, eixo: 'z', giro: 0 },
   // mesa e cavalete vão pela altura real; o comprimento sai da proporção do modelo
   mesa: { arquivo: 'mesa-agua.glb', altura: 1.0, eixo: 'z', giro: 0 },
   barreira: { arquivo: 'barreira.glb', altura: 1.12, eixo: 'x', giro: 0 },
@@ -629,6 +631,107 @@ function trocarAnimacao(c, nome) {
     parte.acao.reset().play();
   }
   a.atual = parte;
+}
+
+// ─── PELOTÃO: OUTROS CORREDORES (NPCs), MOTO BATEDORA E CARRO LÍDER ─────────────
+const NPC_POR_NIVEL = [10, 6, 3];
+const NPC_TOTAL = 120; // inscritos virtuais na prova (só os perto de você aparecem)
+const npcModelos = [];
+let pelotao = [], npcPool = [];
+(async () => {
+  for (const [arq, clipe] of [['corredora.glb', 'Run_02'], ['maratonista-corrida.glb', null]]) {
+    try {
+      const g = await gltfLoader.loadAsync(`/modelos/${arq}`);
+      prepararMalhaAtleta(g.scene);
+      g.scene.updateMatrixWorld(true);
+      const clip = (clipe && g.animations.find((a) => a.name === clipe)) || g.animations[0];
+      npcModelos.push({ cena: g.scene, clip, box: new THREE.Box3().setFromObject(g.scene, true) });
+    } catch (e) { console.warn('npc', arq, e); }
+  }
+})();
+function criarNpc(k) {
+  const m = npcModelos[k % npcModelos.length];
+  const model = clonarComOssos(m.cena), b = m.box, h = (b.max.y - b.min.y) || 1;
+  model.position.set(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2);
+  model.traverse((o) => { if (o.isMesh) { o.castShadow = nivel === 0; o.frustumCulled = false; } });
+  const grp = new THREE.Group(); grp.add(model);
+  grp.scale.setScalar((ALTURA_ATLETA * aleat(0.92, 1.03)) / h); grp.rotation.y = Math.PI;
+  const holder = new THREE.Group(); holder.add(grp); holder.visible = false; scene.add(holder);
+  const mixer = new THREE.AnimationMixer(model), acao = mixer.clipAction(m.clip);
+  acao.play(); mixer.update(Math.random() * m.clip.duration);
+  return { holder, mixer, npc: null };
+}
+function prepararPelotao() {
+  pelotao = prova ? PL.criarPelotao(NPC_TOTAL, estado.paceBase || R.PACE_BASE) : [];
+  const n = npcModelos.length ? NPC_POR_NIVEL[nivel] || 3 : 0;
+  while (npcPool.length < n) npcPool.push(criarNpc(npcPool.length));
+  for (const p of npcPool) { p.npc = null; p.holder.visible = false; }
+  estado.posicao = null;
+}
+function desenharPelotao(dt) {
+  const s = estado, n = Math.min(npcPool.length, NPC_POR_NIVEL[nivel] || 3);
+  // os mais perto do corredor (um pouco atrás até bem à frente) ganham um boneco
+  const perto = pelotao.filter((c) => c.s > s.s - 25 && c.s < s.s + 110).sort((a, b) => Math.abs(a.s - s.s) - Math.abs(b.s - s.s)).slice(0, n);
+  const usados = new Set(perto);
+  for (const p of npcPool) if (p.npc && !usados.has(p.npc)) { p.npc = null; p.holder.visible = false; }
+  for (const c of perto) {
+    let p = npcPool.find((q) => q.npc === c);
+    if (!p) { p = npcPool.slice(0, n).find((q) => !q.npc); if (!p) continue; p.npc = c; }
+    const e = emEst(c.s), [rx, rz] = direita(e.ang);
+    p.holder.position.set(e.x + rx * c.d, e.y, e.z + rz * c.d);
+    p.holder.rotation.y = -e.ang;
+    p.holder.visible = true;
+    p.mixer.update(s.modo === 'jogando' ? dt * (s.paceBase / c.pace) : 0);
+  }
+  desenharLideres();
+}
+
+// moto batedora com giroflex e carro líder com o cronômetro da prova, abrindo caminho para quem lidera
+const lideres = (() => {
+  const moto = new THREE.Group();
+  const preto = mat(0x1d1f24), branco = mat(0xf2f2f2);
+  for (const z of [-0.75, 0.75]) { const r = malha(G.cilindro, preto, 0, 0.34, z); r.scale.set(0.34, 0.12, 0.34); r.rotation.z = Math.PI / 2; moto.add(r); }
+  const tanque = malha(G.caixa, branco, 0, 0.72, 0); tanque.scale.set(0.34, 0.32, 1.3); moto.add(tanque);
+  const piloto = malha(G.caixa, mat(0x1356c9), 0, 1.25, -0.1); piloto.scale.set(0.45, 0.7, 0.35); moto.add(piloto);
+  const capacete = malha(G.esfera, branco, 0, 1.75, -0.05); capacete.scale.setScalar(0.2); moto.add(capacete);
+  const luzes = [0xff2a2a, 0x2a6bff].map((cor, i) => { const l = malha(G.esfera, new THREE.MeshStandardMaterial({ color: cor, emissive: cor, emissiveIntensity: 2 }), (i ? 0.12 : -0.12), 1.05, -0.75); l.scale.setScalar(0.08); moto.add(l); return l; });
+  moto.visible = false; scene.add(moto);
+  const carro = new THREE.Group(); carro.visible = false; scene.add(carro);
+  const c = document.createElement('canvas'); c.width = 256; c.height = 96;
+  const texCrono = new THREE.CanvasTexture(c);
+  return { moto, luzes, carro, c, texCrono, montado: false, seg: -1 };
+})();
+function desenharLideres() {
+  const s = estado, L = lideres;
+  const ativo = !!prova && (s.modo === 'jogando' || s.modo === 'contagem');
+  const frente = ativo ? PL.lider(pelotao, s.s) : 0;
+  if (ativo && !L.montado && PROPS['carro-picape']?.modelo) {
+    const m = prop('carro-picape');
+    const painel = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.56), new THREE.MeshBasicMaterial({ map: L.texCrono }));
+    painel.position.set(-1.2 / m.scale.x, 2.1 / m.scale.x, 0); painel.rotation.y = -Math.PI / 2; painel.scale.setScalar(1 / m.scale.x);
+    m.add(painel);
+    const suporte = malha(G.caixa, mat(0x222222), -1.2 / m.scale.x, 1.75 / m.scale.x, 0); suporte.scale.set(0.1 / m.scale.x, 0.5 / m.scale.x, 1.6 / m.scale.x); m.add(suporte);
+    L.carro.add(m); L.montado = true;
+  }
+  const pos = (obj, sAlvo, giro) => {
+    const e = emEst(sAlvo), [rx, rz] = direita(e.ang);
+    obj.position.set(e.x + rx * 0.6, e.y, e.z + rz * 0.6); obj.rotation.y = -e.ang + giro;
+    obj.visible = ativo && sAlvo > s.s - 15 && sAlvo < s.s + 220;
+  };
+  pos(L.moto, frente + 28, 0);
+  pos(L.carro, frente + 52, Math.PI / 2);
+  const pisca = Math.floor(s.t * 6) % 2;
+  L.luzes[0].visible = !!pisca; L.luzes[1].visible = !pisca;
+  // cronômetro da prova no carro (atualiza uma vez por segundo)
+  const seg = Math.floor(s.tempoReal || 0);
+  if (L.carro.visible && seg !== L.seg) {
+    L.seg = seg;
+    const g = L.c.getContext('2d');
+    g.fillStyle = '#0b0b0b'; g.fillRect(0, 0, 256, 96);
+    g.fillStyle = '#ffde3b'; g.font = 'bold 62px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(R.formatarTempo(seg), 128, 50);
+    L.texCrono.needsUpdate = true;
+  }
 }
 
 function animarAtleta(c, dt, { anim, ritmo = 1, noAr = false, agachado = false }) {
@@ -1152,6 +1255,59 @@ function postoHidratacao(s, lado) {
   addEntidade({ tipo: 'decor', fixo: !!prova, obj: achatar(g), s, d: 0 });
   for (const ds of [0, 9]) mesaAgua(s + ds, lado);
   postos.push({ s, lado, avisado: false });
+  coposNoChao(s + 12, lado);
+}
+
+// ─── DETALHES DE PROVA: copos no chão, fotógrafo, ambulância, tapete do chip, fiscais nas esquinas ──
+// copos amassados espalhados depois do posto (mais perto do lado da mesa)
+function coposNoChao(s, lado) {
+  const g = new THREE.Group(), branco = mat(0xf3f6fa), azul = mat(0x2a7de1);
+  for (let i = 0; i < 26; i++) {
+    const c = malha(G.cilindro, Math.random() < 0.8 ? branco : azul, 0, 0.04, 0);
+    c.scale.set(0.07, 0.11, 0.07);
+    c.rotation.set(Math.PI / 2, 0, Math.random() * Math.PI);
+    const d = lado * Math.min(3.6, Math.abs(aleat(-1.5, 3.8))) * (Math.random() < 0.25 ? -0.6 : 1);
+    c.position.set(d, 0.04, -aleat(0, 34));
+    c.scale.y *= aleat(0.5, 1); // uns mais amassados
+    g.add(c);
+  }
+  addEntidade({ tipo: 'decor', fixo: !!prova, obj: achatar(g), s, d: 0 });
+}
+
+// fotógrafo agachado na beira, com flash de vez em quando
+function fotografo(s, lado) {
+  const g = new THREE.Group();
+  const p = torcedor(); p.scale.y = 0.72; p.rotation.y = -lado * Math.PI / 2; g.add(p);
+  const camera3d = malha(G.caixa, mat(0x111111), -lado * 0.25, 1.15, 0); camera3d.scale.set(0.22, 0.16, 0.14); g.add(camera3d);
+  const flash = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95 }));
+  flash.position.set(-lado * 0.38, 1.2, 0); flash.visible = false; g.add(flash);
+  return addEntidade({ tipo: 'decor', fixo: !!prova, obj: g, s, d: lado * (R.LIMITE_CALCADA - 0.4), flash, anima(t) { this.flash.visible = (t * 1.3 + s) % 3 < 0.08; } });
+}
+
+// ambulância parada na beira com o giroflex ligado
+function ambulancia(s, lado) {
+  const m = prop('ambulancia');
+  if (!m) return;
+  const luzes = [0xff2a2a, 0x2a6bff].map((cor, i) => {
+    const l = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshBasicMaterial({ color: cor }));
+    l.position.set((i ? 0.3 : -0.3), 2.95, 0.5); return l;
+  });
+  const g = new THREE.Group(); g.add(m); for (const l of luzes) g.add(l);
+  return addEntidade({ tipo: 'decor', fixo: !!prova, obj: g, s, d: lado * (R.LIMITE_CALCADA + 3.6), rot: 0, luzes, anima(t) { const k = Math.floor(t * 5) % 2; this.luzes[0].visible = !!k; this.luzes[1].visible = !k; } });
+}
+
+// tapete do chip atravessando a rua (largada e chegada)
+const texTapete = textura(512, 64, (g, w, h) => {
+  g.fillStyle = '#0e2a5c'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#1e88ff'; for (let x = 0; x < w; x += 64) g.fillRect(x, 0, 30, h);
+  g.fillStyle = '#ffffff'; g.font = 'bold 34px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (let x = 64; x < w; x += 128) g.fillText('CHIP', x, h / 2);
+});
+function tapeteChip(s) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(8.4, 1.4), new THREE.MeshStandardMaterial({ map: texTapete, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -8 }));
+  m.rotation.x = -Math.PI / 2; m.position.y = 0.06;
+  const g = new THREE.Group(); g.add(m);
+  return addEntidade({ tipo: 'decor', fixo: true, obj: g, s, d: 0 });
 }
 
 function mesaAgua(s, lado) {
@@ -1250,6 +1406,22 @@ function adicionarPistaTravessa(t, sPista) {
     t.objs.push(rua, zebra);
   }
   if (t.principal) {
+    // rua fechada para a prova: cones na boca da travessa e um fiscal de colete laranja
+    for (const lado of t.lados) {
+      for (let k = -2; k <= 2; k++) {
+        const c = new THREE.Group();
+        const base = malha(G.caixa, mat(0xff6a00), 0, 0.04, 0); base.scale.set(0.6, 0.08, 0.6); c.add(base);
+        const cone3d = malha(G.cone, mat(0xff6a00), 0, 0.4, 0); cone3d.scale.set(0.24, 0.72, 0.24); c.add(cone3d);
+        const q = emEst(sPista + k * 1.4), [qx, qz] = direita(q.ang);
+        c.position.set(q.x + qx * lado * (R.LIMITE_CALCADA + 1.2), q.y, q.z + qz * lado * (R.LIMITE_CALCADA + 1.2));
+        t.objs.push(c);
+      }
+      const fiscal = torcedor(); fiscal.children[0].material = mat(0xff8c1a);
+      const q = emEst(sPista + 4.2), [qx, qz] = direita(q.ang);
+      fiscal.position.set(q.x + qx * lado * (R.LIMITE_CALCADA + 0.4), q.y, q.z + qz * lado * (R.LIMITE_CALCADA + 0.4));
+      fiscal.rotation.y = -q.ang + (lado > 0 ? -Math.PI / 2 : Math.PI / 2);
+      t.objs.push(fiscal);
+    }
     // faixa de pedestre atravessando a rua da prova, colada no asfalto
     const zebra = planoChao(8, 2.6, matZebra);
     zebra.position.set(p.x, p.y + 0.05, p.z);
@@ -2138,6 +2310,9 @@ function prepararPercurso(escolha) {
     portico(6, 'LARGADA', { cor: '#1fae5b', corTexto: '#ffffff' });
     for (let km = 1; km * 1000 < pista.total - 150; km++) portico(km * 1000, `${km} KM`);
     portico(pista.total, 'CHEGADA', { cor: '#e63946', corTexto: '#ffffff' });
+    tapeteChip(6); tapeteChip(pista.total);
+    for (let km = 1; km * 1000 < pista.total - 300; km += 2) fotografo(km * 1000 + 18, Math.random() < 0.5 ? -1 : 1);
+    { const sa = pista.total * 0.5, du = duplaEm(duplas, sa); ambulancia(sa, du ? -du.lado : (Math.random() < 0.5 ? -1 : 1)); }
     for (const p of postosDaProva(prova.rotulo)) postoHidratacao(p.s, p.lado);
     desenharMapaBase();
     carregarOSM(escolha.distancia, pista);
@@ -2241,6 +2416,11 @@ function desenharMinimapa() {
 
 let hudTimer = 0;
 function atualizarHud() {
+  {
+    const p = estado.posicao, el = $('#hudPos');
+    el.hidden = !p;
+    if (p) $('#hudPosTxt').textContent = `${p.posicao}º/${p.total}`;
+  }
   {
     // clima: temperatura e de onde vem o vento em relação ao corredor
     const c = estado.clima, el = $('#hudClima');
@@ -2389,6 +2569,7 @@ function iniciar(escolha, clima) {
   reiniciar();
   estado.clima = clima || CL.sortearClima();
   aplicarClima(estado.clima);
+  prepararPelotao();
   aplicarEquipamento();
   atualizarHud();
   estado.modo = 'contagem';
@@ -2470,7 +2651,8 @@ function terminar(titulo, concluiu = false) {
     cel('Distância', `${R.formatarKm(dist)} km`), cel('Tempo', R.formatarTempo(s.tempoReal)),
     cel('Pace médio', paceMedio ? R.formatarPace(1000 / paceMedio) : '--:--'),
     cel('Pontos', pontos.toLocaleString('pt-BR')), cel('Penalidades', `${s.penal}/${R.PENALIDADES_MAX}`),
-    cel('Água', `${Math.round(s.agua)}%`)
+    cel('Água', `${Math.round(s.agua)}%`),
+    ...(s.posicao ? [cel('Colocação', `${s.posicao.posicao}º de ${s.posicao.total}`)] : [])
   ].join('');
   let rec = '';
   if (prova) {
@@ -2637,6 +2819,17 @@ function passo(dt) {
     const idx = Math.floor(s.fase / Math.PI);
     if (idx !== s.passoIdx) { s.passoIdx = idx; if (s.y === 0) som.passo(Math.abs(s.d) > R.MEIA_RUA); }
     if (Math.abs(s.d) > R.LIMITE_CALCADA) penalizar();
+    if (pelotao.length) {
+      PL.avancarPelotao(pelotao, dt, s.t, s);
+      const pos = PL.colocacao(pelotao, s.s);
+      s.posicao = pos;
+      if (pos.ultrapassagens) s.pontos += 5 * pos.ultrapassagens;
+      // esbarrão: perde um pouco de velocidade, sem penalidade
+      for (const c of pelotao) {
+        if (s.s < 40 || c.esbarrou || Math.abs(c.s - s.s) > 0.7 || Math.abs(c.d - s.d) > 0.55 || s.y > 0.3) continue; // na largada todo mundo está junto
+        c.esbarrou = true; s.v *= 0.85; aviso('😬 Esbarrou num corredor', 'alerta', 900);
+      }
+    }
     if (s.modo !== 'jogando') return;
     if (prova && s.s >= pista.total) return terminar(`🏁 Chegada! ${prova.rotulo} concluído`, true);
   }
@@ -2794,6 +2987,7 @@ function desenhar(dt) {
   if (s.camTeste) { camera.position.set(...s.camTeste.pos); camera.lookAt(...s.camTeste.alvo); scene.fog.far = 2000; }
   ceu.position.copy(camera.position);
   animarChuva(Math.min(dt || 0.016, 0.05));
+  desenharPelotao(Math.min(dt || 0.016, 0.05));
   renderer.render(scene, camera);
 }
 
@@ -3240,6 +3434,7 @@ async function vestirAtleta() {
 
 function mostrarInicio() {
   estado.clima = null; aplicarClima(null); // tela inicial com o céu de sempre
+  pelotao = []; estado.posicao = null;
   sincronizarStrava();
   entregarPremios(); // quem já tinha subido de nível antes da loja existir também ganha
   mostrarPerfil();
