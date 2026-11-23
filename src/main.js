@@ -410,6 +410,13 @@ async function carregarAtleta(c, id = 'portal') {
 // objetos 3D (carro, mesa de água, barreira): carregados uma vez e clonados para cada uso
 const PROPS = {
   carro: { arquivo: 'carro.glb', comprimento: 3.6, eixo: 'x', giro: 0 },
+  // carros da Kenney (Car Kit, CC0): rodas são peças separadas e giram no jogo; a frente vai para +x
+  'carro-sedan': { arquivo: 'carros/sedan.glb', comprimento: 4.2, eixo: 'x', giro: 0 },
+  'carro-hatch': { arquivo: 'carros/hatchback-sports.glb', comprimento: 4.0, eixo: 'x', giro: 0 },
+  'carro-suv': { arquivo: 'carros/suv.glb', comprimento: 4.5, eixo: 'x', giro: 0 },
+  'carro-taxi': { arquivo: 'carros/taxi.glb', comprimento: 4.3, eixo: 'x', giro: 0 },
+  'carro-van': { arquivo: 'carros/van.glb', comprimento: 4.6, eixo: 'x', giro: 0 },
+  'carro-policia': { arquivo: 'carros/police.glb', comprimento: 4.4, eixo: 'x', giro: 0 },
   // mesa e cavalete vão pela altura real; o comprimento sai da proporção do modelo
   mesa: { arquivo: 'mesa-agua.glb', altura: 1.0, eixo: 'z', giro: 0 },
   barreira: { arquivo: 'barreira.glb', altura: 1.12, eixo: 'x', giro: 0 },
@@ -997,6 +1004,7 @@ function ciclista(s, d) {
   });
 }
 
+const CARROS = ['carro-sedan', 'carro-sedan', 'carro-hatch', 'carro-hatch', 'carro-suv', 'carro-suv', 'carro-taxi', 'carro-van', 'carro-policia'];
 function carro(s, lado) {
   const g = new THREE.Group();
   const cor = mat(escolher([0xd9d9d9, 0xe63946, 0x1d4ed8, 0xfacc15, 0x111827]), { roughness: 0.35, metalness: 0.3 });
@@ -1006,8 +1014,14 @@ function carro(s, lado) {
   for (const px of [-0.95, 0.95]) for (const pz of [-0.78, 0.78]) {
     const r = malha(G.cilindro, mat(0x111111), px, 0.36, pz); r.scale.set(0.36, 0.22, 0.36); r.rotation.x = Math.PI / 2; g.add(r);
   }
-  const modelo = prop('carro');
-  return addEntidade({ tipo: 'carro', motivo: 'Bateu no carro', obj: modelo || achatar(g), s, d: lado * 16, rot: lado > 0 ? Math.PI : 0, larg: 3.4, prof: 1.7, h: 2.2, gatilho: 55 });
+  // sorteia um dos carros que já carregaram (a polícia aparece menos)
+  const prontos = CARROS.filter((n) => PROPS[n].modelo);
+  const nome = prontos.length ? escolher(prontos) : 'carro';
+  const modelo = prop(nome) || prop('carro');
+  const rodas = [];
+  modelo?.traverse((o) => { if (/^wheel-(front|back)-(left|right)$/.test(o.name)) rodas.push(o); });
+  const raioRoda = 0.3 * (modelo?.scale.x || 1);
+  return addEntidade({ tipo: 'carro', motivo: 'Bateu no carro', obj: modelo || achatar(g), s, d: lado * 16, rot: lado > 0 ? Math.PI : 0, larg: 3.4, prof: 1.7, h: 2.2, gatilho: 55, rodas, raioRoda });
 }
 
 function moeda(s, d) {
@@ -2445,6 +2459,8 @@ function passo(dt) {
       e.rot = e.vd > 0 ? 0 : Math.PI;
     }
     if (e.vd) e.d += e.vd * dt;
+    // rodas girando conforme a velocidade do carro (frente para onde ele anda)
+    if (e.rodas?.length && e.vd) for (const r of e.rodas) r.rotation.x += (Math.abs(e.vd) * dt) / e.raioRoda;
     if (e.anima) e.anima(s.t);
     colocar(e);
     if (e.tipo === 'decor' || e.pego || e.atingido) continue;
