@@ -456,6 +456,8 @@ const PROPS = {
   padaria: { arquivo: 'padaria.glb', comprimento: 10, giro: -Math.PI / 2 },
   mercado: { arquivo: 'mercado.glb', comprimento: 15, giro: 0 },
   posto: { arquivo: 'posto.glb', comprimento: 18, giro: -Math.PI / 2 },
+  // Centro Cultural "Piano" (modelo do Meshy, reduzido para 20 mil triângulos)
+  piano: { arquivo: 'piano.glb', comprimento: 46, eixo: 'x', giro: 0 },
 };
 
 async function carregarProp(nome) {
@@ -1628,6 +1630,13 @@ function colocarLocais() {
 // Centro Cultural Hermenegildo Pinto, o "Piano": paredão branco com faixas pretas (teclas), telhado ondulado
 // e o bloco preto da ponta com o nome. A frente (+z) olha para o percurso.
 function centroPiano() {
+  // com o modelo 3D carregado, usa ele; senão, a versão montada no código
+  const modelo = prop('piano');
+  if (modelo) {
+    const tam = PROPS.piano.tamanho;
+    modelo.userData = { prof: tam.z, raio: tam.x / 2 + 8, vista: tam.x / 2 + 6 };
+    return modelo;
+  }
   const g = new THREE.Group();
   const L = 46, H = 8, PROF = 16, ONDA = 1.4;
   const topo = (x) => H + ONDA * Math.sin(((x + L / 2) / L) * Math.PI * 3.5);
