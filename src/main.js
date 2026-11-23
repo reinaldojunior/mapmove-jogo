@@ -19,6 +19,7 @@ import { criarVitrine } from './vitrine.js';
 import { criarBandana } from './bandana.js';
 import { manchasDeGrama, criarTufos, balancoDeArvore } from './grama.js';
 import { clone as clonarComOssos } from 'three/addons/utils/SkeletonUtils.js';
+import { pistasDuplas, duplaEm } from './osm.js';
 import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono, placasDoPercurso, abreviarRua } from './osm.js';
 
 const SUPABASE_URL = 'https://ssfsxdmzbubvygctdjgf.supabase.co';
@@ -134,6 +135,23 @@ const texAsfalto = textura(512, 512, (g, w, h) => {
   g.fillStyle = 'rgba(255,255,255,0.85)';
   for (let y = 0; y < h; y += 256) g.fillRect(px(0) - 5, y + 30, 10, 140);
 });
+
+// asfalto de avenida (mão única, 3 faixas): tracejado a cada terço; `azul` = linhas azuis da prova nas bordas
+function texAsfaltoFaixas(azul) {
+  return textura(512, 512, (g, w, h) => {
+    g.fillStyle = '#4a4e55'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 6; i++) {
+      g.fillStyle = `rgba(${Math.random() < 0.5 ? '30,32,36' : '95,98,104'},0.35)`;
+      g.fillRect(Math.random() * w, Math.random() * h, 40 + Math.random() * 120, 30 + Math.random() * 90);
+    }
+    for (let i = 0; i < 4000; i++) { const c = 55 + Math.random() * 50; g.fillStyle = `rgba(${c},${c},${c + 6},0.5)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+    const px = (x) => ((x + 4) / 8) * w;
+    if (azul) { g.fillStyle = '#1e88ff'; for (const x of [-3.6, 3.6]) g.fillRect(px(x) - 7, 0, 14, h); }
+    else { g.fillStyle = 'rgba(255,255,255,0.8)'; for (const x of [-3.8, 3.8]) g.fillRect(px(x) - 4, 0, 8, h); }
+    g.fillStyle = 'rgba(255,255,255,0.85)';
+    for (const x of [-1.33, 1.33]) for (let y = 0; y < h; y += 256) g.fillRect(px(x) - 5, y + 30, 10, 140);
+  });
+}
 
 const texCalcada = textura(256, 256, (g, w, h) => {
   g.fillStyle = '#d9d4c7'; g.fillRect(0, 0, w, h);
@@ -718,7 +736,7 @@ function fita(amostras, d0, d1, material, { vCada = 8, dy = 0, inclinacao = fals
     const ang = Math.atan2(next.x - prev.x, -(next.z - prev.z));
     const [rx, rz] = direita(ang);
     for (let k = 0; k < 2; k++) {
-      const d = k === 0 ? d0 : d1, j = (i * 2 + k);
+      const dd = k === 0 ? d0 : d1, d = typeof dd === 'function' ? dd(a) : dd, j = (i * 2 + k);
       pos[j * 3] = a.x + rx * d; pos[j * 3 + 1] = a.y + dy; pos[j * 3 + 2] = a.z + rz * d;
       uv[j * 2] = k; uv[j * 2 + 1] = a.s / vCada;
       if (cor) { corInclinacao(a.inclinacao, c); cor[j * 3] = c.r; cor[j * 3 + 1] = c.g; cor[j * 3 + 2] = c.b; }
@@ -761,6 +779,8 @@ function ondeTufo(s, d) {
   // nada de grama nas ruas que cruzam nem em cima de outro trecho do percurso
   if (travessas.some((t) => Math.abs(t.s - s) < 5 + (t.vao || 0) / 2 && t.lados.includes(Math.sign(d)))) return { ok: false };
   if (Number.isFinite(pista.total) && pista.pertoDe(x, z, 20).dist < R.LIMITE_CALCADA + 0.3) return { ok: false };
+  const du = duplaEm(duplas, s);
+  if (du && Math.sign(d) === du.lado && Math.abs(d) > du.dist - 4.8 && Math.abs(d) < du.dist + 7) return { ok: false };
   return { ok: true, x, y: p.y - 0.02, z };
 }
 function montarTufos() { tufos.montar(TUFOS_POR_NIVEL[nivel] || 0, estado?.s || 0, ondeTufo); }
@@ -799,6 +819,7 @@ const JANELA = 300;
 let cenario = [];
 let areasSemArvore = []; // [x, z, raio] dos marcos da cidade: sem árvores nem enfeites em volta
 let zonas = null; // zonas do percurso (parque, cidade, livre) quando há dados do OpenStreetMap
+let duplas = []; // trechos de avenida com canteiro e outra pista ao lado (ver pistasDuplas)
 const giroAleatorio = () => aleat(0, Math.PI * 2);
 const arvoreDaBeira = () => {
   const r = Math.random();
@@ -833,7 +854,10 @@ function posicionarCenario(item, s) {
   const combina = sorteio(s, item.k) < (item.molde.densidade[zona] ?? 0);
   // nada de enfeite (árvore, poste, banco) na frente dos marcos da cidade
   const naFrenteDeMarco = areasSemArvore.some(([ax, az, r]) => (x - ax) ** 2 + (z - az) ** 2 < (r + 6) * (r + 6));
-  item.obj.visible = !fora && !invade && !naTravessa && combina && !naFrenteDeMarco;
+  // avenida dupla: nada de torcida, árvore ou prédio no canteiro e na outra pista
+  const du = duplaEm(duplas, s);
+  const naAvenida = du && Math.sign(item.d) === du.lado && Math.abs(item.d) < du.dist + 7;
+  item.obj.visible = !fora && !invade && !naTravessa && combina && !naFrenteDeMarco && !naAvenida;
   item.obj.position.set(x, p.y, z);
   item.obj.rotation.y = -p.ang + (item.rot || 0);
 }
@@ -1434,6 +1458,52 @@ function construirOSM() {
     gr.renderOrder = -1;
     visual.add(gr);
   }
+  construirAvenidas();
+}
+
+// ─── AVENIDAS DE PISTA DUPLA: 3 FAIXAS, CANTEIRO DE GRAMA COM GUIAS E POSTES, A OUTRA PISTA AO LADO ──
+const matRuaFaixas = new THREE.MeshStandardMaterial({ map: texAsfaltoFaixas(true), roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6 });
+const matRuaOutra = new THREE.MeshStandardMaterial({ map: texAsfaltoFaixas(false), roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -5, polygonOffsetUnits: -5 });
+const matCanteiro = manchasDeGrama(new THREE.MeshStandardMaterial({ map: texGrama, color: 0xd8ecc8, roughness: 1, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }));
+const matGuia = new THREE.MeshStandardMaterial({ color: 0xc9c6bd, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -7, polygonOffsetUnits: -7 });
+const matCalcadaLisa = new THREE.MeshStandardMaterial({ color: 0xcfcac0, roughness: 1, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+function construirAvenidas() {
+  if (visual.userData.avenidas) visual.remove(visual.userData.avenidas);
+  const grupo = new THREE.Group();
+  visual.userData.avenidas = grupo;
+  visual.add(grupo);
+  const amostras = visual.userData.amostras || [];
+  for (const t of duplas) {
+    const sub = amostras.filter((a) => a.s >= t.s0 && a.s <= t.s1);
+    if (sub.length < 3) continue;
+    const L = t.lado, D = (a) => t.dist[Math.min(t.dist.length - 1, Math.max(0, Math.round((a.s - t.s0) / t.passo)))];
+    // faixa entre dois afastamentos (sempre do menor para o maior, dos dois lados)
+    const faixa = (f0, f1, mat, opts) => grupo.add(fita(sub, L > 0 ? f0 : (a) => -f1(a), L > 0 ? f1 : (a) => -f0(a), mat, opts));
+    const k = (v) => () => v;
+    const M = R.MEIA_RUA, OUTRA = 4.2;
+    // pista do corredor vira mão única de 3 faixas
+    grupo.add(fita(sub, -M, M, matRuaFaixas, { inclinacao: true, dy: 0.01 }));
+    // guia, canteiro, guia
+    faixa(k(M), k(M + 0.3), matGuia, { vCada: 4, dy: 0.15 });
+    faixa(k(M + 0.3), (a) => D(a) - OUTRA - 0.3, matCanteiro, { vCada: 4, dy: 0.12 });
+    faixa((a) => D(a) - OUTRA - 0.3, (a) => D(a) - OUTRA, matGuia, { vCada: 4, dy: 0.15 });
+    // a outra pista (mão contrária) e a calçada do outro lado
+    faixa((a) => D(a) - OUTRA, (a) => D(a) + OUTRA, matRuaOutra, { inclinacao: true, dy: 0.1 });
+    faixa((a) => D(a) + OUTRA, (a) => D(a) + OUTRA + 0.3, matGuia, { vCada: 4, dy: 0.15 });
+    faixa((a) => D(a) + OUTRA + 0.3, (a) => D(a) + OUTRA + 2.6, matCalcadaLisa, { vCada: 4, dy: 0.08 });
+    // postes de luz no meio do canteiro, a cada ~40 m
+    const modelo = PROPS.poste?.modelo;
+    for (let s = t.s0 + 15; s < t.s1 - 10; s += 40) {
+      const p = emEst(s), du = duplaEm([t], s);
+      if (!du || du.dist - OUTRA - M < 2.5) continue;
+      const meio = L * (M + 0.3 + (du.dist - OUTRA - 0.3)) / 2;
+      const [rx, rz] = direita(p.ang);
+      const poste = modelo ? modelo.clone() : (() => { const g = new THREE.Group(); const h = malha(G.cilindro, mat(0x9aa3ad), 0, 4, 0); h.scale.set(0.12, 8, 0.12); g.add(h); return g; })();
+      poste.position.set(p.x + rx * meio, p.y + 0.12, p.z + rz * meio);
+      poste.rotation.y = -p.ang + Math.PI / 2;
+      grupo.add(poste);
+    }
+  }
 }
 
 // ─── FACHADAS (IGREJA, ESCOLA, COMÉRCIO, POSTO) E MARCOS DA CIDADE ────────────
@@ -1727,6 +1797,7 @@ async function carregarOSM(distancia, pistaAlvo) {
   if (!dados) return carregarTravessas(distancia, pistaAlvo);
   osm = prepararOSM(dados, pistaAlvo.paraLocal);
   zonas = zonasDoPercurso(osm, pistaAlvo);
+  duplas = pistasDuplas(osm, pistaAlvo);
   construirOSM();
   const cruzamentos = encontrarTravessas(pistaAlvo, osm.vias).map((t) => ({ ...t, carro: false }));
   definirTravessas(cruzamentos);
@@ -1944,7 +2015,7 @@ function prepararPercurso(escolha) {
     prova = null;
   }
   definirFaixas(prova ? prova.nome : 'CORRIDA DE RUA');
-  osm = null; zonas = null;
+  osm = null; zonas = null; duplas = [];
   construirVisual();
   construirOSM();
   definirTravessas([]);

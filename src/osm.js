@@ -174,3 +174,69 @@ export function placasDoPercurso(osm, pista, travessas = []) {
   }
   return finais.sort((a, b) => a.s - b.s);
 }
+
+// avenidas de pista dupla: onde a rua do percurso tem uma "gêmea" com o mesmo nome, paralela, do outro lado
+// de um canteiro. Devolve trechos { s0, s1, lado (-1 esquerda / 1 direita), passo, dist[] } com a distância
+// entre o eixo da pista do corredor e o eixo da outra pista, a cada `passo` metros.
+export function pistasDuplas(osm, pista, passo = 5) {
+  const amostras = [];
+  for (let s = 0; s <= pista.total; s += passo) {
+    const p = pista.em(s);
+    const fx = Math.sin(p.ang), fz = -Math.cos(p.ang);
+    const rx = -fz, rz = fx; // direita
+    let propria = null;
+    const candidatas = [];
+    for (const r of osm.ruas) {
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const [ax, az] = r.pts[i], [bx, bz] = r.pts[i + 1];
+        const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz;
+        if (l2 < 1) continue;
+        if (Math.abs(dx * fx + dz * fz) / Math.sqrt(l2) < 0.94) continue; // paralela (±20°)
+        const t = Math.max(0, Math.min(1, ((p.x - ax) * dx + (p.z - az) * dz) / l2));
+        const qx = ax + dx * t, qz = az + dz * t;
+        const lat = (qx - p.x) * rx + (qz - p.z) * rz;
+        const ao = Math.abs((qx - p.x) * fx + (qz - p.z) * fz);
+        if (ao > 6) continue; // o ponto mais perto tem que estar "do lado", não lá na frente
+        if (Math.abs(lat) < 7) { if (!propria || Math.abs(lat) < propria.d) propria = { nome: r.nome, d: Math.abs(lat) }; }
+        else if (Math.abs(lat) <= 40) candidatas.push({ nome: r.nome, lat });
+      }
+    }
+    const gemea = propria && candidatas.filter((c) => c.nome === propria.nome).sort((a, b) => Math.abs(a.lat) - Math.abs(b.lat))[0];
+    amostras.push(gemea ? { lado: Math.sign(gemea.lat), dist: Math.abs(gemea.lat) } : null);
+  }
+  // junta em trechos (mesmo lado), preenche falhas curtas e descarta trechos pequenos
+  const trechos = [];
+  amostras.forEach((a, i) => {
+    if (!a) return;
+    const s = i * passo, ult = trechos[trechos.length - 1];
+    if (ult && ult.lado === a.lado && s - ult.s1 <= 40) { ult.s1 = s; ult.pts.push([s, a.dist]); }
+    else trechos.push({ s0: s, s1: s, lado: a.lado, pts: [[s, a.dist]] });
+  });
+  return trechos.filter((t) => t.s1 - t.s0 >= 80).map((t) => {
+    // distância a cada passo, interpolando as falhas e suavizando (média móvel de ~40 m)
+    const n = Math.round((t.s1 - t.s0) / passo) + 1, bruta = new Array(n).fill(null);
+    for (const [s, d] of t.pts) bruta[Math.round((s - t.s0) / passo)] = d;
+    let ant = 0;
+    for (let i = 0; i < n; i++) {
+      if (bruta[i] != null) { ant = i; continue; }
+      let prox = i; while (prox < n && bruta[prox] == null) prox++;
+      bruta[i] = prox < n ? bruta[ant] + (bruta[prox] - bruta[ant]) * ((i - ant) / (prox - ant)) : bruta[ant];
+    }
+    const dist = bruta.map((_, i) => {
+      let soma = 0, k = 0;
+      for (let j = Math.max(0, i - 4); j <= Math.min(n - 1, i + 4); j++) { soma += bruta[j]; k++; }
+      return Math.max(11, Math.min(30, soma / k));
+    });
+    return { s0: t.s0, s1: t.s1, lado: t.lado, passo, dist };
+  });
+}
+
+// avenida dupla neste ponto do percurso? { lado, dist } ou null
+export function duplaEm(duplas, s) {
+  for (const t of duplas || []) {
+    if (s < t.s0 || s > t.s1) continue;
+    const i = Math.min(t.dist.length - 1, Math.max(0, Math.round((s - t.s0) / t.passo)));
+    return { lado: t.lado, dist: t.dist[i] };
+  }
+  return null;
+}
