@@ -575,3 +575,8 @@ kbd {
 
 #hudFantasma[hidden], #btnDesafiar[hidden] { display: none; }
 .pilula.fantasma { background: rgba(120, 90, 200, 0.75); }
+
+/* escolha da prova */
+.provas-abas { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.provas-abas button { padding: 5px 12px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.14); color: #fff; font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; }
+.provas-abas button.ativa { background: #ffd21f; color: #2a1a00; }

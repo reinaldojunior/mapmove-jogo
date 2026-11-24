@@ -30,9 +30,14 @@ import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono, placasDo
 
 const SUPABASE_URL = 'https://ssfsxdmzbubvygctdjgf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_s2yoUApfYl_ZvSUkqYYrVw_uXwKsybM';
-const PROVA_SLUG = '1-meia-maratona-de-indaiatuba-2026-12-13';
-// nome mostrado no jogo (genérico, sem o nome oficial do evento, para não usar a marca dos organizadores)
-const NOME_NO_JOGO = { '1-meia-maratona-de-indaiatuba-2026-12-13': 'Meia de Indaiatuba' };
+// provas do jogo: percurso vem do Portal (Supabase) e o entorno de public/osm/<slug>.json.
+// O nome mostrado é genérico (sem o nome oficial do evento, para não usar a marca dos organizadores).
+const PROVAS = [
+  { slug: '1-meia-maratona-de-indaiatuba-2026-12-13', nome: 'Meia de Indaiatuba', curto: 'Indaiatuba' },
+  { slug: '9-maratona-sorocaba-novembro-azul-2026-11-21', nome: 'Desafio 42K – Bora correr em Sorocaba', curto: 'Sorocaba 42K' }
+];
+let PROVA_SLUG = (() => { try { const s = localStorage.getItem('mapmove-prova'); if (PROVAS.some((p) => p.slug === s)) return s; } catch { /* sem storage */ } return PROVAS[0].slug; })();
+const NOME_NO_JOGO = Object.fromEntries(PROVAS.map((p) => [p.slug, p.nome]));
 
 const $ = (s) => document.querySelector(s);
 const palco = $('#palco');
@@ -2743,7 +2748,10 @@ let desafio = null; // { id, nome, prova, rotulo, tempo, passo, amostras }
 }
 function abrirDesafioQuandoPronto() {
   if (!desafio) return;
-  if (desafio.prova !== PROVA_SLUG) { aviso('Esse desafio é de outra prova', 'alerta', 2400); desafio = null; return; }
+  if (desafio.prova !== PROVA_SLUG) {
+    if (!PROVAS.some((p) => p.slug === desafio.prova)) { aviso('Esse desafio é de uma prova que não está no jogo', 'alerta', 2400); desafio = null; return; }
+    PROVA_SLUG = desafio.prova; dadosProva = null; carregarProva();
+  }
   const d = dadosProva?.distancias?.find((x) => x.rotulo === desafio.rotulo);
   if (!d) { setTimeout(abrirDesafioQuandoPronto, 600); return; }
   aviso(`👻 ${desafio.nome} te desafiou no ${desafio.rotulo}: ${R.formatarTempo(desafio.tempo)}`, 'km', 3200);
@@ -3259,16 +3267,32 @@ function loop() {
 
 // ─── MENU E DADOS DA PROVA ────────────────────────────────────────────────────
 
+function mostrarAbasProvas() {
+  const box = $('#provasAbas');
+  box.innerHTML = PROVAS.map((p) => `<button data-slug="${p.slug}" class="${p.slug === PROVA_SLUG ? 'ativa' : ''}">${p.curto}</button>`).join('');
+  for (const b of box.querySelectorAll('button')) b.addEventListener('click', () => {
+    if (b.dataset.slug === PROVA_SLUG) return;
+    PROVA_SLUG = b.dataset.slug;
+    try { localStorage.setItem('mapmove-prova', PROVA_SLUG); } catch { /* sem storage */ }
+    dadosProva = null;
+    $('#provaInfo').textContent = 'Carregando o percurso…';
+    $('#provaDistancias').innerHTML = '';
+    mostrarAbasProvas();
+    carregarProva();
+  });
+}
 async function carregarProva() {
+  mostrarAbasProvas();
   const url = `${SUPABASE_URL}/rest/v1/corridas?slug=eq.${PROVA_SLUG}&select=nome,cidade,percurso_3d,corrida_distancias(rotulo,km,subida_m,percurso)`;
   const box = $('#provaDistancias');
   try {
     const r = await fetch(url, { headers: { apikey: SUPABASE_KEY } });
     const [c] = await r.json();
-    const dist = (c?.corrida_distancias || []).filter((d) => Array.isArray(d.percurso) && d.percurso.length > 10).sort((a, b) => a.km - b.km);
+    // rótulos padronizados em maiúsculas (21k → 21K): XP, medalhas e recordes usam esse rótulo
+    const dist = (c?.corrida_distancias || []).filter((d) => Array.isArray(d.percurso) && d.percurso.length > 10).sort((a, b) => a.km - b.km).map((d) => ({ ...d, rotulo: d.rotulo.toUpperCase() }));
     if (!dist.length) throw new Error('sem percurso');
     const marcadores = {};
-    for (const [rot, v] of Object.entries(c.percurso_3d?.por || {})) marcadores[rot] = v.pontos || [];
+    for (const [rot, v] of Object.entries(c.percurso_3d?.por || {})) marcadores[rot.toUpperCase()] = v.pontos || [];
     const nome = NOME_NO_JOGO[PROVA_SLUG] || c.nome;
     dadosProva = { nome, distancias: dist, marcadores };
     $('#provaNome').textContent = `🏅 ${nome}`;
@@ -3469,7 +3493,7 @@ for (const b of document.querySelectorAll('.aba-r')) b.addEventListener('click',
 $('#btnConvidar').addEventListener('click', async () => {
   const codigo = $('#meuCodigo').textContent;
   if (!codigo || codigo.length !== 6) return;
-  const texto = `Corre comigo no Mapmove Run! 🏃 Percurso real da Meia de Indaiatuba no celular. Entra pelo meu convite (código ${codigo}): ${Conta.linkConvite(codigo)}`;
+  const texto = `Corre comigo no Mapmove Run! 🏃 Percursos reais de corrida no celular. Entra pelo meu convite (código ${codigo}): ${Conta.linkConvite(codigo)}`;
   if (navigator.share) { try { await navigator.share({ text: texto }); return; } catch { /* cancelou */ } }
   window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
 });

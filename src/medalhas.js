@@ -5,7 +5,7 @@ export const TIPOS = ['ouro', 'prata', 'bronze'];
 export const EMOJI = { ouro: '🥇', prata: '🥈', bronze: '🥉' };
 
 // distâncias mais longas valem mais (qualquer distância nova entra pelos km do rótulo)
-export const multDistancia = (rotulo) => ({ '6K': 1, '10K': 1.5, '21K': 2.5 }[rotulo] ?? Math.max(1, (parseFloat(rotulo) || 5) / 6));
+export const multDistancia = (rotulo) => ({ '6K': 1, '10K': 1.5, '21K': 2.5, '42K': 4 }[rotulo] ?? Math.max(1, (parseFloat(rotulo) || 5) / 6));
 const MOVES_MEDALHA = { ouro: 80, prata: 50, bronze: 30 };
 export const TROCA = { bronze: 200, prata: 350, ouro: 600 }; // Move$ por 5 medalhas iguais
 export const KIT = { gel: 3, isotonico: 1 };

@@ -66,7 +66,7 @@ export function resultadoFinal(lista, sJogador, faixaJogador) {
 }
 
 // XP pela colocação (top 5 geral e pódio na faixa), maior nas provas longas
-const MULT_PROVA = { '6K': 1, '10K': 1.5, '21K': 2.5 };
+const MULT_PROVA = { '6K': 1, '10K': 1.5, '21K': 2.5, '42K': 4 };
 const XP_GERAL = [120, 90, 70, 50, 40];
 const XP_FAIXA = [50, 35, 25];
 export function premioColocacao(r, prova) {
