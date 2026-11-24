@@ -1435,7 +1435,7 @@ function portico(s, texto, { cor = '#ffd21f', corTexto = '#0b1d3a' } = {}) {
   const g = new THREE.Group();
   const azul = mat(0x1356c9);
   for (const lado of [-1, 1]) { const p = malha(G.caixa, azul, lado * 4.4, 2.6, 0); p.scale.set(0.5, 5.2, 0.5); g.add(p); }
-  const tex = texTexto(texto, { w: 512, h: 96, fundo: cor, cor: corTexto, tam: 72 });
+  const tex = texTexto(texto, { w: 512, h: 96, fundo: cor, cor: corTexto, tam: texto.length > 10 ? 44 : 72 });
   const topo = new THREE.Mesh(new THREE.BoxGeometry(9.4, 1.1, 0.5), [azul, azul, azul, azul, new THREE.MeshStandardMaterial({ map: tex }), new THREE.MeshStandardMaterial({ map: tex })]);
   topo.position.y = 5.5; g.add(topo);
   return addEntidade({ tipo: 'decor', fixo: true, obj: achatar(g), s, d: 0 });
@@ -2429,10 +2429,13 @@ function prepararPercurso(escolha) {
   definirTravessas([]);
   construirCenario();
   if (prova) {
-    portico(6, 'LARGADA', { cor: '#1fae5b', corTexto: '#ffffff' });
+    // percurso em circuito (chegada no mesmo lugar da largada): um pórtico só, "LARGADA · CHEGADA"
+    const ini = emEst(6), fim = emEst(pista.total), mesmoLugar = Math.hypot(ini.x - fim.x, ini.z - fim.z) < 40;
+    if (mesmoLugar) portico(6, 'LARGADA · CHEGADA', { cor: '#1fae5b', corTexto: '#ffffff' });
+    else portico(6, 'LARGADA', { cor: '#1fae5b', corTexto: '#ffffff' });
     for (let km = 1; km * 1000 < pista.total - 150; km++) portico(km * 1000, `${km} KM`);
-    portico(pista.total, 'CHEGADA', { cor: '#e63946', corTexto: '#ffffff' });
-    tapeteChip(6); tapeteChip(pista.total);
+    if (!mesmoLugar) portico(pista.total, 'CHEGADA', { cor: '#e63946', corTexto: '#ffffff' });
+    tapeteChip(6); if (!mesmoLugar) tapeteChip(pista.total);
     for (let km = 1; km * 1000 < pista.total - 300; km += 2) fotografo(km * 1000 + 18, Math.random() < 0.5 ? -1 : 1);
     { const sa = pista.total * 0.5, du = duplaEm(duplas, sa); ambulancia(sa, du ? -du.lado : (Math.random() < 0.5 ? -1 : 1)); }
     for (const p of postosDaProva(prova.rotulo)) postoHidratacao(p.s, p.lado);
@@ -3365,6 +3368,7 @@ async function carregarProva() {
     const nome = NOME_NO_JOGO[PROVA_SLUG] || c.nome;
     dadosProva = { nome, distancias: dist, marcadores };
     $('#provaNome').textContent = `🏅 ${nome}`;
+    $('#jogarProva').textContent = `${PROVAS.find((p) => p.slug === PROVA_SLUG)?.cidade} · ${nome}`;
     $('#provaInfo').textContent = `Percurso e altimetria reais de ${c.cidade}. 1 km leva 1 minuto a 6:00/km.`;
     box.innerHTML = '';
     for (const d of dist) {
@@ -3471,6 +3475,11 @@ function mostrarConta() {
     $('#contaNome').textContent = d.nome.split(' ')[0];
     if (d.foto) $('#contaFoto').src = d.foto; else $('#contaFoto').removeAttribute('src');
   }
+  // chip da conta no cartão do perfil (atalho para o painel Conta e Strava)
+  const d = logado ? Conta.dadosDoUsuario(usuario) : null;
+  $('#chipNome').textContent = d ? d.nome.split(' ')[0] : 'Entrar';
+  $('#chipFoto').hidden = !d?.foto;
+  if (d?.foto) $('#chipFoto').src = d.foto;
 }
 async function entrouNaConta(u) {
   if (!u || usuario?.id === u.id) { usuario = u; mostrarConta(); return; }
@@ -3668,6 +3677,7 @@ const fmtPace = (seg) => `${R.formatarPace(R.mps(seg))}/km`;
 function mostrarTreinoDoDia() {
   const forma = formaAtual(), st = P.situacao(forma.xp), hoje = TR.diaLocal();
   const gratis = TR.treinoGratisDisponivel(perfil);
+  $('#tileTreinoBadge').hidden = !gratis;
   const feitos = perfil.treinosHoje?.dia === hoje ? perfil.treinosHoje.n : 0;
   const t = TR.prescrever(st.nivel, hoje, feitos);
   $('#treinoNome').textContent = t.nome;
@@ -3929,7 +3939,22 @@ async function vestirAtleta() {
   }
 }
 
+// tela inicial: painéis (provas, treino do dia, conta, ajuda) abrem por cima da home, sem rolar a página
+function abrirPainel(nome) {
+  const t = $('#telaInicio');
+  if (nome) t.dataset.painel = nome; else delete t.dataset.painel;
+  t.scrollTop = 0;
+}
+$('#btnJogar').addEventListener('click', () => abrirPainel('provas'));
+$('#btnTileTreino').addEventListener('click', () => abrirPainel('treino'));
+$('#btnTileConta').addEventListener('click', () => abrirPainel('conta'));
+$('#btnContaChip').addEventListener('click', () => abrirPainel('conta'));
+$('#btnTileAjuda').addEventListener('click', () => abrirPainel('ajuda'));
+$('#btnPainelVoltar').addEventListener('click', () => abrirPainel(null));
+$('#btnPersonagem').addEventListener('click', () => abrirLoja('personagem'));
+
 function mostrarInicio() {
+  abrirPainel(null);
   estado.clima = null; aplicarClima(null); // tela inicial com o céu de sempre
   pelotao = []; estado.posicao = null;
   sincronizarStrava();
@@ -3941,7 +3966,7 @@ function mostrarInicio() {
   const p = emEst(0);
   Object.assign(estado, { x: p.x, z: p.z, ang: p.ang, camAng: p.ang, s: 0, sMax: 0, d: 0, y: 0 });
   const rec = lerRecorde('mapmove-recorde');
-  $('#recordeTreino').textContent = rec ? `Recorde: ${rec.toLocaleString('pt-BR')} pontos` : '';
+  $('#recordeTreino').textContent = rec ? `⭐ ${rec.toLocaleString('pt-BR')}` : '';
   hud.contagem.hidden = true;
   mostrar('telaInicio');
 }

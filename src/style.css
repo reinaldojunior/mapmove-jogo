@@ -594,3 +594,37 @@ kbd {
 .convite-card p { margin: 0; font-size: 16px; line-height: 1.35; }
 .convite-botoes { display: flex; gap: 8px; }
 #btnConviteAceitar[hidden] { display: none; }
+
+/* ── tela inicial sem rolagem: perfil, JOGAR e atalhos; cada parte abre num painel ── */
+.tela.inicio { justify-content: flex-start; gap: 10px; }
+.inicio .home { width: min(440px, 100%); display: grid; gap: 10px; }
+.inicio .home h1 { margin: 0; font-size: clamp(30px, 9vw, 44px); line-height: 1; text-align: center; }
+.inicio .home h1 span { color: #ffd21f; }
+.inicio .perfil { position: relative; padding-top: 12px; }
+.chip-conta { position: absolute; top: 10px; right: 12px; display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.14); color: #fff; font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; }
+.chip-conta img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+.chip-conta img[hidden] { display: none; }
+.inicio .perfil-topo { padding-right: 110px; }
+.jogar { display: grid; gap: 2px; padding: 16px; border: 0; border-radius: 20px; background: linear-gradient(180deg, #ffd21f, #f5a300); color: #2a1a00; font: inherit; cursor: pointer; box-shadow: 0 6px 0 #b37f00, 0 10px 24px rgba(0, 0, 0, 0.3); }
+.jogar span { font-size: 28px; font-weight: 800; letter-spacing: 1px; }
+.jogar small { font-weight: 700; opacity: 0.8; }
+.jogar:active { transform: translateY(3px); box-shadow: 0 3px 0 #b37f00; }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tile { position: relative; display: grid; justify-items: center; align-content: center; gap: 4px; min-height: 88px; padding: 10px 6px; border: 0; border-radius: 16px; background: rgba(10, 30, 60, 0.72); color: #fff; font: inherit; cursor: pointer; text-align: center; }
+.tile .ico { font-size: 28px; line-height: 1; }
+.tile b { font-size: 13px; line-height: 1.15; }
+.tile small { font-size: 11px; opacity: 0.8; }
+.tile .badge { position: absolute; top: 6px; right: 6px; padding: 1px 7px; border-radius: 999px; background: #34c759; color: #fff; font-style: normal; font-size: 11px; font-weight: 800; }
+.tile .badge[hidden] { display: none; }
+.tile:active { transform: scale(0.96); }
+.link-ajuda { justify-self: center; border: 0; background: none; color: #fff; font: inherit; font-weight: 700; opacity: 0.85; cursor: pointer; }
+.inicio .painel { display: none; width: min(440px, 100%); gap: 10px; }
+.inicio .painel h2 { margin: 0; text-align: center; }
+.inicio[data-painel] .home { display: none; }
+.inicio[data-painel="provas"] .painel[data-painel="provas"],
+.inicio[data-painel="treino"] .painel[data-painel="treino"],
+.inicio[data-painel="conta"] .painel[data-painel="conta"],
+.inicio[data-painel="ajuda"] .painel[data-painel="ajuda"] { display: grid; }
+.voltar-painel { display: none; }
+.inicio[data-painel] .voltar-painel { display: inline-flex; }
+.cartao.ajuda ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; line-height: 1.35; }
