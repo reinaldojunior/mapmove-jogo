@@ -44,6 +44,75 @@ function mediaMovel(valores, raio) {
   });
 }
 
+// onde dois trechos do percurso passam no mesmo lugar (ida e volta, chegada cruzando a largada), o GPS dá
+// alturas um pouco diferentes e o relevo exagerado vira "degrau": rua, torcida e árvores flutuando. Aqui os pontos
+// a menos de 14 m de outro trecho (mais de 80 m de distância no percurso) ficam com a mesma altura, com transição suave.
+// tira picos isolados (mediana de ~45 m) e suaviza (média de ~120 m): GPS de relógio erra a altitude aos saltos
+export function suavizarAltitude(e, meiaMediana = 4, meiaMedia = 12) {
+  const n = e.length;
+  const med = e.map((_, i) => {
+    const j = e.slice(Math.max(0, i - meiaMediana), Math.min(n, i + meiaMediana + 1)).sort((a, b) => a - b);
+    return j[j.length >> 1];
+  });
+  return med.map((_, i) => {
+    let soma = 0, k = 0;
+    for (let j = Math.max(0, i - meiaMedia); j <= Math.min(n - 1, i + meiaMedia); j++) { soma += med[j]; k++; }
+    return soma / k;
+  });
+}
+
+// nenhum trecho do desenho mais inclinado que `max` (ida e volta no array até estabilizar)
+export function limitarInclinacao(s, y0, max = 0.12) {
+  const y = y0.slice();
+  for (let volta = 0; volta < 6; volta++) {
+    for (let i = 1; i < y.length; i++) {
+      const lim = max * (s[i] - s[i - 1]);
+      if (y[i] - y[i - 1] > lim) y[i] = y[i - 1] + lim; else if (y[i - 1] - y[i] > lim) y[i] = y[i - 1] - lim;
+    }
+    for (let i = y.length - 2; i >= 0; i--) {
+      const lim = max * (s[i + 1] - s[i]);
+      if (y[i] - y[i + 1] > lim) y[i] = y[i + 1] + lim; else if (y[i + 1] - y[i] > lim) y[i] = y[i + 1] - lim;
+    }
+  }
+  return y;
+}
+
+export function unificarAlturas(x, z, s, y0, raio = 14) {
+  const n = y0.length, C = raio, grade = new Map();
+  const chave = (cx, cz) => cx + ',' + cz;
+  for (let i = 0; i < n; i++) { const k = chave(Math.floor(x[i] / C), Math.floor(z[i] / C)); if (!grade.has(k)) grade.set(k, []); grade.get(k).push(i); }
+  const vizinhos = [];
+  for (let i = 0; i < n; i++) {
+    const cx = Math.floor(x[i] / C), cz = Math.floor(z[i] / C), lista = [];
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (const j of grade.get(chave(cx + a, cz + b)) || []) {
+      if (Math.abs(s[i] - s[j]) > 80 && Math.hypot(x[i] - x[j], z[i] - z[j]) < raio) lista.push(j);
+    }
+    vizinhos.push(lista);
+  }
+  if (!vizinhos.some((l) => l.length)) return y0;
+  let y = y0.slice();
+  for (let volta = 0; volta < 10; volta++) {
+    const delta = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const l = vizinhos[i]; if (!l.length) continue;
+      let soma = y[i]; for (const j of l) soma += y[j];
+      delta[i] = soma / (l.length + 1) - y[i];
+    }
+    // espalha a correção ±40 m para não virar degrau
+    const k = 24, suave = new Float64Array(n); // ±120 m
+    let acc = 0;
+    for (let i = 0; i < Math.min(n, k); i++) acc += delta[i];
+    for (let i = 0; i < n; i++) {
+      if (i + k < n) acc += delta[i + k];
+      if (i - k - 1 >= 0) acc -= delta[i - k - 1];
+      const a = Math.max(0, i - k), b = Math.min(n - 1, i + k);
+      suave[i] = acc / (b - a + 1);
+    }
+    y = y.map((v, i) => v + (vizinhos[i].length ? delta[i] : suave[i]));
+  }
+  return y;
+}
+
 export class PistaReal {
   constructor(pontosLatLng, { passo = 5, exagero = 1.6 } = {}) {
     const validos = pontosLatLng.filter((p) => Array.isArray(p) && p.length >= 2);
@@ -76,7 +145,11 @@ export class PistaReal {
 
     this.x = x; this.z = z; this.e = e; this.s = s;
     this.total = s[s.length - 1];
-    this.y = e.map((v) => (v - e[0]) * exagero);
+    // altura do desenho: sem os picos do GPS, suave e com inclinação limitada (a do jogo continua vindo de `inc`)
+    const eDesenho = suavizarAltitude(e);
+    let y = eDesenho.map((v) => (v - eDesenho[0]) * exagero);
+    for (let i = 0; i < 4; i++) y = limitarInclinacao(s, unificarAlturas(x, z, s, y), 0.12); // as duas regras juntas
+    this.y = y;
 
     // inclinação real numa janela de ~40 m, limitada a ±12%
     const k = Math.max(1, Math.round(20 / passo));

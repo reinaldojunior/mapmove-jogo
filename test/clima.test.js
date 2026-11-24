@@ -51,3 +51,9 @@ test('explicação do clima: efeitos e cuidados de acordo com o tempo', () => {
   const sol = C.explicarClima(clima('sol'));
   assert.ok(sol.efeitos.some((t) => t.includes('recorde')));
 });
+
+test('clima também pesa no pelotão', () => {
+  assert.ok(C.fatorNpc(clima('calor'), Math.PI / 2) < 0.95);
+  assert.ok(Math.abs(C.fatorNpc(clima('sol'), Math.PI / 2) - 1) < 1e-9);
+  assert.ok(C.fatorNpc(clima('vento'), 0) < C.fatorNpc(clima('vento'), Math.PI));
+});

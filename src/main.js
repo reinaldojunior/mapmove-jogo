@@ -718,7 +718,8 @@ function desenharLideres() {
     obj.position.set(e.x + rx * 0.6, e.y, e.z + rz * 0.6); obj.rotation.y = -e.ang + giro;
     obj.visible = ativo && sAlvo > s.s - 15 && sAlvo < s.s + 220;
   };
-  pos(L.moto, frente + 28, 0);
+  // a moto batedora abre caminho bem na sua frente (ou na frente do líder, se você estiver lá na ponta)
+  pos(L.moto, Math.min(frente + 28, s.s + 38), 0);
   pos(L.carro, frente + 52, Math.PI / 2);
   const pisca = Math.floor(s.t * 6) % 2;
   L.luzes[0].visible = !!pisca; L.luzes[1].visible = !pisca;
@@ -1482,7 +1483,9 @@ function malhaDePoligono(listas, material, dy, ordem) {
     if (contorno.length < 3) continue;
     const v2 = contorno.map(([x, z]) => new THREE.Vector2(x, z));
     const faces = THREE.ShapeUtils.triangulateShape(v2, []);
-    const ys = contorno.map(([x, z]) => alturaChao(x, z) + dy);
+    // área grande pega alturas de trechos distantes e vira um plano inclinado no céu: fica quase plana, embaixo
+    const ys0 = contorno.map(([x, z]) => alturaChao(x, z) + dy), base = Math.min(...ys0);
+    const ys = ys0.map((v) => Math.min(v, base + 1.2));
     for (const f of faces) for (const i of [f[0], f[2], f[1]]) { pos.push(contorno[i][0], ys[i], contorno[i][1]); uv.push(contorno[i][0] / 9, contorno[i][1] / 9); }
   }
   if (!pos.length) return null;
@@ -1704,6 +1707,17 @@ function construirAvenidas() {
     const sub = amostras.filter((a) => a.s >= t.s0 && a.s <= t.s1);
     if (sub.length < 3) continue;
     const L = t.lado, D = (a) => t.dist[Math.min(t.dist.length - 1, Math.max(0, Math.round((a.s - t.s0) / t.passo)))];
+    // ida e volta pela mesma avenida: se a outra pista também é do percurso (outro trecho), ela já está desenhada
+    const doPercurso = new Map(sub.map((a) => {
+      const [rx, rz] = direita(a.ang), x = a.x + rx * L * D(a), z = a.z + rz * L * D(a);
+      const q = pista.projetar(x, z, a.s, 0, 0), perto = pista.pertoDe(x, z, 40);
+      return [a, perto.dist < 5 && Math.abs(perto.s - a.s) > 60 && Math.abs(q.d) > 5];
+    }));
+    // numa curva fechada (ou perto de outro trecho do percurso) a faixa larga "dobra" e cai em cima da rua: não desenha
+    const cabe = (a, lat) => { const [rx, rz] = direita(a.ang); return pista.pertoDe(a.x + rx * L * lat, a.z + rz * L * lat, lat + 10).dist > lat - 2.5; };
+    const okLonge = new Map(sub.map((a) => [a, !doPercurso.get(a) && cabe(a, D(a) + 7)]));
+    const okMeio = new Map(sub.map((a) => [a, cabe(a, D(a) - 4.5)]));
+    const fora = (a, v) => (okLonge.get(a) ? v : D(a) - 4.2); // largura zero onde não cabe a outra pista
     // faixa entre dois afastamentos (sempre do menor para o maior, dos dois lados)
     const faixa = (f0, f1, mat, opts) => grupo.add(fita(sub, L > 0 ? f0 : (a) => -f1(a), L > 0 ? f1 : (a) => -f0(a), mat, opts));
     const k = (v) => () => v;
@@ -1712,17 +1726,19 @@ function construirAvenidas() {
     grupo.add(fita(sub, -M, M, matRuaFaixas, { inclinacao: true, dy: 0.01 }));
     // guia, canteiro, guia
     faixa(k(M), k(M + 0.3), matGuia, { vCada: 4, dy: 0.15 });
-    faixa(k(M + 0.3), (a) => D(a) - OUTRA - 0.3, matCanteiro, { vCada: 4, dy: 0.12 });
-    faixa((a) => D(a) - OUTRA - 0.3, (a) => D(a) - OUTRA, matGuia, { vCada: 4, dy: 0.15 });
+    const meio = (a, v) => (okMeio.get(a) ? v : M + 0.3);
+    faixa(k(M + 0.3), (a) => meio(a, D(a) - OUTRA - 0.3), matCanteiro, { vCada: 4, dy: 0.12 });
+    faixa((a) => meio(a, D(a) - OUTRA - 0.3), (a) => meio(a, D(a) - OUTRA), matGuia, { vCada: 4, dy: 0.15 });
     // a outra pista (mão contrária) e a calçada do outro lado
-    faixa((a) => D(a) - OUTRA, (a) => D(a) + OUTRA, matRuaOutra, { inclinacao: true, dy: 0.1 });
-    faixa((a) => D(a) + OUTRA, (a) => D(a) + OUTRA + 0.3, matGuia, { vCada: 4, dy: 0.15 });
-    faixa((a) => D(a) + OUTRA + 0.3, (a) => D(a) + OUTRA + 2.6, matCalcadaLisa, { vCada: 4, dy: 0.08 });
+    faixa((a) => meio(a, D(a) - OUTRA), (a) => meio(a, fora(a, D(a) + OUTRA)), matRuaOutra, { inclinacao: true, dy: 0.1 });
+    faixa((a) => fora(a, D(a) + OUTRA), (a) => fora(a, D(a) + OUTRA + 0.3), matGuia, { vCada: 4, dy: 0.15 });
+    faixa((a) => fora(a, D(a) + OUTRA + 0.3), (a) => fora(a, D(a) + OUTRA + 2.6), matCalcadaLisa, { vCada: 4, dy: 0.08 });
     // postes de luz no meio do canteiro, a cada ~40 m
     const modelo = PROPS.poste?.modelo;
     for (let s = t.s0 + 15; s < t.s1 - 10; s += 40) {
       const p = emEst(s), du = duplaEm([t], s);
       if (!du || du.dist - OUTRA - M < 2.5) continue;
+      { const a0 = sub.reduce((m, a) => (Math.abs(a.s - s) < Math.abs(m.s - s) ? a : m), sub[0]); if (!okMeio.get(a0)) continue; }
       const meio = L * (M + 0.3 + (du.dist - OUTRA - 0.3)) / 2;
       const [rx, rz] = direita(p.ang);
       const poste = modelo ? modelo.clone() : (() => { const g = new THREE.Group(); const h = malha(G.cilindro, mat(0x9aa3ad), 0, 4, 0); h.scale.set(0.12, 8, 0.12); g.add(h); return g; })();
@@ -2820,7 +2836,7 @@ function passo(dt) {
     if (idx !== s.passoIdx) { s.passoIdx = idx; if (s.y === 0) som.passo(Math.abs(s.d) > R.MEIA_RUA); }
     if (Math.abs(s.d) > R.LIMITE_CALCADA) penalizar();
     if (pelotao.length) {
-      PL.avancarPelotao(pelotao, dt, s.t, s);
+      PL.avancarPelotao(pelotao, dt, s.t, s, Math.random, (c) => CL.fatorNpc(s.clima, emEst(c.s).ang)); // calor e vento também valem para eles
       const pos = PL.colocacao(pelotao, s.s);
       s.posicao = pos;
       if (pos.ultrapassagens) s.pontos += 5 * pos.ultrapassagens;

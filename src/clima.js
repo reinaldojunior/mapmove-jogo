@@ -84,3 +84,9 @@ export function explicarClima(c, mochila = {}) {
   if (!cuidados.length) cuidados.push('Mantenha o ritmo e hidrate nos postos de costume');
   return { efeitos, cuidados, bonus };
 }
+
+// clima nos outros corredores: calor deixa o pelotão mais lento (1,2% por grau acima de 25 °C) e o vento age igual
+export function fatorNpc(c, ang) {
+  if (!c) return 1;
+  return fatorVento(c, ang) / (1 + Math.max(0, c.temp - 25) * 0.012);
+}

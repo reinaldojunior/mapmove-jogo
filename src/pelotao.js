@@ -26,9 +26,10 @@ export function criarPelotao(n, pace, rnd = Math.random) {
 }
 
 // avança o pelotão `dt` segundos (de jogo); desvia do jogador quando está colado nele
-export function avancarPelotao(lista, dt, t, jogador, rnd = Math.random) {
+// `fator(c)` = efeito do clima naquele corredor (calor e vento), 1 = sem efeito
+export function avancarPelotao(lista, dt, t, jogador, rnd = Math.random, fator = null) {
   for (const c of lista) {
-    const ritmo = 1 + Math.sin(t * 0.05 + c.fase) * 0.04; // às vezes acelera, às vezes cansa
+    const ritmo = (1 + Math.sin(t * 0.05 + c.fase) * 0.04) * (fator ? fator(c) : 1); // às vezes acelera, às vezes cansa
     c.s += mps(c.pace) * ritmo * ESCALA_TEMPO * dt;
     if (rnd() < dt * 0.15) c.alvoD = Math.max(-3.4, Math.min(3.4, c.d + (rnd() * 2 - 1) * 1.5));
     const ds = c.s - jogador.s, dd = c.d - jogador.d;
