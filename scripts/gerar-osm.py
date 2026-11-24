@@ -1,5 +1,5 @@
 # Gera public/osm/<slug>.json com o entorno do percurso (OpenStreetMap): áreas, prédios, rios, vias, árvores,
-# pontos de referência, semáforos e locais (igreja/escola/comércio/posto).
+# pontos de referência, semáforos, locais (igreja/escola/comércio/posto) e pontes/viadutos.
 # Uso: python3 scripts/gerar-osm.py <corrida.json do Supabase> <pasta de tiles> <saida.json>
 # corrida.json = resposta de /rest/v1/corridas?slug=eq.<slug>&select=corrida_distancias(percurso)
 import sys, os, json, math, time, glob, subprocess, collections
@@ -105,6 +105,11 @@ for wid, (refs, t) in ways.items():
         if t.get('name'): it['n'] = t['name']
         via.append(it)
 out['via'] = via
+# pontes e viadutos (rua passando por cima de rio, de outra rua ou de outro trecho do percurso)
+out['ponte'] = [dict({'t': t['highway'], 'p': R5(geom(refs))}, **({'n': t['name']} if t.get('name') else {}))
+                for wid, (refs, t) in ways.items()
+                if t.get('highway') in RUAS and t.get('bridge') in ('yes', 'viaduct') and len(geom(refs)) > 1
+                and any(dist(a, o) < 60 for a, o in geom(refs))]
 out['caminho'] = [{'p': R6(geom(refs))} for wid, (refs, t) in ways.items()
                   if t.get('highway') in ('footway', 'path', 'cycleway', 'pedestrian') and len(geom(refs)) > 1 and perto(geom(refs), 200)]
 

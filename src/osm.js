@@ -52,7 +52,8 @@ export function prepararOSM(dados, paraLocal) {
     locais: (dados.local || []).map((l) => { const q = paraLocal(l.la, l.lo); return { tipo: l.c, x: q.x, z: q.z }; }),
     semaforos: (dados.semaforo || []).map(([la, lo]) => { const q = paraLocal(la, lo); return [q.x, q.z]; }),
     arvores: (dados.arvore || []).map(([la, lo]) => { const q = paraLocal(la, lo); return [q.x, q.z]; }),
-    vias: (dados.via || []).map((v) => ({ tipo: v.t, pontos: v.p, nome: v.n }))
+    vias: (dados.via || []).map((v) => ({ tipo: v.t, pontos: v.p, nome: v.n })),
+    pontes: (dados.ponte || []).map((v) => ({ nome: v.n, pts: conv(v.p) })).filter((v) => v.pts.length > 1)
   };
 }
 
@@ -239,4 +240,56 @@ export function duplaEm(duplas, s) {
     return { lado: t.lado, dist: t.dist[i] };
   }
   return null;
+}
+
+// viadutos do percurso: trecho que vai por cima de uma ponte/viaduto do mapa E passa por cima de outro trecho do
+// próprio percurso (cruzamento em ângulo, não ida e volta). Esse trecho é desenhado elevado (pista.elevar) em vez de
+// cruzar a outra rua no chão. Devolve [{ s0, s1, sob: [s do trecho de baixo, ...] }] (s0..s1 = extensão da ponte).
+export function viadutosDoPercurso(osm, pista) {
+  const pontes = osm?.pontes || [];
+  if (!pontes.length) return [];
+  const { x, z, s } = pista, n = s.length;
+  const dirEm = (i) => { const a = Math.max(0, i - 1), b = Math.min(n - 1, i + 1); const dx = x[b] - x[a], dz = z[b] - z[a], l = Math.hypot(dx, dz) || 1; return [dx / l, dz / l]; };
+  // amostras do percurso em cima de uma ponte (a menos de 8 m do eixo dela e andando junto)
+  const naPonte = new Int16Array(n).fill(-1);
+  for (let i = 0; i < n; i++) {
+    const [fx, fz] = dirEm(i);
+    for (let k = 0; k < pontes.length && naPonte[i] < 0; k++) {
+      const pts = pontes[k].pts;
+      for (let j = 0; j < pts.length - 1; j++) {
+        const [ax, az] = pts[j], [bx, bz] = pts[j + 1], dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz;
+        if (l2 < 1) continue;
+        const t = Math.max(0, Math.min(1, ((x[i] - ax) * dx + (z[i] - az) * dz) / l2));
+        if (Math.hypot(x[i] - ax - dx * t, z[i] - az - dz * t) > 8) continue;
+        if (Math.abs(fx * dx + fz * dz) / Math.sqrt(l2) < 0.8) continue;
+        naPonte[i] = k; break;
+      }
+    }
+  }
+  // cruzamentos: amostra na ponte com outro trecho (|Δs| > 60 m, fora da ponte) passando por baixo em ângulo
+  const trechos = [];
+  for (let i = 0; i < n; i++) {
+    if (naPonte[i] < 0) continue;
+    const [fx, fz] = dirEm(i);
+    const sob = [];
+    for (let j = 0; j < n - 1; j++) {
+      if (Math.abs(s[j] - s[i]) < 60 || naPonte[j] >= 0) continue;
+      const dx = x[j + 1] - x[j], dz = z[j + 1] - z[j], l2 = dx * dx + dz * dz || 1;
+      const t = Math.max(0, Math.min(1, ((x[i] - x[j]) * dx + (z[i] - z[j]) * dz) / l2));
+      if (Math.hypot(x[i] - x[j] - dx * t, z[i] - z[j] - dz * t) > 4) continue;
+      if (Math.abs(fx * dx + fz * dz) / Math.sqrt(l2) > 0.7) continue; // andando junto: não é viaduto
+      sob.push(s[j] + (s[j + 1] - s[j]) * t);
+    }
+    if (!sob.length) continue;
+    // a ponte inteira (amostras seguidas em cima de ponte) vira um trecho elevado
+    let a = i, b = i;
+    while (a > 0 && naPonte[a - 1] >= 0) a--;
+    while (b < n - 1 && naPonte[b + 1] >= 0) b++;
+    const ult = trechos[trechos.length - 1];
+    if (ult && s[a] <= ult.s1) {
+      for (const v of sob) if (!ult.sob.some((u) => Math.abs(u - v) < 20)) ult.sob.push(v);
+      ult.cruz.push(s[i]);
+    } else trechos.push({ s0: s[a], s1: s[b], cruz: [s[i]], sob: sob.filter((v, k) => !sob.slice(0, k).some((u) => Math.abs(u - v) < 20)) });
+  }
+  return trechos;
 }
