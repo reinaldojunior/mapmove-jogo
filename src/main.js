@@ -1062,7 +1062,7 @@ function atualizarCenario(sCorredor) {
 // ─── OBSTÁCULOS E ITENS (EM COORDENADAS DA PISTA: s AO LONGO, d PARA OS LADOS) ─
 
 let entidades = [];
-if (import.meta.env.DEV) window.__dbg = { ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: () => { estado.festaEm = estado.s + 1; } }; // só no modo de desenvolvimento, para testes
+if (import.meta.env.DEV) window.__dbg = { ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas }; // só no modo de desenvolvimento, para testes
 let postos = [];
 let travessas = [];
 
@@ -1208,6 +1208,7 @@ function ciclista(s, d) {
 }
 
 // rodas do carro-festa no espaço do modelo (medidas na malha): centro x, centro y, lado (z), raio
+const PROVA_DO_CARRO = '9-maratona-sorocaba-novembro-azul-2026-11-21'; // o carro desgovernado só aparece nas provas de Sorocaba
 const RODAS_FESTA = { raio: 0.15, zMin: 0.24, lista: [[-0.59, -0.274, 1], [0.61, -0.274, 1], [-0.59, -0.274, -1], [0.61, -0.274, -1]] };
 // recorta da malha única os triângulos de cada roda e põe cada uma num grupo próprio, centrado no eixo
 function separarRodas(model, cfg) {
@@ -1294,6 +1295,18 @@ function carroDesgovernado(s) {
   const gcm = addEntidade({ tipo: 'decor', obj: moto, s: s + 16, d: 0, rot: Math.PI, vs: -9.5,
     anima(t) { this.d = e.d * 0.6; const k = Math.floor(t * 6) % 2; this.obj.children.at(-2).visible = !!k; this.obj.children.at(-1).visible = !k; } });
   return { carro: e, moto: gcm, avisado: false, passou: false };
+}
+// mesma turma furando o bloqueio numa travessa: cruza a pista na frente do corredor
+function carroDesgovernadoTravessa(t) {
+  const modelo = prop('carro-festa');
+  if (!modelo) return null;
+  const rodasZ = [];
+  modelo.traverse((o) => { if (/^roda_festa_/.test(o.name)) rodasZ.push(o); });
+  const lado = escolher(t.lados);
+  const sCarro = t.vao ? t.s + (Math.random() < 0.5 ? -1 : 1) * t.vao / 2 : t.s;
+  const e = addEntidade({ tipo: 'carro', motivo: 'O carro desgovernado te pegou', obj: modelo, s: sCarro, d: lado * 16, rot: lado > 0 ? 0 : Math.PI,
+    frenteNegX: true, larg: 4.2, prof: 1.9, h: 1.6, gatilho: 60, rodasZ, raioRoda: RODAS_FESTA.raio * modelo.scale.x });
+  return { carro: e, travessa: true, avisado: false, passou: false };
 }
 
 function moeda(s, d) {
@@ -2661,7 +2674,8 @@ function iniciar(escolha, clima) {
   prepararPelotao();
   // carro desgovernado em ~1 a cada 3 provas, entre 30% e 70% do percurso
   festa = null;
-  estado.festaEm = prova && Math.random() < 0.35 ? pista.total * aleat(0.3, 0.7) : 0;
+  // só nas provas de Sorocaba, e em todas elas: num ponto sorteado, na contramão ou furando uma travessa
+  estado.festaEm = prova && PROVA_SLUG === PROVA_DO_CARRO ? pista.total * aleat(0.15, 0.85) : 0;
   // grava o ritmo da prova (posição a cada 10 s de prova) para virar fantasma num desafio
   estado.gravacao = prova ? { passo: 10, amostras: [0], prox: 10 } : null;
   estado.desafioAtivo = !!(desafio && prova && desafio.prova === PROVA_SLUG && desafio.rotulo === prova.rotulo);
@@ -3118,13 +3132,18 @@ function passo(dt) {
   }
 
   // carro desgovernado: aparece uma vez em algumas provas, no meio do percurso
-  if (prova && s.festaEm && !festa && s.s > s.festaEm) { festa = carroDesgovernado(s.s + 230); s.festaEm = 0; }
+  if (prova && s.festaEm && !festa && s.s > s.festaEm) {
+    // metade das vezes tenta a travessa (uma rua principal entre 80 e 300 m à frente); sem travessa, vem na contramão
+    const t = (s.festaModo ? s.festaModo === 'travessa' : Math.random() < 0.5) && travessas.find((x) => x.principal && !x.carro && x.s > s.s + 80 && x.s < s.s + 300);
+    if (t) { t.carro = true; festa = carroDesgovernadoTravessa(t); } else festa = carroDesgovernado(s.s + 230);
+    s.festaEm = 0;
+  }
   if (festa) {
     const ce = festa.carro, dist = ce.s - s.s;
     // som do carro: cresce enquanto ele se aproxima (a partir de ~220 m), máximo quando passa e cai depois
     const longe = dist >= 0 ? dist / 220 : -dist / 35;
     som.carro(Math.pow(Math.max(0, 1 - longe), 1.6) * 0.95);
-    if (!festa.avisado && dist < 150) { festa.avisado = true; aviso('⚠️ Carro invadiu a pista na contramão! Desvie!', 'alerta', 2600); }
+    if (!festa.avisado && dist < (festa.travessa ? 70 : 150)) { festa.avisado = true; aviso(festa.travessa ? '⚠️ Carro furou o bloqueio na travessa! Cuidado!' : '⚠️ Carro invadiu a pista na contramão! Desvie!', 'alerta', 2600); }
     // o pelotão sai da frente
     for (const c of pelotao) {
       const ds = ce.s - c.s;
@@ -3146,12 +3165,12 @@ function passo(dt) {
       const tempo = (e.s - s.s) / Math.max(vCorredor, 4);
       const alvo = s.d + aleat(-1.2, 1.2);
       e.vd = (alvo - e.d) / tempo;
-      e.rot = e.vd > 0 ? 0 : Math.PI;
+      e.rot = (e.vd > 0) !== !!e.frenteNegX ? 0 : Math.PI; // carro-festa tem a frente para -x
     }
     if (e.vd) e.d += e.vd * dt;
     // rodas girando conforme a velocidade do carro (frente para onde ele anda)
     if (e.rodas?.length && e.vd) for (const r of e.rodas) r.rotation.x += (Math.abs(e.vd) * dt) / e.raioRoda;
-    if (e.rodasZ?.length && e.vs) for (const r of e.rodasZ) r.rotation.z += (Math.abs(e.vs) * dt) / e.raioRoda;
+    if (e.rodasZ?.length && (e.vs || e.vd)) for (const r of e.rodasZ) r.rotation.z += (Math.abs(e.vs || e.vd) * dt) / e.raioRoda;
     if (e.anima) e.anima(s.t);
     colocar(e);
     if (e.tipo === 'decor' || e.pego || e.atingido) continue;
