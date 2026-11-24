@@ -3280,6 +3280,8 @@ function mostrarTreinoDoDia() {
   const comprar = $('#btnComprarTreino'), temMoves = perfil.moves >= TR.PRECO_TREINO;
   comprar.hidden = false;
   comprar.disabled = !temMoves;
+  // com saldo, comprar é a ação principal (amarelo) quando o grátis já foi feito; senão fica como secundário
+  comprar.classList.toggle('secundario', gratis || !temMoves);
   comprar.textContent = temMoves
     ? `${gratis ? 'Treino extra' : 'Comprar treino'} · ${TR.PRECO_TREINO} Move$`
     : `${gratis ? 'Treino extra' : 'Próximo grátis à meia-noite'} · faltam ${TR.PRECO_TREINO - perfil.moves} Move$`;
