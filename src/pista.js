@@ -115,7 +115,7 @@ export function unificarAlturas(x, z, s, y0, raio = 14) {
 
 // trechos que passam de novo pela mesma rua (voltas, ida e volta na mesma pista): o ponto é puxado para cima da
 // primeira passagem e marcado como repetido (dup) — o desenho é feito uma vez só
-export function colarVoltas(x, z, s, raio = 9, minDs = 300) {
+export function colarVoltas(x, z, s, raio = 12, minDs = 300, rampa = 5) {
   const n = x.length, C = 20, grade = new Map(), dup = new Uint8Array(n);
   const ch = (a, b) => a + ',' + b;
   for (let i = 0; i < n - 1; i++) {
@@ -124,6 +124,7 @@ export function colarVoltas(x, z, s, raio = 9, minDs = 300) {
     grade.get(k).push(i);
   }
   const x0 = Float64Array.from(x), z0 = Float64Array.from(z);
+  const alvo = new Array(n).fill(null), cola = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     const cx = Math.floor(x0[i] / C), cz = Math.floor(z0[i] / C);
     let melhor = null;
@@ -138,10 +139,19 @@ export function colarVoltas(x, z, s, raio = 9, minDs = 300) {
       if (alinh < 0.9) continue;
       if (!melhor || d < melhor.d) melhor = { d, qx, qz };
     }
-    if (!melhor || melhor.d > raio) continue;
-    const w = Math.max(0, Math.min(1, (raio - melhor.d) / 3));
-    x[i] = x0[i] + (melhor.qx - x0[i]) * w; z[i] = z0[i] + (melhor.qz - z0[i]) * w;
-    if (melhor.d < raio - 3) dup[i] = 1;
+    if (!melhor || melhor.d > 2.5 * raio) continue;
+    alvo[i] = melhor;
+    // as duas ruas (8 m cada) se encostariam ou ficariam uma por cima da outra: vira uma rua só
+    if (melhor.d < raio) cola[i] = 1;
+  }
+  // a colagem entra e sai aos poucos ao longo do caminho (~25 m), nunca pela distância: sem ruas "meio coladas"
+  for (let i = 0; i < n; i++) {
+    if (!alvo[i]) continue;
+    let w = 0;
+    for (let k = -rampa; k <= rampa; k++) { const j = i + k; if (j >= 0 && j < n && cola[j]) w = Math.max(w, 1 - Math.abs(k) / (rampa + 1)); }
+    if (!w) continue;
+    x[i] = x0[i] + (alvo[i].qx - x0[i]) * w; z[i] = z0[i] + (alvo[i].qz - z0[i]) * w;
+    if (w > 0.8) dup[i] = 1;
   }
   return dup;
 }

@@ -218,15 +218,13 @@ function texAsfaltoFaixas(azul) {
   });
 }
 
+// calçada de placas de concreto (a ondulada preta e branca virava um borrão listrado de longe)
 const texCalcada = textura(256, 256, (g, w, h) => {
-  g.fillStyle = '#d9d4c7'; g.fillRect(0, 0, w, h);
-  g.strokeStyle = '#2b2b2b';
-  g.lineWidth = 14;
-  for (let y = -64; y < h + 64; y += 64) {
-    g.beginPath();
-    for (let x = 0; x <= w; x += 8) g.lineTo(x, y + Math.sin((x / w) * Math.PI * 2) * 20);
-    g.stroke();
-  }
+  g.fillStyle = '#d3cfc6'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 1500; i++) { const c = 190 + Math.random() * 40; g.fillStyle = `rgba(${c},${c - 3},${c - 10},0.5)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+  g.fillStyle = 'rgba(120,115,105,0.55)';
+  for (let y = 0; y < h; y += 64) g.fillRect(0, y, w, 3);
+  g.fillRect(0, 0, 3, h); g.fillRect(w / 2, 0, 3, h);
 });
 
 const texGrama = textura(128, 128, (g, w, h) => {
@@ -972,9 +970,12 @@ function montarTufos() { tufos.montar(TUFOS_POR_NIVEL[nivel] || 0, estado?.s || 
 function construirVisual() {
   scene.remove(visual);
   visual = new THREE.Group();
-  const fim = Number.isFinite(pista.total) ? pista.total + 80 : 420;
+  // circuito (chegada no lugar da largada): sem o pedaço extra antes da largada e depois da chegada, que caía em cima
+  const real = Number.isFinite(pista.total), a0 = emEst(0), a1 = real ? emEst(pista.total) : a0;
+  const circuito = real && Math.hypot(a0.x - a1.x, a0.z - a1.z) < 40;
+  const fim = real ? pista.total + (circuito ? 0 : 80) : 420;
   const amostras = [];
-  for (let s = -60; s <= fim; s += 4) amostras.push({ s, ...emEst(s), lat: pista.lateral?.(Math.max(0, Math.min(s, pista.total))) || null });
+  for (let s = circuito ? 0 : -60; s <= fim; s += 4) amostras.push({ s, ...emEst(s), lat: pista.lateral?.(Math.max(0, Math.min(s, pista.total))) || null });
   visual.add(fita(amostras, -R.MEIA_RUA, R.MEIA_RUA, matRua, { inclinacao: true }));
   visual.add(fita(amostras, -R.LIMITE_CALCADA, -R.MEIA_RUA, matCalcada, { vCada: 4, dy: 0.06 }));
   visual.add(fita(amostras, R.MEIA_RUA, R.LIMITE_CALCADA, matCalcada, { vCada: 4, dy: 0.06 }));
@@ -2437,11 +2438,11 @@ function prepararPercurso(escolha) {
   if (prova) {
     // percurso em circuito (chegada no mesmo lugar da largada): um pórtico só, "LARGADA · CHEGADA"
     const ini = emEst(6), fim = emEst(pista.total), mesmoLugar = Math.hypot(ini.x - fim.x, ini.z - fim.z) < 40;
-    if (mesmoLugar) portico(6, 'LARGADA · CHEGADA', { cor: '#1fae5b', corTexto: '#ffffff' });
+    if (mesmoLugar) portico(6, 'LARGADA · CHEGADA', { cor: '#1fae5b', corTexto: '#ffffff' }).sAlt = [pista.total];
     else portico(6, 'LARGADA', { cor: '#1fae5b', corTexto: '#ffffff' });
     for (let km = 1; km * 1000 < pista.total - 150; km++) portico(km * 1000, `${km} KM`);
     if (!mesmoLugar) portico(pista.total, 'CHEGADA', { cor: '#e63946', corTexto: '#ffffff' });
-    tapeteChip(6); if (!mesmoLugar) tapeteChip(pista.total);
+    const tapete = tapeteChip(6); if (!mesmoLugar) tapeteChip(pista.total); else if (tapete) tapete.sAlt = [pista.total];
     for (let km = 1; km * 1000 < pista.total - 300; km += 2) fotografo(km * 1000 + 18, Math.random() < 0.5 ? -1 : 1);
     { const sa = pista.total * 0.5, du = duplaEm(duplas, sa); ambulancia(sa, du ? -du.lado : (Math.random() < 0.5 ? -1 : 1)); }
     for (const p of postosDaProva(prova.rotulo)) postoHidratacao(p.s, p.lado);
@@ -3213,6 +3214,9 @@ function passo(dt) {
     if (e.rodasVs?.length && e.vs) for (const r of e.rodasVs) r.rotation.x += (Math.abs(e.vs) * dt) / e.raioRoda;
     if (e.anima) e.anima(s.t);
     colocar(e);
+    // pórticos e enfeites fixos só aparecem para quem está naquele trecho: na 2ª volta (ou na volta de um vai e vem)
+    // o pórtico de "13 KM" da outra passagem fica no mesmo lugar e confundia
+    if (e.fixo) e.obj.visible = [e.s, ...(e.sAlt || [])].some((v) => v > s.s - 200 && v < s.s + 900);
     if (e.tipo === 'decor' || e.pego || e.atingido) continue;
     if (e.item) {
       if (R.coleta(c, e)) {
