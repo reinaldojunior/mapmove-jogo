@@ -33,8 +33,8 @@ const SUPABASE_KEY = 'sb_publishable_s2yoUApfYl_ZvSUkqYYrVw_uXwKsybM';
 // provas do jogo: percurso vem do Portal (Supabase) e o entorno de public/osm/<slug>.json.
 // O nome mostrado é genérico (sem o nome oficial do evento, para não usar a marca dos organizadores).
 const PROVAS = [
-  { slug: '1-meia-maratona-de-indaiatuba-2026-12-13', nome: 'Meia de Indaiatuba', curto: 'Indaiatuba' },
-  { slug: '9-maratona-sorocaba-novembro-azul-2026-11-21', nome: 'Desafio 42K – Bora correr em Sorocaba', curto: 'Sorocaba 42K' }
+  { slug: '1-meia-maratona-de-indaiatuba-2026-12-13', cidade: 'Indaiatuba', nome: 'Meia de Indaiatuba', curto: 'Meia de Indaiatuba' },
+  { slug: '9-maratona-sorocaba-novembro-azul-2026-11-21', cidade: 'Sorocaba', nome: 'Desafio 42K – Bora correr em Sorocaba', curto: 'Desafio 42K' }
 ];
 let PROVA_SLUG = (() => { try { const s = localStorage.getItem('mapmove-prova'); if (PROVAS.some((p) => p.slug === s)) return s; } catch { /* sem storage */ } return PROVAS[0].slug; })();
 const NOME_NO_JOGO = Object.fromEntries(PROVAS.map((p) => [p.slug, p.nome]));
@@ -3270,19 +3270,35 @@ function loop() {
 
 // ─── MENU E DADOS DA PROVA ────────────────────────────────────────────────────
 
+// escolha em dois passos: cidade e, embaixo, as provas daquela cidade
+let cidadeEscolhida = null;
 function mostrarAbasProvas() {
   const box = $('#provasAbas');
-  box.innerHTML = PROVAS.map((p) => `<button data-slug="${p.slug}" class="${p.slug === PROVA_SLUG ? 'ativa' : ''}">${p.curto}</button>`).join('');
-  for (const b of box.querySelectorAll('button')) b.addEventListener('click', () => {
-    if (b.dataset.slug === PROVA_SLUG) return;
-    PROVA_SLUG = b.dataset.slug;
+  const atual = PROVAS.find((p) => p.slug === PROVA_SLUG);
+  cidadeEscolhida ||= atual.cidade;
+  const cidades = [...new Set(PROVAS.map((p) => p.cidade))];
+  const daCidade = PROVAS.filter((p) => p.cidade === cidadeEscolhida);
+  box.innerHTML = `<small>📍 Cidade</small><div class="linha-abas">${cidades.map((c) => `<button data-cidade="${c}" class="${c === cidadeEscolhida ? 'ativa' : ''}">${c}</button>`).join('')}</div>
+    <small>🏁 Provas</small><div class="linha-abas">${daCidade.map((p) => `<button data-slug="${p.slug}" class="${p.slug === PROVA_SLUG ? 'ativa' : ''}">${p.curto}</button>`).join('')}</div>`;
+  for (const b of box.querySelectorAll('button[data-cidade]')) b.addEventListener('click', () => {
+    if (b.dataset.cidade === cidadeEscolhida) return;
+    cidadeEscolhida = b.dataset.cidade;
+    // ao trocar de cidade, abre a primeira prova dela
+    const primeira = PROVAS.find((p) => p.cidade === cidadeEscolhida);
+    trocarProva(primeira.slug);
+  });
+  for (const b of box.querySelectorAll('button[data-slug]')) b.addEventListener('click', () => trocarProva(b.dataset.slug));
+}
+function trocarProva(slug) {
+  {
+    if (slug === PROVA_SLUG) { mostrarAbasProvas(); return; }
+    PROVA_SLUG = slug;
     try { localStorage.setItem('mapmove-prova', PROVA_SLUG); } catch { /* sem storage */ }
     dadosProva = null;
     $('#provaInfo').textContent = 'Carregando o percurso…';
     $('#provaDistancias').innerHTML = '';
-    mostrarAbasProvas();
     carregarProva();
-  });
+  }
 }
 async function carregarProva() {
   mostrarAbasProvas();
