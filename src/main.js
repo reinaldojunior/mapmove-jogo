@@ -3097,6 +3097,8 @@ let perfil = (() => { try { return P.lerPerfil(localStorage.getItem(CHAVE_PERFIL
 function salvarPerfil() {
   try { localStorage.setItem(CHAVE_PERFIL, JSON.stringify(perfil)); } catch { /* sem storage */ }
   agendarNuvem();
+  // na tela inicial, saldo e treino do dia sempre atualizados (o botão de comprar depende dos Move$)
+  if (typeof estado !== 'undefined' && estado.modo === 'inicio') queueMicrotask(() => { try { mostrarPerfil(); mostrarTreinoDoDia(); } catch { /* ainda carregando */ } });
 }
 
 // ─── CONTA (login Google) E PERFIL NA NUVEM ───────────────────────────────────
@@ -3266,14 +3268,21 @@ function mostrarTreinoDoDia() {
   const feitos = perfil.treinosHoje?.dia === hoje ? perfil.treinosHoje.n : 0;
   const t = TR.prescrever(st.nivel, hoje, feitos);
   $('#treinoNome').textContent = t.nome;
-  $('#treinoInfo').textContent = `${TR.LOCAIS[t.local]} · ${t.detalhe} · +${TR.xpTreino(st.indice)} XP`;
+  const xpT = TR.xpTreino(st.indice);
+  $('#treinoInfo').textContent = `${TR.LOCAIS[t.local]} · ${t.detalhe} · +${xpT} XP`;
+  // deixa claro o que o treino faz: cada um aproxima o próximo degrau de pace
+  const faltaXp = Math.max(0, st.xpDoDegrau - st.xpNoDegrau), nTreinos = Math.max(1, Math.ceil(faltaXp / xpT));
+  $('#treinoPace').textContent = st.completo ? '📈 Você está no pace máximo: treinar mantém a forma.'
+    : `📈 Cada treino melhora seu pace: ${nTreinos === 1 ? 'mais 1 treino' : `mais ${nTreinos} treinos`} e você passa de ${fmtPace(st.pace)} para ${fmtPace(st.proximo.pace)}`;
   $('#btnTreinoDia').hidden = !gratis;
-  const comprar = $('#btnComprarTreino');
-  comprar.hidden = gratis;
-  comprar.disabled = perfil.moves < TR.PRECO_TREINO;
-  comprar.textContent = perfil.moves < TR.PRECO_TREINO
-    ? `Próximo grátis à meia-noite · faltam ${TR.PRECO_TREINO - perfil.moves} Move$ para comprar`
-    : `Comprar treino agora · ${TR.PRECO_TREINO} Move$`;
+  $('#btnTreinoDia').textContent = 'Fazer treino grátis';
+  // comprar fica sempre à vista: com o grátis ainda disponível, é um treino extra
+  const comprar = $('#btnComprarTreino'), temMoves = perfil.moves >= TR.PRECO_TREINO;
+  comprar.hidden = false;
+  comprar.disabled = !temMoves;
+  comprar.textContent = temMoves
+    ? `${gratis ? 'Treino extra' : 'Comprar treino'} · ${TR.PRECO_TREINO} Move$`
+    : `${gratis ? 'Treino extra' : 'Próximo grátis à meia-noite'} · faltam ${TR.PRECO_TREINO - perfil.moves} Move$`;
   const seq = perfil.ultimoDiaTreino && (perfil.ultimoDiaTreino === hoje || perfil.ultimoDiaTreino === TR.diaLocal(Date.now() - 86400000)) ? perfil.sequencia || 0 : 0;
   const prox = Object.keys(TR.BONUS_SEQUENCIA).map(Number).find((d) => d > seq);
   $('#treinoSeq').textContent = `🔥 ${seq} ${seq === 1 ? 'dia seguido' : 'dias seguidos'}${prox ? ` · bônus de ${TR.BONUS_SEQUENCIA[prox]} Move$ com ${prox} dias` : ''}`;

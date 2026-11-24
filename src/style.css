@@ -543,3 +543,6 @@ kbd {
 .medalhas .trocas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .medalhas .trocas button { padding: 7px 4px; border: 0; border-radius: 12px; background: #ffd21f; color: #2a1a00; font: inherit; font-weight: 800; font-size: 12px; cursor: pointer; }
 .medalhas .trocas button:disabled { opacity: 0.45; cursor: default; }
+
+#btnTreinoDia[hidden], #btnComprarTreino[hidden] { display: none; }
+.treino-pace { color: #ffd27a; font-weight: 700; }
