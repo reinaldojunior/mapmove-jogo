@@ -124,3 +124,14 @@ export const meuCodigo = () => rpc('jogo_meu_codigo');
 export const adicionarAmigo = (codigo) => rpc('jogo_adicionar_amigo', { p_codigo: codigo });
 export const meusAmigos = () => rpc('jogo_meus_amigos');
 export const linkConvite = (codigo) => `https://jogo.mapmove.com.br/?amigo=${encodeURIComponent(codigo)}`;
+
+// ── Desafio com fantasma: guarda o ritmo da corrida e lê o desafio pelo link ──
+export async function salvarFantasma(u, { prova, rotulo, tempo, passo, amostras }) {
+  const { data, error } = await cliente().from('jogo_fantasmas')
+    .insert({ user_id: u.id, prova, rotulo, tempo_s: Math.round(tempo), passo_s: passo, amostras: amostras.map((v) => Math.round(v * 10) / 10) })
+    .select('id').single();
+  if (error) throw error;
+  return data.id;
+}
+export const lerFantasma = async (id) => (await rpc('jogo_fantasma', { p_id: id }))?.[0] || null;
+export const linkDesafio = (id) => `https://jogo.mapmove.com.br/?desafio=${encodeURIComponent(id)}`;

@@ -22,6 +22,7 @@ import * as CL from './clima.js';
 import * as PL from './pelotao.js';
 import * as MD from './medalhas.js';
 import { gerarCartao } from './cartao.js';
+import * as FT from './fantasma.js';
 import { manchasDeGrama, criarTufos, balancoDeArvore } from './grama.js';
 import { clone as clonarComOssos } from 'three/addons/utils/SkeletonUtils.js';
 import { pistasDuplas, duplaEm } from './osm.js';
@@ -1051,7 +1052,7 @@ function atualizarCenario(sCorredor) {
 // ─── OBSTÁCULOS E ITENS (EM COORDENADAS DA PISTA: s AO LONGO, d PARA OS LADOS) ─
 
 let entidades = [];
-if (import.meta.env.DEV) window.__dbg = { ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); } }; // só no modo de desenvolvimento, para testes
+if (import.meta.env.DEV) window.__dbg = { ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); } }; // só no modo de desenvolvimento, para testes
 let postos = [];
 let travessas = [];
 
@@ -2438,6 +2439,11 @@ function desenharMinimapa() {
 let hudTimer = 0;
 function atualizarHud() {
   {
+    const el = $('#hudFantasma'), on = estado.desafioAtivo && (estado.modo === 'jogando' || estado.modo === 'fim');
+    el.hidden = !on;
+    if (on) $('#hudFantasmaTxt').textContent = FT.textoDiferenca(desafio.nome, FT.diferenca(desafio, estado.s, estado.tempoReal));
+  }
+  {
     const p = estado.posicao, el = $('#hudPos');
     el.hidden = !p;
     if (p) $('#hudPosTxt').textContent = `${p.posicao}º/${p.total}`;
@@ -2591,6 +2597,10 @@ function iniciar(escolha, clima) {
   estado.clima = clima || CL.sortearClima();
   aplicarClima(estado.clima);
   prepararPelotao();
+  // grava o ritmo da prova (posição a cada 10 s de prova) para virar fantasma num desafio
+  estado.gravacao = prova ? { passo: 10, amostras: [0], prox: 10 } : null;
+  estado.desafioAtivo = !!(desafio && prova && desafio.prova === PROVA_SLUG && desafio.rotulo === prova.rotulo);
+  if (estado.desafioAtivo) setTimeout(() => aviso(`👻 Desafio: ${desafio.nome} fez ${R.formatarTempo(desafio.tempo)}. Bata o fantasma!`, 'km', 3000), 5200);
   aplicarEquipamento();
   atualizarHud();
   estado.modo = 'contagem';
@@ -2657,6 +2667,65 @@ function nivelTorcida(sAtual) {
 }
 
 let ultimoResultado = null;
+
+// ─── DESAFIO COM FANTASMA ─────────────────────────────────────────────────────
+let desafio = null; // { id, nome, prova, rotulo, tempo, passo, amostras }
+{
+  const id = new URLSearchParams(location.search).get('desafio');
+  if (id) {
+    history.replaceState(null, '', location.pathname);
+    Conta.lerFantasma(id).then((f) => {
+      if (!f) { aviso('Desafio não encontrado', 'alerta', 2200); return; }
+      desafio = { id, nome: f.nome, prova: f.prova, rotulo: f.rotulo, tempo: f.tempo_s, passo: f.passo_s, amostras: f.amostras };
+      abrirDesafioQuandoPronto();
+    }).catch(() => aviso('Não deu para abrir o desafio', 'alerta', 2200));
+  }
+}
+function abrirDesafioQuandoPronto() {
+  if (!desafio) return;
+  if (desafio.prova !== PROVA_SLUG) { aviso('Esse desafio é de outra prova', 'alerta', 2400); desafio = null; return; }
+  const d = dadosProva?.distancias?.find((x) => x.rotulo === desafio.rotulo);
+  if (!d) { setTimeout(abrirDesafioQuandoPronto, 600); return; }
+  aviso(`👻 ${desafio.nome} te desafiou no ${desafio.rotulo}: ${R.formatarTempo(desafio.tempo)}`, 'km', 3200);
+  abrirClima({ tipo: 'prova', distancia: d });
+}
+// boneco do fantasma: um corredor do pelotão, translúcido e azulado
+let fantasma3d = null;
+function desenharFantasma(dt) {
+  const s = estado;
+  const ativo = s.desafioAtivo && (s.modo === 'jogando' || s.modo === 'contagem');
+  if (!ativo) { if (fantasma3d) fantasma3d.holder.visible = false; return; }
+  if (!fantasma3d && npcModelos.length) {
+    fantasma3d = criarNpc(1);
+    fantasma3d.holder.traverse((o) => {
+      if (!o.isMesh) return;
+      o.material = new THREE.MeshStandardMaterial({ color: 0x9fc4ff, emissive: 0x3a5cff, emissiveIntensity: 0.5, transparent: true, opacity: 0.45, depthWrite: false });
+      o.castShadow = false;
+    });
+  }
+  if (!fantasma3d) return;
+  const sf = s.modo === 'jogando' ? FT.posicaoFantasma(desafio, s.tempoReal) : 0;
+  const e = emEst(sf), [rx, rz] = direita(e.ang);
+  fantasma3d.holder.position.set(e.x + rx * 1.4, e.y, e.z + rz * 1.4);
+  fantasma3d.holder.rotation.y = -e.ang;
+  fantasma3d.holder.visible = true;
+  const correndo = s.modo === 'jogando' && sf < (Number.isFinite(pista.total) ? pista.total : Infinity);
+  fantasma3d.mixer.update(correndo ? dt * 1.1 : 0);
+}
+$('#btnDesafiar').addEventListener('click', async () => {
+  const s = estado;
+  if (!usuario) { aviso('Entre com o Google (tela inicial) para desafiar seus amigos', 'alerta', 2600); return; }
+  if (!s.gravacao || !prova) return;
+  const b = $('#btnDesafiar'); b.disabled = true;
+  try {
+    s.fantasmaSalvo ||= await Conta.salvarFantasma(usuario, { prova: PROVA_SLUG, rotulo: prova.rotulo, tempo: s.tempoReal, passo: s.gravacao.passo, amostras: s.gravacao.amostras });
+    const link = Conta.linkDesafio(s.fantasmaSalvo);
+    const texto = `👻 Te desafio no ${prova.rotulo} da ${prova.nome} no Mapmove Run! Fiz ${R.formatarTempo(s.tempoReal)}. Corre contra o meu fantasma: ${link}`;
+    if (navigator.share) { try { await navigator.share({ text: texto }); } catch { /* cancelou */ } }
+    else window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
+  } catch (e) { aviso(`Não deu para criar o desafio: ${e.message}`, 'alerta', 2600); }
+  b.disabled = false;
+});
 $('#btnCompartilhar').addEventListener('click', async () => {
   if (!ultimoResultado) return;
   const b = $('#btnCompartilhar'); b.disabled = true;
@@ -2695,8 +2764,17 @@ function terminar(titulo, concluiu = false) {
     s.posicao = { posicao: s.resultado.geral, total: s.resultado.total };
   }
   const mot = $('#fimMotivacao');
-  mot.hidden = !s.resultado;
-  if (s.resultado) mot.innerHTML = PL.mensagemFinal(s.resultado).map((t) => `<span>${t}</span>`).join('');
+  const linhasMot = s.resultado ? PL.mensagemFinal(s.resultado) : [];
+  if (s.desafioAtivo) {
+    const dif = s.tempoReal - desafio.tempo, seg = Math.round(Math.abs(dif));
+    linhasMot.unshift(!concluiu ? `👻 ${desafio.nome} venceu desta vez. Tente de novo!`
+      : dif < 0 ? `👻 Você venceu o desafio de ${desafio.nome} por ${R.formatarTempo(seg)}!` : `👻 ${desafio.nome} ainda está ${R.formatarTempo(seg)} na frente. Tente de novo!`);
+  }
+  mot.hidden = !linhasMot.length;
+  mot.innerHTML = linhasMot.map((t) => `<span>${t}</span>`).join('');
+  if (s.gravacao && concluiu) s.gravacao.amostras.push(pista.total);
+  $('#btnDesafiar').hidden = !(prova && concluiu && s.gravacao);
+  s.fantasmaSalvo = null;
   $('#fimPlacar').innerHTML = [
     cel('Distância', `${R.formatarKm(dist)} km`), cel('Tempo', R.formatarTempo(s.tempoReal)),
     cel('Pace médio', paceMedio ? R.formatarPace(1000 / paceMedio) : '--:--'),
@@ -2914,6 +2992,7 @@ function passo(dt) {
         c.esbarrou = true; s.v *= 0.85; aviso('😬 Esbarrou num corredor', 'alerta', 900);
       }
     }
+    if (s.gravacao) while (s.tempoReal >= s.gravacao.prox) { s.gravacao.amostras.push(Math.min(s.s, pista.total)); s.gravacao.prox += s.gravacao.passo; }
     if (s.modo !== 'jogando') return;
     if (prova && s.s >= pista.total) return terminar(`🏁 Chegada! ${prova.rotulo} concluído`, true);
   }
@@ -3074,6 +3153,7 @@ function desenhar(dt) {
   ceu.position.copy(camera.position);
   animarChuva(Math.min(dt || 0.016, 0.05));
   desenharPelotao(Math.min(dt || 0.016, 0.05));
+  desenharFantasma(Math.min(dt || 0.016, 0.05));
   renderer.render(scene, camera);
 }
 
