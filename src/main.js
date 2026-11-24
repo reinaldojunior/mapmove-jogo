@@ -493,6 +493,8 @@ const PROPS = {
   'carro-esporte': { arquivo: 'carros/sports.glb', comprimento: 4.5, eixo: 'x', giro: 0 },
   'carro-policia': { arquivo: 'carros/police-sedan.glb', comprimento: 4.6, eixo: 'x', giro: 0 },
   ambulancia: { arquivo: 'carros/ambulance.glb', comprimento: 5.6, eixo: 'z', giro: 0 },
+  // carro desgovernado (Meshy): malha única; as rodas são recortadas na carga para poderem girar. Frente para -x
+  'carro-festa': { arquivo: 'carros/carro-festa.glb', comprimento: 4.3, eixo: 'x', giro: 0, preparar: (m) => separarRodas(m, RODAS_FESTA) },
   // mesa e cavalete vão pela altura real; o comprimento sai da proporção do modelo
   mesa: { arquivo: 'mesa-agua.glb', altura: 1.0, eixo: 'z', giro: 0 },
   barreira: { arquivo: 'barreira.glb', altura: 1.12, eixo: 'x', giro: 0 },
@@ -519,6 +521,7 @@ async function carregarProp(nome) {
   const gltf = await gltfLoader.loadAsync(`/modelos/${cfg.arquivo}`);
   const model = gltf.scene;
   if (cfg.balanca) model.traverse((o) => { if (o.isMesh) o.material = balancoDeArvore(o.material.clone(), { altura: cfg.altura || 7 }); });
+  cfg.preparar?.(model);
   model.updateMatrixWorld(true);
   let box = new THREE.Box3().setFromObject(model, true);
   const tam = box.getSize(new THREE.Vector3());
@@ -1052,7 +1055,7 @@ function atualizarCenario(sCorredor) {
 // ─── OBSTÁCULOS E ITENS (EM COORDENADAS DA PISTA: s AO LONGO, d PARA OS LADOS) ─
 
 let entidades = [];
-if (import.meta.env.DEV) window.__dbg = { ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); } }; // só no modo de desenvolvimento, para testes
+if (import.meta.env.DEV) window.__dbg = { ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: () => { estado.festaEm = estado.s + 1; } }; // só no modo de desenvolvimento, para testes
 let postos = [];
 let travessas = [];
 
@@ -1197,6 +1200,34 @@ function ciclista(s, d) {
   });
 }
 
+// rodas do carro-festa no espaço do modelo (medidas na malha): centro x, centro y, lado (z), raio
+const RODAS_FESTA = { raio: 0.15, zMin: 0.24, lista: [[-0.59, -0.274, 1], [0.61, -0.274, 1], [-0.59, -0.274, -1], [0.61, -0.274, -1]] };
+// recorta da malha única os triângulos de cada roda e põe cada uma num grupo próprio, centrado no eixo
+function separarRodas(model, cfg) {
+  let malha = null; model.traverse((o) => { if (o.isMesh && !malha) malha = o; });
+  if (!malha?.geometry.index) return;
+  const g = malha.geometry, pos = g.attributes.position, idx = g.index.array, R = cfg.raio * 1.08;
+  const resto = [], porRoda = cfg.lista.map(() => []);
+  const daRoda = (v) => {
+    const x = pos.getX(v), y = pos.getY(v), z = pos.getZ(v);
+    return cfg.lista.findIndex(([cx, cy, lado]) => Math.sign(z) === lado && Math.abs(z) > cfg.zMin && Math.hypot(x - cx, y - cy) < R);
+  };
+  for (let i = 0; i < idx.length; i += 3) {
+    const a = daRoda(idx[i]);
+    if (a >= 0 && daRoda(idx[i + 1]) === a && daRoda(idx[i + 2]) === a) porRoda[a].push(idx[i], idx[i + 1], idx[i + 2]);
+    else resto.push(idx[i], idx[i + 1], idx[i + 2]);
+  }
+  const comIndice = (lista) => { const n = new THREE.BufferGeometry(); for (const [k, at] of Object.entries(g.attributes)) n.setAttribute(k, at); n.setIndex(lista); return n; };
+  malha.geometry = comIndice(resto);
+  cfg.lista.forEach(([cx, cy, lado], k) => {
+    if (!porRoda[k].length) return;
+    const roda = new THREE.Group(); roda.name = `roda_festa_${k}`;
+    roda.position.set(cx, cy, 0);
+    const m = new THREE.Mesh(comIndice(porRoda[k]), malha.material); m.position.set(-cx, -cy, 0); m.castShadow = true;
+    roda.add(m); (malha.parent || model).add(roda);
+  });
+}
+
 const CARROS = ['carro-sedan', 'carro-sedan', 'carro-hatch', 'carro-hatch', 'carro-suv', 'carro-suv', 'carro-picape', 'carro-taxi', 'carro-van', 'carro-classico', 'carro-esporte', 'carro-policia'];
 // cores de carro de rua para variar a pintura (táxi e polícia ficam com as cores deles)
 const PINTURAS = [0xf2f2f2, 0xc9ced6, 0x8a929c, 0x2b2f36, 0x1f3f8f, 0xb3202a, 0x2f6b3a, 0xd9c7a1, 0x5a2a7a, 0xe07b24];
@@ -1232,6 +1263,30 @@ function carro(s, lado) {
     });
   }
   return addEntidade({ tipo: 'carro', motivo: 'Bateu no carro', obj: modelo || achatar(g), s, d: lado * 16, rot: lado > 0 ? Math.PI : 0, larg: 3.4, prof: 1.7, h: 2.2, gatilho: 55, rodas, raioRoda });
+}
+
+// ─── CARRO DESGOVERNADO: invade a prova na contramão, ziguezagueando; o pelotão desvia; a guarda vem atrás ──
+let festa = null;
+function carroDesgovernado(s) {
+  const modelo = prop('carro-festa');
+  if (!modelo) return null;
+  const rodasZ = [];
+  modelo.traverse((o) => { if (/^roda_festa_/.test(o.name)) rodasZ.push(o); });
+  const esc = modelo.scale.x;
+  const e = addEntidade({ tipo: 'carro', motivo: 'O carro desgovernado te pegou', obj: modelo, s, d: 0, rot: Math.PI / 2,
+    larg: 1.9, prof: 4.2, h: 1.6, vs: -9.5, rodasZ, raioRoda: RODAS_FESTA.raio * esc, fase: Math.random() * 6,
+    anima(t) {
+      // ziguezague de bêbado: volta e meia cruza a rua inteira
+      const alvo = Math.sin(t * 0.9 + this.fase) * 2.6 + Math.sin(t * 2.3) * 0.5;
+      this.rot = Math.PI / 2 + Math.max(-0.35, Math.min(0.35, (alvo - this.d) * 0.5));
+      this.d += (alvo - this.d) * Math.min(1, 1.6 * (1 / 60));
+    } });
+  // moto da guarda municipal vem atrás, com o giroflex
+  const moto = lideres.moto.clone();
+  moto.visible = true;
+  const gcm = addEntidade({ tipo: 'decor', obj: moto, s: s + 16, d: 0, rot: Math.PI, vs: -9.5,
+    anima(t) { this.d = e.d * 0.6; const k = Math.floor(t * 6) % 2; this.obj.children.at(-2).visible = !!k; this.obj.children.at(-1).visible = !k; } });
+  return { carro: e, moto: gcm, avisado: false, passou: false };
 }
 
 function moeda(s, d) {
@@ -2597,6 +2652,9 @@ function iniciar(escolha, clima) {
   estado.clima = clima || CL.sortearClima();
   aplicarClima(estado.clima);
   prepararPelotao();
+  // carro desgovernado em ~1 a cada 3 provas, entre 30% e 70% do percurso
+  festa = null;
+  estado.festaEm = prova && Math.random() < 0.35 ? pista.total * aleat(0.3, 0.7) : 0;
   // grava o ritmo da prova (posição a cada 10 s de prova) para virar fantasma num desafio
   estado.gravacao = prova ? { passo: 10, amostras: [0], prox: 10 } : null;
   estado.desafioAtivo = !!(desafio && prova && desafio.prova === PROVA_SLUG && desafio.rotulo === prova.rotulo);
@@ -3049,6 +3107,23 @@ function passo(dt) {
     }
   }
 
+  // carro desgovernado: aparece uma vez em algumas provas, no meio do percurso
+  if (prova && s.festaEm && !festa && s.s > s.festaEm) { festa = carroDesgovernado(s.s + 230); s.festaEm = 0; }
+  if (festa) {
+    const ce = festa.carro, dist = ce.s - s.s;
+    if (!festa.avisado && dist < 150) { festa.avisado = true; aviso('⚠️ Carro invadiu a pista na contramão! Desvie!', 'alerta', 2600); }
+    // o pelotão sai da frente
+    for (const c of pelotao) {
+      const ds = ce.s - c.s;
+      if (ds > -3 && ds < 26 && Math.abs(c.d - ce.d) < 2.6) { const lado = c.d >= ce.d ? 1 : -1; c.alvoD = Math.max(-3.4, Math.min(3.4, ce.d + lado * 3.2)); c.d += lado * 4 * dt; c.d = Math.max(-3.6, Math.min(3.6, c.d)); }
+    }
+    if (!festa.passou && dist < -6) {
+      festa.passou = true;
+      if (!ce.atingido) { s.pontos += 50; aviso('😅 Escapou do carro desgovernado! +50', 'km', 1800); }
+      setTimeout(() => aviso('🚓 Rua interditada é dos corredores. Se beber, não dirija.', 'km', 3200), 2000);
+    }
+    if (dist < -24) festa = null; // a entidade some 25 m atrás do corredor
+  }
   const c = { s: s.s, d: s.d, y: s.y, altura: s.agachado > 0 ? R.ALTURA_AGACHADO : R.ALTURA_EM_PE };
   const vCorredor = s.v * R.ESCALA_TEMPO;
   for (const e of entidades) {
@@ -3063,6 +3138,7 @@ function passo(dt) {
     if (e.vd) e.d += e.vd * dt;
     // rodas girando conforme a velocidade do carro (frente para onde ele anda)
     if (e.rodas?.length && e.vd) for (const r of e.rodas) r.rotation.x += (Math.abs(e.vd) * dt) / e.raioRoda;
+    if (e.rodasZ?.length && e.vs) for (const r of e.rodasZ) r.rotation.z += (Math.abs(e.vs) * dt) / e.raioRoda;
     if (e.anima) e.anima(s.t);
     colocar(e);
     if (e.tipo === 'decor' || e.pego || e.atingido) continue;
