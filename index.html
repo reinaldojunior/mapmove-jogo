@@ -89,6 +89,11 @@
         <button id="btnLoja" class="cta pequeno loja-btn">🛍️ Loja e personagem</button>
         <small class="perfil-aviso" id="perfilAviso" hidden></small>
       </div>
+      <div class="cartao ranking-cartao">
+        <h3>⭐ Ranking e amigos</h3>
+        <small id="rankingResumo">Some pontos nas corridas: o top 3 da semana ganha o Troféu da semana.</small>
+        <button id="btnRanking" class="cta pequeno">Ver ranking</button>
+      </div>
       <div class="cartao treino-dia" id="cartaoTreino">
         <h3>🏋️ Treino do dia</h3>
         <b id="treinoNome"></b>
@@ -160,6 +165,29 @@
       </div>
       <div class="itens" id="lojaItens"></div>
       <button id="btnLojaVoltar" class="cta secundario">Voltar</button>
+    </section>
+
+    <section id="telaRanking" class="tela" hidden>
+      <div class="ranking">
+        <h2>⭐ Ranking de pontos</h2>
+        <div class="abas-ranking">
+          <button class="aba-r ativa" data-periodo="semana">Semana</button>
+          <button class="aba-r" data-periodo="30dias">30 dias</button>
+          <span class="sep"></span>
+          <button class="aba-r ativa" data-quem="geral">Geral</button>
+          <button class="aba-r" data-quem="amigos">Amigos</button>
+        </div>
+        <small class="ranking-dica" id="rankingDica"></small>
+        <ol class="ranking-lista" id="rankingLista"></ol>
+        <div class="amigos" id="amigosBox">
+          <h3>👥 Amigos</h3>
+          <div class="meu-codigo">Seu código: <b id="meuCodigo">…</b></div>
+          <button id="btnConvidar" class="cta pequeno">📲 Convidar pelo WhatsApp</button>
+          <div class="add-amigo"><input id="codigoAmigo" maxlength="6" placeholder="Código do amigo" autocomplete="off" autocapitalize="characters"><button id="btnAddAmigo" class="cta pequeno secundario">Adicionar</button></div>
+          <ul class="amigos-lista" id="amigosLista"></ul>
+        </div>
+      </div>
+      <button id="btnRankingVoltar" class="cta secundario">Voltar</button>
     </section>
 
     <section id="telaPausa" class="tela" hidden>

@@ -104,3 +104,23 @@ export function ganhoStrava(novas) {
   const km = novas.reduce((a, n) => a + Number(n.km_valido || 0), 0);
   return { km, xp: Math.round(km * XP_POR_KM_REAL), moves: Math.floor(km) };
 }
+
+// ── Ranking de pontos (soma da semana / 30 dias) e amigos ──
+export async function registrarCorridaNuvem(u, { modo, pontos, km, tempo, concluiu }) {
+  const { error } = await cliente().from('jogo_corridas').insert({
+    user_id: u.id, modo, pontos: Math.max(0, Math.round(pontos)), km: Math.round(km * 100) / 100,
+    tempo_s: Math.max(0, Math.round(tempo || 0)), concluiu: !!concluiu
+  });
+  if (error) throw error;
+}
+async function rpc(nome, args) {
+  const { data, error } = await cliente().rpc(nome, args);
+  if (error) throw error;
+  return data;
+}
+export const ranking = (periodo = 'semana', amigos = false) => rpc('jogo_ranking', { p_periodo: periodo, p_amigos: amigos });
+export const semanaPassada = async () => (await rpc('jogo_semana_passada'))?.[0] || null;
+export const meuCodigo = () => rpc('jogo_meu_codigo');
+export const adicionarAmigo = (codigo) => rpc('jogo_adicionar_amigo', { p_codigo: codigo });
+export const meusAmigos = () => rpc('jogo_meus_amigos');
+export const linkConvite = (codigo) => `https://jogo.mapmove.com.br/?amigo=${encodeURIComponent(codigo)}`;

@@ -2521,8 +2521,8 @@ function aviso(txt, classe = '', ms = 1500) {
 
 function mostrar(tela) {
   if (tela !== 'telaLoja') vitrine?.desligar();
-  for (const id of ['telaInicio', 'telaPausa', 'telaFim', 'telaTreino', 'telaLoja', 'telaClima']) $('#' + id).hidden = id !== tela;
-  $('#hud').hidden = ['telaInicio', 'telaFim', 'telaTreino', 'telaLoja', 'telaClima'].includes(tela);
+  for (const id of ['telaInicio', 'telaPausa', 'telaFim', 'telaTreino', 'telaLoja', 'telaClima', 'telaRanking']) $('#' + id).hidden = id !== tela;
+  $('#hud').hidden = ['telaInicio', 'telaFim', 'telaTreino', 'telaLoja', 'telaClima', 'telaRanking'].includes(tela);
   $('#controles').hidden = tela !== null;
 }
 
@@ -2697,6 +2697,11 @@ function terminar(titulo, concluiu = false) {
   }
   $('#fimRecorde').textContent = rec;
   mostrarEvolucao(dist, concluiu);
+  // corrida vale para o ranking de pontos (só com conta Google)
+  if (usuario && pontos > 0 && dist > 50) {
+    Conta.registrarCorridaNuvem(usuario, { modo: prova ? prova.rotulo : 'treino', pontos, km: dist / 1000, tempo: s.tempoReal, concluiu })
+      .catch((e) => console.warn('ranking', e));
+  }
   setTimeout(() => { if (estado.modo === 'fim') mostrar('telaFim'); }, concluiu ? 300 : 800);
 }
 
@@ -3195,7 +3200,99 @@ async function entrouNaConta(u) {
     if (estado.modo === 'inicio') mostrarInicio();
     if (perfil.personagem && corredor.atleta?.id !== perfil.personagem) carregarAtleta(corredor, perfil.personagem).catch(() => {});
   } catch (e) { console.warn('perfil na nuvem', e); $('#contaSync').textContent = '⚠️ sem conexão'; }
+  aceitarConvitePendente();
+  conferirTrofeuSemana();
 }
+
+// ─── RANKING DE PONTOS E AMIGOS ──────────────────────────────────────────────
+// convite: jogo.mapmove.com.br/?amigo=CODIGO — guarda o código até a pessoa entrar com o Google
+{
+  const c = new URLSearchParams(location.search).get('amigo');
+  if (c) {
+    try { localStorage.setItem('mapmove-convite', c.toUpperCase()); } catch { /* sem storage */ }
+    history.replaceState(null, '', location.pathname);
+  }
+}
+async function aceitarConvitePendente() {
+  let c = null; try { c = localStorage.getItem('mapmove-convite'); } catch { /* sem storage */ }
+  if (!c || !usuario) return;
+  try {
+    const nome = await Conta.adicionarAmigo(c);
+    aviso(`👥 Agora você e ${nome} são amigos!`, 'km', 3000);
+  } catch (e) { if (!/seu código/.test(e.message)) console.warn('convite', e); }
+  try { localStorage.removeItem('mapmove-convite'); } catch { /* sem storage */ }
+}
+// top 3 da semana passada ganha o Troféu da semana (uma vez por semana)
+async function conferirTrofeuSemana() {
+  try {
+    const r = await Conta.semanaPassada();
+    if (!r || r.posicao > 3) return;
+    const ja = perfil.trofeusSemana || [];
+    if (ja.includes(r.semana)) return;
+    perfil = { ...perfil, trofeusSemana: [...ja, r.semana], conquistas: { ...(perfil.conquistas || {}), trofeu: Date.now() } };
+    salvarPerfil();
+    aviso(`🏆 Você ficou em ${r.posicao}º no ranking da semana passada! Troféu da semana`, 'km', 3800);
+  } catch (e) { console.warn('troféu da semana', e); }
+}
+let filtroRanking = { periodo: 'semana', amigos: false };
+async function abrirRanking() {
+  mostrar('telaRanking');
+  if (!usuario) {
+    $('#rankingDica').textContent = 'Entre com o Google (tela inicial) para aparecer no ranking e adicionar amigos.';
+    $('#rankingLista').innerHTML = '';
+    $('#amigosBox').hidden = true;
+    return;
+  }
+  $('#amigosBox').hidden = false;
+  carregarRanking();
+  carregarAmigos();
+}
+const escapar = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+async function carregarRanking() {
+  for (const b of document.querySelectorAll('.aba-r[data-periodo]')) b.classList.toggle('ativa', b.dataset.periodo === filtroRanking.periodo);
+  for (const b of document.querySelectorAll('.aba-r[data-quem]')) b.classList.toggle('ativa', (b.dataset.quem === 'amigos') === filtroRanking.amigos);
+  $('#rankingDica').textContent = filtroRanking.periodo === 'semana' ? 'Soma dos pontos desde segunda. Top 3 ganha o Troféu da semana.' : 'Soma dos pontos dos últimos 30 dias.';
+  const ul = $('#rankingLista');
+  ul.innerHTML = '<li class="vazio">Carregando…</li>';
+  try {
+    const lista = await Conta.ranking(filtroRanking.periodo, filtroRanking.amigos);
+    if (!lista?.length) { ul.innerHTML = `<li class="vazio">${filtroRanking.amigos ? 'Nenhum amigo correu ainda. Convide alguém!' : 'Ninguém pontuou ainda. Seja o primeiro!'}</li>`; return; }
+    const medalha = (p) => (p === 1 ? '🥇' : p === 2 ? '🥈' : p === 3 ? '🥉' : `${p}º`);
+    ul.innerHTML = lista.map((r) => `<li class="${r.eu ? 'eu' : ''}"><span class="pos">${medalha(Number(r.posicao))}</span>${r.foto ? `<img src="${escapar(r.foto)}" alt="" referrerpolicy="no-referrer">` : `<span class="sem-foto">${escapar((r.nome || '?')[0])}</span>`}<span>${escapar(r.nome)}${r.eu ? ' (você)' : ''}<small>${r.corridas} ${Number(r.corridas) === 1 ? 'corrida' : 'corridas'}</small></span><span class="pts">⭐ ${Number(r.pontos).toLocaleString('pt-BR')}</span></li>`).join('');
+  } catch (e) { ul.innerHTML = `<li class="vazio">Não deu para carregar o ranking: ${escapar(e.message)}</li>`; }
+}
+async function carregarAmigos() {
+  try { $('#meuCodigo').textContent = await Conta.meuCodigo(); } catch { $('#meuCodigo').textContent = '—'; }
+  const ul = $('#amigosLista');
+  try {
+    const lista = await Conta.meusAmigos();
+    ul.innerHTML = lista?.length ? lista.map((a) => `<li><span>👤 ${escapar(a.nome)}</span><b>⭐ ${Number(a.pontos_semana).toLocaleString('pt-BR')} na semana</b></li>`).join('')
+      : '<li>Você ainda não tem amigos no jogo. Mande seu convite!</li>';
+  } catch { ul.innerHTML = ''; }
+}
+$('#btnRanking').addEventListener('click', abrirRanking);
+$('#btnRankingVoltar').addEventListener('click', mostrarInicio);
+for (const b of document.querySelectorAll('.aba-r')) b.addEventListener('click', () => {
+  if (b.dataset.periodo) filtroRanking.periodo = b.dataset.periodo; else filtroRanking.amigos = b.dataset.quem === 'amigos';
+  carregarRanking();
+});
+$('#btnConvidar').addEventListener('click', async () => {
+  const codigo = $('#meuCodigo').textContent;
+  if (!codigo || codigo.length !== 6) return;
+  const texto = `Corre comigo no Mapmove Run! 🏃 Percurso real da Meia de Indaiatuba no celular. Entra pelo meu convite (código ${codigo}): ${Conta.linkConvite(codigo)}`;
+  if (navigator.share) { try { await navigator.share({ text: texto }); return; } catch { /* cancelou */ } }
+  window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
+});
+$('#btnAddAmigo').addEventListener('click', async () => {
+  const c = $('#codigoAmigo').value.trim().toUpperCase();
+  if (c.length !== 6) { aviso('O código tem 6 letras/números', 'alerta', 1800); return; }
+  try {
+    const nome = await Conta.adicionarAmigo(c);
+    $('#codigoAmigo').value = '';
+    aviso(`👥 Agora você e ${nome} são amigos!`, 'km', 2600);
+    carregarAmigos(); if (filtroRanking.amigos) carregarRanking();
+  } catch (e) { aviso(/não encontrado/.test(e.message) ? 'Código não encontrado' : /seu código/.test(e.message) ? 'Esse é o seu código 😄' : e.message, 'alerta', 2200); }
+});
 Conta.aoMudarLogin((u) => { if (u) entrouNaConta(u); else { usuario = null; mostrarConta(); } });
 Conta.usuarioAtual().then((u) => entrouNaConta(u));
 $('#btnGoogle').addEventListener('click', () => Conta.entrarComGoogle().catch((e) => aviso(`Não foi possível entrar: ${e.message}`, 'alerta', 3000)));

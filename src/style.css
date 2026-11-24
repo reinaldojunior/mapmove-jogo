@@ -546,3 +546,29 @@ kbd {
 
 #btnTreinoDia[hidden], #btnComprarTreino[hidden] { display: none; }
 .treino-pace { color: #ffd27a; font-weight: 700; }
+
+/* ranking de pontos e amigos */
+.ranking-cartao small { display: block; }
+.ranking-cartao button { margin-top: 8px; }
+.ranking { width: min(440px, 100%); display: grid; gap: 10px; text-align: left; }
+.ranking h2 { margin: 0; text-align: center; }
+.abas-ranking { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.abas-ranking .sep { width: 10px; }
+.aba-r { padding: 6px 12px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.14); color: #fff; font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; }
+.aba-r.ativa { background: #ffd21f; color: #2a1a00; }
+.ranking-dica { text-align: center; opacity: 0.85; }
+.ranking-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; max-height: 42vh; overflow-y: auto; }
+.ranking-lista li { display: grid; grid-template-columns: 34px 32px 1fr auto; gap: 8px; align-items: center; padding: 7px 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.1); font-size: 14px; }
+.ranking-lista li.eu { background: rgba(255, 210, 31, 0.3); outline: 2px solid #ffd21f; }
+.ranking-lista .pos { font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; }
+.ranking-lista img, .ranking-lista .sem-foto { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: rgba(255, 255, 255, 0.2); display: grid; place-items: center; font-weight: 800; }
+.ranking-lista .pts { font-weight: 800; font-variant-numeric: tabular-nums; }
+.ranking-lista small { display: block; opacity: 0.7; font-size: 11px; }
+.ranking-lista .vazio { grid-template-columns: 1fr; text-align: center; opacity: 0.85; }
+.amigos { display: grid; gap: 8px; padding: 12px; border-radius: 16px; background: rgba(10, 30, 60, 0.6); }
+.amigos h3 { margin: 0; }
+.meu-codigo b { font-size: 20px; letter-spacing: 3px; color: #ffd21f; }
+.add-amigo { display: flex; gap: 6px; }
+.add-amigo input { flex: 1; min-width: 0; padding: 8px 12px; border-radius: 999px; border: 0; font: inherit; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+.amigos-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 14px; }
+.amigos-lista li { display: flex; justify-content: space-between; padding: 5px 8px; border-radius: 10px; background: rgba(255, 255, 255, 0.08); }

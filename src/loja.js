@@ -25,7 +25,7 @@ export const ITENS = [
   { id: 'medalha-10k', cat: 'conquista', nome: 'Medalha 10K', desc: 'Termine a prova de 10K.' },
   { id: 'medalha-21k', cat: 'conquista', nome: 'Medalha 21K', desc: 'Termine a meia maratona.' },
   { id: 'camiseta-finisher', cat: 'conquista', nome: 'Camiseta finisher', desc: 'Termine qualquer prova do evento.' },
-  { id: 'trofeu', cat: 'conquista', nome: 'Troféu da semana', desc: 'Fique no pódio do ranking semanal (em breve).' }
+  { id: 'trofeu', cat: 'conquista', nome: 'Troféu da semana', desc: 'Fique no top 3 do ranking semanal de pontos.' }
 ];
 export const item = (id) => ITENS.find((i) => i.id === id);
 export const NOMES_NIVEL = ['Iniciante', 'Intermediário', 'Avançado', 'Sub-elite', 'Elite'];
