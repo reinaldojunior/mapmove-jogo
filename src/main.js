@@ -21,6 +21,7 @@ import { criarCeu } from './ceu.js';
 import * as CL from './clima.js';
 import * as PL from './pelotao.js';
 import * as MD from './medalhas.js';
+import { gerarCartao } from './cartao.js';
 import { manchasDeGrama, criarTufos, balancoDeArvore } from './grama.js';
 import { clone as clonarComOssos } from 'three/addons/utils/SkeletonUtils.js';
 import { pistasDuplas, duplaEm } from './osm.js';
@@ -2655,6 +2656,25 @@ function nivelTorcida(sAtual) {
   return z === 'cidade' ? 0.55 : z === 'parque' ? 0.3 : 0.2;
 }
 
+let ultimoResultado = null;
+$('#btnCompartilhar').addEventListener('click', async () => {
+  if (!ultimoResultado) return;
+  const b = $('#btnCompartilhar'); b.disabled = true;
+  try {
+    const blob = await gerarCartao(ultimoResultado);
+    const arq = new File([blob], 'mapmove-run.png', { type: 'image/png' });
+    const texto = `${ultimoResultado.prova}: ${ultimoResultado.tempo} (${ultimoResultado.pace}) no Mapmove Run 🏃 Corre também: https://jogo.mapmove.com.br`;
+    if (navigator.canShare?.({ files: [arq] })) await navigator.share({ files: [arq], text: texto });
+    else {
+      // sem compartilhar nativo: baixa a imagem e abre o WhatsApp com o texto
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mapmove-run.png'; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
+    }
+  } catch (e) { if (e?.name !== 'AbortError') aviso('Não deu para compartilhar agora', 'alerta', 2000); }
+  b.disabled = false;
+});
+
 function terminar(titulo, concluiu = false) {
   if (concluiu) som.chegada(); else som.pararLoops();
   const s = estado;
@@ -2696,6 +2716,17 @@ function terminar(titulo, concluiu = false) {
     else rec = `Recorde do treino: ${anterior.toLocaleString('pt-BR')} pontos`;
   }
   $('#fimRecorde').textContent = rec;
+  // dados para o cartão de compartilhar
+  ultimoResultado = {
+    titulo: concluiu ? (prova ? `${prova.rotulo} concluído!` : 'Treino concluído!') : titulo.replace(/[^\p{L}\p{N} !.,º°-]/gu, '').trim(),
+    prova: prova ? `${prova.nome} · ${prova.rotulo}` : 'Treino de reta',
+    tempo: R.formatarTempo(s.tempoReal), pace: paceMedio ? R.formatarPace(1000 / paceMedio) + '/km' : '--:--',
+    distancia: `${R.formatarKm(dist)} km`, pontos: pontos.toLocaleString('pt-BR'),
+    colocacao: s.resultado?.geral || null, total: s.resultado?.total || null,
+    medalha: s.resultado ? (s.resultado.geral <= 3 ? ['🥇', '🥈', '🥉'][s.resultado.geral - 1] : concluiu ? '🏅' : '') : (concluiu ? '🏅' : ''),
+    frase: s.resultado ? PL.mensagemFinal(s.resultado)[0].replace(/^\S+\s/, '') : (concluiu ? 'Mais um treino na conta!' : ''),
+    pista: Number.isFinite(pista.total) ? pista : null, sAte: dist
+  };
   mostrarEvolucao(dist, concluiu);
   // corrida vale para o ranking de pontos (só com conta Google)
   if (usuario && pontos > 0 && dist > 50) {
