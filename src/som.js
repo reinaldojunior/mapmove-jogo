@@ -84,8 +84,26 @@ export function criarSom() {
     if (vol <= 0.001 && S.carro) { const src = S.carro; S.carro = null; setTimeout(() => { try { src.stop(); } catch { /* já parou */ } }, 800); }
   }
 
+  // sirene de polícia feita na hora (sem arquivo): dois osciladores com o tom subindo e descendo
+  function sirene(vol) {
+    if (!S.ctx || S.ctx.state !== 'running') return;
+    const t = S.ctx.currentTime;
+    if (vol > 0.001 && !S.sirene) {
+      const g = S.ctx.createGain(); g.gain.value = 0; g.connect(S.master);
+      const o = S.ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 760;
+      const lfo = S.ctx.createOscillator(); lfo.type = 'triangle'; lfo.frequency.value = 0.55;
+      const prof = S.ctx.createGain(); prof.gain.value = 260; lfo.connect(prof).connect(o.frequency);
+      const f = S.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 2200;
+      o.connect(f).connect(g); o.start(t); lfo.start(t);
+      S.sirene = { g, o, lfo };
+    }
+    if (S.sirene) S.sirene.g.gain.setTargetAtTime(Math.max(0, Math.min(1, vol)) * 0.22, t, 0.15);
+    if (vol <= 0.001 && S.sirene) { const x = S.sirene; S.sirene = null; setTimeout(() => { try { x.o.stop(); x.lfo.stop(); } catch { /* já parou */ } }, 900); }
+  }
+
   function pararLoops() {
     if (S.carro) carro(0);
+    if (S.sirene) sirene(0);
     for (const k of ['resp', 'torc']) {
       const src = S[k];
       if (!src) continue;
@@ -111,5 +129,5 @@ export function criarSom() {
     if (S.master) S.master.gain.setTargetAtTime(sim ? 1 : 0, S.ctx.currentTime, 0.05);
   }
 
-  return { iniciar, tocar, passo, atualizar, pararLoops, largada, chegada, pausar, ligar, carro, get ligado() { return S.ligado; } };
+  return { iniciar, tocar, passo, atualizar, pararLoops, largada, chegada, pausar, ligar, carro, sirene, get ligado() { return S.ligado; } };
 }

@@ -1209,6 +1209,11 @@ function ciclista(s, d) {
 
 // rodas do carro-festa no espaço do modelo (medidas na malha): centro x, centro y, lado (z), raio
 const PROVA_DO_CARRO = '9-maratona-sorocaba-novembro-azul-2026-11-21'; // o carro desgovernado só aparece nas provas de Sorocaba
+// um carro por km, num ponto sorteado dentro do km (nada na largada nem colado na chegada)
+function proximoCarroKm(sAtual, inicio = false) {
+  const s = inicio ? aleat(350, 850) : (Math.floor(sAtual / 1000) + 1) * 1000 + aleat(150, 850); // sempre no km seguinte
+  return s < pista.total - 120 ? s : 0;
+}
 const RODAS_FESTA = { raio: 0.15, zMin: 0.24, lista: [[-0.59, -0.274, 1], [0.61, -0.274, 1], [-0.59, -0.274, -1], [0.61, -0.274, -1]] };
 // recorta da malha única os triângulos de cada roda e põe cada uma num grupo próprio, centrado no eixo
 function separarRodas(model, cfg) {
@@ -1295,6 +1300,19 @@ function carroDesgovernado(s) {
   const gcm = addEntidade({ tipo: 'decor', obj: moto, s: s + 16, d: 0, rot: Math.PI, vs: -9.5,
     anima(t) { this.d = e.d * 0.6; const k = Math.floor(t * 6) % 2; this.obj.children.at(-2).visible = !!k; this.obj.children.at(-1).visible = !k; } });
   return { carro: e, moto: gcm, avisado: false, passou: false };
+}
+// último km: a polícia vem colada atrás do carro desgovernado, com sirene
+function viaturaAtras(festa) {
+  const m = prop('carro-policia');
+  if (!m || !festa?.carro) return;
+  const ce = festa.carro;
+  const rodas = [];
+  m.traverse((o) => { if (/^wheel_(front|rear)_(left|right)$/.test(o.name)) rodas.push(o); });
+  m.updateMatrixWorld(true);
+  const raio = rodas.length ? new THREE.Box3().setFromObject(rodas[0]).getSize(new THREE.Vector3()).y / 2 : 0.35;
+  festa.policia = addEntidade({ tipo: 'carro', motivo: 'A viatura te pegou', obj: m, s: ce.s + 22, d: 0, rot: -Math.PI / 2, vs: ce.vs,
+    larg: 1.9, prof: 4.4, h: 1.6, rodasVs: rodas, raioRoda: raio,
+    anima() { this.d += (ce.d - this.d) * 0.03; this.rot = -Math.PI / 2 + Math.max(-0.3, Math.min(0.3, (ce.d - this.d) * 0.3)); } });
 }
 // mesma turma furando o bloqueio numa travessa: cruza a pista na frente do corredor
 function carroDesgovernadoTravessa(t) {
@@ -2675,7 +2693,7 @@ function iniciar(escolha, clima) {
   // carro desgovernado em ~1 a cada 3 provas, entre 30% e 70% do percurso
   festa = null;
   // só nas provas de Sorocaba, e em todas elas: num ponto sorteado, na contramão ou furando uma travessa
-  estado.festaEm = prova && PROVA_SLUG === PROVA_DO_CARRO ? pista.total * aleat(0.15, 0.85) : 0;
+  estado.festaEm = prova && PROVA_SLUG === PROVA_DO_CARRO ? proximoCarroKm(0, true) : 0;
   // grava o ritmo da prova (posição a cada 10 s de prova) para virar fantasma num desafio
   estado.gravacao = prova ? { passo: 10, amostras: [0], prox: 10 } : null;
   estado.desafioAtivo = !!(desafio && prova && desafio.prova === PROVA_SLUG && desafio.rotulo === prova.rotulo);
@@ -3136,14 +3154,17 @@ function passo(dt) {
     // metade das vezes tenta a travessa (uma rua principal entre 80 e 300 m à frente); sem travessa, vem na contramão
     const t = (s.festaModo ? s.festaModo === 'travessa' : Math.random() < 0.5) && travessas.find((x) => x.principal && !x.carro && x.s > s.s + 80 && x.s < s.s + 300);
     if (t) { t.carro = true; festa = carroDesgovernadoTravessa(t); } else festa = carroDesgovernado(s.s + 230);
-    s.festaEm = 0;
+    // último km: vem na contramão com a polícia atrás
+    if (festa && !festa.travessa && pista.total - s.s < 1300) viaturaAtras(festa);
+    s.festaEm = proximoCarroKm(s.s);
   }
   if (festa) {
     const ce = festa.carro, dist = ce.s - s.s;
     // som do carro: cresce enquanto ele se aproxima (a partir de ~220 m), máximo quando passa e cai depois
     const longe = dist >= 0 ? dist / 220 : -dist / 35;
     som.carro(Math.pow(Math.max(0, 1 - longe), 1.6) * 0.95);
-    if (!festa.avisado && dist < (festa.travessa ? 70 : 150)) { festa.avisado = true; aviso(festa.travessa ? '⚠️ Carro furou o bloqueio na travessa! Cuidado!' : '⚠️ Carro invadiu a pista na contramão! Desvie!', 'alerta', 2600); }
+    if (festa.policia) { const dp = festa.policia.s - s.s, lp = dp >= 0 ? dp / 260 : -dp / 45; som.sirene(Math.pow(Math.max(0, 1 - lp), 1.3)); }
+    if (!festa.avisado && dist < (festa.travessa ? 70 : 150)) { festa.avisado = true; aviso(festa.travessa ? '⚠️ Carro furou o bloqueio na travessa! Cuidado!' : festa.policia ? '🚨 Perseguição! O carro vem na contramão com a polícia atrás!' : '⚠️ Carro invadiu a pista na contramão! Desvie!', 'alerta', 2600); }
     // o pelotão sai da frente
     for (const c of pelotao) {
       const ds = ce.s - c.s;
@@ -3152,9 +3173,10 @@ function passo(dt) {
     if (!festa.passou && dist < -6) {
       festa.passou = true;
       if (!ce.atingido) { s.pontos += 50; aviso('😅 Escapou do carro desgovernado! +50', 'km', 1800); }
-      setTimeout(() => aviso('🚓 Rua interditada é dos corredores. Se beber, não dirija.', 'km', 3200), 2000);
+      if (festa.policia || Math.random() < 0.25) setTimeout(() => aviso('🚓 Rua interditada é dos corredores. Se beber, não dirija.', 'km', 3200), 2000);
     }
-    if (dist < -24) { festa = null; som.carro(0); } // a entidade some 25 m atrás do corredor
+    const fim = festa.policia ? festa.policia.s - s.s : dist;
+    if (fim < -24) { festa = null; som.carro(0); som.sirene(0); } // as entidades somem 25 m atrás do corredor
   }
   const c = { s: s.s, d: s.d, y: s.y, altura: s.agachado > 0 ? R.ALTURA_AGACHADO : R.ALTURA_EM_PE };
   const vCorredor = s.v * R.ESCALA_TEMPO;
@@ -3171,6 +3193,7 @@ function passo(dt) {
     // rodas girando conforme a velocidade do carro (frente para onde ele anda)
     if (e.rodas?.length && e.vd) for (const r of e.rodas) r.rotation.x += (Math.abs(e.vd) * dt) / e.raioRoda;
     if (e.rodasZ?.length && (e.vs || e.vd)) for (const r of e.rodasZ) r.rotation.z += (Math.abs(e.vs || e.vd) * dt) / e.raioRoda;
+    if (e.rodasVs?.length && e.vs) for (const r of e.rodasVs) r.rotation.x += (Math.abs(e.vs) * dt) / e.raioRoda;
     if (e.anima) e.anima(s.t);
     colocar(e);
     if (e.tipo === 'decor' || e.pego || e.atingido) continue;
