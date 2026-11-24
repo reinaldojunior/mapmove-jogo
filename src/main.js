@@ -178,11 +178,17 @@ function animarChuva(dt) {
 }
 
 // asfalto de 8 m de largura por 8 m de comprimento por repetição
+// manchas do asfalto: borradas e fracas (os retângulos escuros pareciam defeito de desenho na pista)
+function manchaAsfalto(g, w, h) {
+  const x = Math.random() * w, y = Math.random() * h, r = 30 + Math.random() * 60;
+  const gr = g.createRadialGradient(x, y, 0, x, y, r), cor = Math.random() < 0.5 ? '30,32,36' : '95,98,104';
+  gr.addColorStop(0, `rgba(${cor},0.16)`); gr.addColorStop(1, `rgba(${cor},0)`);
+  g.fillStyle = gr; g.beginPath(); g.ellipse(x, y, r, r * (0.5 + Math.random() * 0.5), Math.random() * 3, 0, Math.PI * 2); g.fill();
+}
 const texAsfalto = textura(512, 512, (g, w, h) => {
   g.fillStyle = '#4a4e55'; g.fillRect(0, 0, w, h);
   for (let i = 0; i < 6; i++) {
-    g.fillStyle = `rgba(${Math.random() < 0.5 ? '30,32,36' : '95,98,104'},0.35)`;
-    g.fillRect(Math.random() * w, Math.random() * h, 40 + Math.random() * 120, 30 + Math.random() * 90);
+    manchaAsfalto(g, w, h);
   }
   for (let i = 0; i < 4000; i++) {
     const c = 55 + Math.random() * 50;
@@ -201,8 +207,7 @@ function texAsfaltoFaixas(azul) {
   return textura(512, 512, (g, w, h) => {
     g.fillStyle = '#4a4e55'; g.fillRect(0, 0, w, h);
     for (let i = 0; i < 6; i++) {
-      g.fillStyle = `rgba(${Math.random() < 0.5 ? '30,32,36' : '95,98,104'},0.35)`;
-      g.fillRect(Math.random() * w, Math.random() * h, 40 + Math.random() * 120, 30 + Math.random() * 90);
+      manchaAsfalto(g, w, h);
     }
     for (let i = 0; i < 4000; i++) { const c = 55 + Math.random() * 50; g.fillStyle = `rgba(${c},${c},${c + 6},0.5)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
     const px = (x) => ((x + 4) / 8) * w;
@@ -934,8 +939,9 @@ function fita(amostras, d0, d1, material, { vCada = 8, dy = 0, inclinacao = fals
 }
 
 // nos zigue-zagues a grama de um trecho cobre a rua de outro: rua e calçada sempre por cima
-const matRua = new THREE.MeshStandardMaterial({ map: texAsfalto, roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
-const matCalcada = new THREE.MeshStandardMaterial({ map: texCalcada, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+// o polygonOffset com fator alto cobria a parte de baixo dos carros e do corredor (pareciam afundados no asfalto)
+const matRua = new THREE.MeshStandardMaterial({ map: texAsfalto, roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
+const matCalcada = new THREE.MeshStandardMaterial({ map: texCalcada, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
 const matGrama = new THREE.MeshStandardMaterial({ map: texGrama, roughness: 1, depthWrite: false });
 const texChao = texGramado.clone(); texChao.repeat.set(9000 / 9, 9000 / 9);
 const matChao = new THREE.MeshStandardMaterial({ color: 0x7fc062, map: texChao, roughness: 1, depthWrite: false });
@@ -1069,7 +1075,7 @@ function atualizarCenario(sCorredor) {
 // ─── OBSTÁCULOS E ITENS (EM COORDENADAS DA PISTA: s AO LONGO, d PARA OS LADOS) ─
 
 let entidades = [];
-if (import.meta.env.DEV) window.__dbg = { ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas }; // só no modo de desenvolvimento, para testes
+if (import.meta.env.DEV) window.__dbg = { ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString()]); } }; // só no modo de desenvolvimento, para testes
 let postos = [];
 let travessas = [];
 
@@ -1411,7 +1417,7 @@ const texTapete = textura(512, 64, (g, w, h) => {
   for (let x = 64; x < w; x += 128) g.fillText('CHIP', x, h / 2);
 });
 function tapeteChip(s) {
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(8.4, 1.4), new THREE.MeshStandardMaterial({ map: texTapete, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -8 }));
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(8.4, 1.4), new THREE.MeshStandardMaterial({ map: texTapete, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8 }));
   m.rotation.x = -Math.PI / 2; m.position.y = 0.06;
   const g = new THREE.Group(); g.add(m);
   return addEntidade({ tipo: 'decor', fixo: true, obj: g, s, d: 0 });
@@ -1475,8 +1481,8 @@ function gerarPadrao(s, nivel) {
 
 // ─── TRAVESSAS (RUAS QUE CRUZAM O PERCURSO) ───────────────────────────────────
 
-const matTravessa = new THREE.MeshStandardMaterial({ color: 0x6a6e76, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -5, polygonOffsetUnits: -5 });
-const matZebra = new THREE.MeshBasicMaterial({ map: texFaixaPedestre, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -8 });
+const matTravessa = new THREE.MeshStandardMaterial({ color: 0x6a6e76, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -5 });
+const matZebra = new THREE.MeshBasicMaterial({ map: texFaixaPedestre, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8 });
 let grupoTravessas = new THREE.Group();
 scene.add(grupoTravessas);
 
@@ -1798,11 +1804,11 @@ function construirOSM() {
 }
 
 // ─── AVENIDAS DE PISTA DUPLA: 3 FAIXAS, CANTEIRO DE GRAMA COM GUIAS E POSTES, A OUTRA PISTA AO LADO ──
-const matRuaFaixas = new THREE.MeshStandardMaterial({ map: texAsfaltoFaixas(true), roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6 });
-const matRuaOutra = new THREE.MeshStandardMaterial({ map: texAsfaltoFaixas(false), roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -5, polygonOffsetUnits: -5 });
-const matCanteiro = manchasDeGrama(new THREE.MeshStandardMaterial({ map: texGrama, color: 0xd8ecc8, roughness: 1, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }));
-const matGuia = new THREE.MeshStandardMaterial({ color: 0xc9c6bd, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -7, polygonOffsetUnits: -7 });
-const matCalcadaLisa = new THREE.MeshStandardMaterial({ color: 0xcfcac0, roughness: 1, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+const matRuaFaixas = new THREE.MeshStandardMaterial({ map: texAsfaltoFaixas(true), roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -6 });
+const matRuaOutra = new THREE.MeshStandardMaterial({ map: texAsfaltoFaixas(false), roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -5 });
+const matCanteiro = manchasDeGrama(new THREE.MeshStandardMaterial({ map: texGrama, color: 0xd8ecc8, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -3 }));
+const matGuia = new THREE.MeshStandardMaterial({ color: 0xc9c6bd, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -7 });
+const matCalcadaLisa = new THREE.MeshStandardMaterial({ color: 0xcfcac0, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -3 });
 function construirAvenidas() {
   if (visual.userData.avenidas) visual.remove(visual.userData.avenidas);
   const grupo = new THREE.Group();
@@ -1829,7 +1835,7 @@ function construirAvenidas() {
     const k = (v) => () => v;
     const M = R.MEIA_RUA, OUTRA = 4.2;
     // pista do corredor vira mão única de 3 faixas
-    grupo.add(fita(sub, -M, M, matRuaFaixas, { inclinacao: true, dy: 0.01 }));
+    grupo.add(fita(sub, -M, M, matRuaFaixas, { inclinacao: true, dy: 0.03 }));
     // guia, canteiro, guia
     faixa(k(M), k(M + 0.3), matGuia, { vCada: 4, dy: 0.15 });
     const meio = (a, v) => (okMeio.get(a) ? v : M + 0.3);
