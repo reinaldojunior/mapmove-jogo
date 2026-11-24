@@ -3121,6 +3121,9 @@ function passo(dt) {
   if (prova && s.festaEm && !festa && s.s > s.festaEm) { festa = carroDesgovernado(s.s + 230); s.festaEm = 0; }
   if (festa) {
     const ce = festa.carro, dist = ce.s - s.s;
+    // som do carro: cresce enquanto ele se aproxima (a partir de ~220 m), máximo quando passa e cai depois
+    const longe = dist >= 0 ? dist / 220 : -dist / 35;
+    som.carro(Math.pow(Math.max(0, 1 - longe), 1.6) * 0.95);
     if (!festa.avisado && dist < 150) { festa.avisado = true; aviso('⚠️ Carro invadiu a pista na contramão! Desvie!', 'alerta', 2600); }
     // o pelotão sai da frente
     for (const c of pelotao) {
@@ -3132,7 +3135,7 @@ function passo(dt) {
       if (!ce.atingido) { s.pontos += 50; aviso('😅 Escapou do carro desgovernado! +50', 'km', 1800); }
       setTimeout(() => aviso('🚓 Rua interditada é dos corredores. Se beber, não dirija.', 'km', 3200), 2000);
     }
-    if (dist < -24) festa = null; // a entidade some 25 m atrás do corredor
+    if (dist < -24) { festa = null; som.carro(0); } // a entidade some 25 m atrás do corredor
   }
   const c = { s: s.s, d: s.d, y: s.y, altura: s.agachado > 0 ? R.ALTURA_AGACHADO : R.ALTURA_EM_PE };
   const vCorredor = s.v * R.ESCALA_TEMPO;

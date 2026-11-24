@@ -5,3 +5,5 @@ Sons copiados do simulador de percurso do Portal (assets/som):
 - respiracao: trecho enviado pelo dono do site
 - musica-2 e musica-3: faixas do dono do site feitas no Suno; musica-4: Higgsfield (ElevenLabs Music)
 Os passos são sintetizados no próprio jogo (Web Audio), sem arquivo.
+
+carro-drift.mp3: efeito de pneu cantando enviado pelo usuário (convertido para mono 64 kbps).

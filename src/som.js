@@ -1,7 +1,7 @@
 // Sons da corrida (Web Audio): os mesmos arquivos do simulador de percurso do Portal,
 // mais os passos sintetizados aqui. Tudo só começa depois de um toque, como exigem os navegadores.
 
-const ARQUIVOS = { largada: 'corneta-largada', voz: 'voz-conseguimos', torcida: 'torcida', fogos: 'fogos', resp: 'respiracao' };
+const ARQUIVOS = { largada: 'corneta-largada', voz: 'voz-conseguimos', torcida: 'torcida', fogos: 'fogos', resp: 'respiracao', carro: 'carro-drift' };
 
 export function criarSom() {
   const S = { ctx: null, master: null, buf: {}, carregando: null, resp: null, respGain: null, torc: null, torcGain: null, ruido: null, ligado: true };
@@ -16,6 +16,7 @@ export function criarSom() {
       S.master = S.ctx.createGain(); S.master.gain.value = S.ligado ? 1 : 0; S.master.connect(S.ctx.destination);
       S.respGain = S.ctx.createGain(); S.respGain.gain.value = 0; S.respGain.connect(S.master);
       S.torcGain = S.ctx.createGain(); S.torcGain.gain.value = 0; S.torcGain.connect(S.master);
+      S.carroGain = S.ctx.createGain(); S.carroGain.gain.value = 0; S.carroGain.connect(S.master);
       // ruído curto para os passos
       const n = Math.floor(S.ctx.sampleRate * 0.09);
       S.ruido = S.ctx.createBuffer(1, n, S.ctx.sampleRate);
@@ -75,7 +76,16 @@ export function criarSom() {
     S.torcGain.gain.setTargetAtTime(correndo ? 0.32 * torcida : 0, t, 0.8);
   }
 
+  // carro desgovernado: o som de pneu cantando em loop; o volume segue a distância (0 = some, 1 = colado)
+  function carro(vol) {
+    if (!S.ctx || S.ctx.state !== 'running') return;
+    if (vol > 0.001 && !S.carro) S.carro = loop('carro', S.carroGain);
+    S.carroGain.gain.setTargetAtTime(Math.max(0, Math.min(1, vol)), S.ctx.currentTime, 0.12);
+    if (vol <= 0.001 && S.carro) { const src = S.carro; S.carro = null; setTimeout(() => { try { src.stop(); } catch { /* já parou */ } }, 800); }
+  }
+
   function pararLoops() {
+    if (S.carro) carro(0);
     for (const k of ['resp', 'torc']) {
       const src = S[k];
       if (!src) continue;
@@ -101,5 +111,5 @@ export function criarSom() {
     if (S.master) S.master.gain.setTargetAtTime(sim ? 1 : 0, S.ctx.currentTime, 0.05);
   }
 
-  return { iniciar, tocar, passo, atualizar, pararLoops, largada, chegada, pausar, ligar, get ligado() { return S.ligado; } };
+  return { iniciar, tocar, passo, atualizar, pararLoops, largada, chegada, pausar, ligar, carro, get ligado() { return S.ligado; } };
 }
