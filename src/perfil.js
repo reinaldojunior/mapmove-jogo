@@ -83,6 +83,8 @@ export function ganhoDaCorrida(c) {
   }
   const ms = missoes(c);
   for (const m of ms) if (m.ok) itens.push({ rotulo: `Missão: ${m.nome}`, xp: XP_MISSAO });
+  // prêmios de colocação (top 5 geral, pódio por idade), calculados pelo pelotão
+  for (const p of c.premios || []) itens.push(p);
   const xp = itens.reduce((a, i) => a + i.xp, 0);
   const moves = Math.floor(km * MOVES_POR_KM) + (c.prova && c.concluiu ? MOVES_PROVA[c.prova] || 0 : 0);
   return { xp, moves, itens, missoes: ms };

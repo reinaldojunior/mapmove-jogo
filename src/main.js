@@ -634,7 +634,7 @@ function trocarAnimacao(c, nome) {
 }
 
 // ─── PELOTÃO: OUTROS CORREDORES (NPCs), MOTO BATEDORA E CARRO LÍDER ─────────────
-const NPC_POR_NIVEL = [10, 6, 3];
+const NPC_POR_NIVEL = [14, 9, 5];
 const NPC_TOTAL = 120; // inscritos virtuais na prova (só os perto de você aparecem)
 const npcModelos = [];
 let pelotao = [], npcPool = [];
@@ -671,7 +671,10 @@ function prepararPelotao() {
 function desenharPelotao(dt) {
   const s = estado, n = Math.min(npcPool.length, NPC_POR_NIVEL[nivel] || 3);
   // os mais perto do corredor (um pouco atrás até bem à frente) ganham um boneco
-  const perto = pelotao.filter((c) => c.s > s.s - 25 && c.s < s.s + 110).sort((a, b) => Math.abs(a.s - s.s) - Math.abs(b.s - s.s)).slice(0, n);
+  // quem vem à frente ganha boneco primeiro e de longe (até ~170 m), para não "brotar" perto; atrás, só os colados
+  const atras = pelotao.filter((c) => c.s <= s.s && c.s > s.s - 12).sort((a, b) => b.s - a.s).slice(0, Math.max(1, Math.floor(n / 4)));
+  const frente = pelotao.filter((c) => c.s > s.s && c.s < s.s + 170).sort((a, b) => a.s - b.s).slice(0, n - atras.length);
+  const perto = [...frente, ...atras];
   const usados = new Set(perto);
   for (const p of npcPool) if (p.npc && !usados.has(p.npc)) { p.npc = null; p.holder.visible = false; }
   for (const c of perto) {
@@ -2663,6 +2666,16 @@ function terminar(titulo, concluiu = false) {
   const paceMedio = dist > 10 ? s.tempoReal / (dist / 1000) : 0;
   const cel = (rot, val) => `<div><small>${rot}</small><b>${val}</b></div>`;
   $('#fimMotivo').textContent = titulo;
+  // colocação final (geral e na faixa etária virtual) e frase motivacional
+  s.resultado = null;
+  if (prova && concluiu && pelotao.length) {
+    if (perfil.faixa == null) { perfil = { ...perfil, faixa: Math.floor(Math.random() * PL.FAIXAS) }; salvarPerfil(); }
+    s.resultado = PL.resultadoFinal(pelotao, s.s, perfil.faixa);
+    s.posicao = { posicao: s.resultado.geral, total: s.resultado.total };
+  }
+  const mot = $('#fimMotivacao');
+  mot.hidden = !s.resultado;
+  if (s.resultado) mot.innerHTML = PL.mensagemFinal(s.resultado).map((t) => `<span>${t}</span>`).join('');
   $('#fimPlacar').innerHTML = [
     cel('Distância', `${R.formatarKm(dist)} km`), cel('Tempo', R.formatarTempo(s.tempoReal)),
     cel('Pace médio', paceMedio ? R.formatarPace(1000 / paceMedio) : '--:--'),
@@ -2838,6 +2851,11 @@ function passo(dt) {
     if (pelotao.length) {
       PL.avancarPelotao(pelotao, dt, s.t, s, Math.random, (c) => CL.fatorNpc(s.clima, emEst(c.s).ang)); // calor e vento também valem para eles
       const pos = PL.colocacao(pelotao, s.s);
+      if (s.posicao && pos.posicao < s.posicao.posicao && s.s > 60) {
+        // sobe de posição: avisa nos marcos (30º, 20º, 10º e no top 5)
+        const marco = [30, 20, 10, 5, 3, 2, 1].find((m) => pos.posicao <= m && s.posicao.posicao > m);
+        if (marco) aviso(marco === 1 ? '🏆 Você assumiu a liderança!' : marco <= 3 ? `🥇 Zona de pódio: ${pos.posicao}º!` : `📈 Subiu para ${pos.posicao}º`, 'km', 1800);
+      }
       s.posicao = pos;
       if (pos.ultrapassagens) s.pontos += 5 * pos.ultrapassagens;
       // esbarrão: perde um pouco de velocidade, sem penalidade
@@ -3195,6 +3213,7 @@ function mostrarEvolucao(metros, concluiu) {
   const r = P.registrarCorrida(perfil, {
     metros, prova: prova ? prova.rotulo : null, concluiu, penalidades: estado.penal, tropecos: estado.tropecos,
     copos: prova ? postos.length : 0, coposPegos: estado.coposPegos, agua: estado.agua,
+    premios: estado.resultado && prova ? PL.premioColocacao(estado.resultado, prova.rotulo) : [],
     clima: estado.clima ? { nome: estado.clima.nome, emoji: estado.clima.emoji, bonus: CL.bonusClima(estado.clima) } : null
   });
   perfil = r.perfil;

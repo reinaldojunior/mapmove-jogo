@@ -4,6 +4,8 @@
 
 import { mps, ESCALA_TEMPO } from './regras.js';
 
+export const FAIXAS = 8; // faixas etárias virtuais: ninguém sabe qual é a sua, só se pegou pódio nela
+
 // cria `n` corredores ao redor da largada; `pace` = pace base do jogador (s/km)
 export function criarPelotao(n, pace, rnd = Math.random) {
   const lista = [];
@@ -18,6 +20,7 @@ export function criarPelotao(n, pace, rnd = Math.random) {
       alvoD: 0,
       fase: rnd() * 10, // variação do ritmo ao longo da prova
       modelo: i % 2,
+      faixa: Math.floor(rnd() * FAIXAS), // faixa etária virtual (não dizemos qual)
       passado: false
     });
   }
@@ -50,3 +53,39 @@ export function colocacao(lista, sJogador) {
 
 // quem está na frente de todos (jogador ou pelotão)
 export const lider = (lista, sJogador) => Math.max(sJogador, ...lista.map((c) => c.s));
+
+// resultado na chegada: colocação geral e na faixa etária do jogador
+export function resultadoFinal(lista, sJogador, faixaJogador) {
+  const frente = lista.filter((c) => c.s > sJogador);
+  const mesmaFaixa = lista.filter((c) => c.faixa === faixaJogador);
+  return {
+    geral: frente.length + 1, total: lista.length + 1,
+    faixa: frente.filter((c) => c.faixa === faixaJogador).length + 1, totalFaixa: mesmaFaixa.length + 1
+  };
+}
+
+// XP pela colocação (top 5 geral e pódio na faixa), maior nas provas longas
+const MULT_PROVA = { '6K': 1, '10K': 1.5, '21K': 2.5 };
+const XP_GERAL = [120, 90, 70, 50, 40];
+const XP_FAIXA = [50, 35, 25];
+export function premioColocacao(r, prova) {
+  const m = MULT_PROVA[prova] || 1, itens = [];
+  if (r.geral <= 5) itens.push({ rotulo: `${r.geral}º lugar geral`, xp: Math.round(XP_GERAL[r.geral - 1] * m) });
+  if (r.faixa <= 3) itens.push({ rotulo: `Pódio por idade (${r.faixa}º na faixa)`, xp: Math.round(XP_FAIXA[r.faixa - 1] * m) });
+  return itens;
+}
+
+// frase motivacional da chegada
+export function mensagemFinal(r) {
+  const pct = r.geral / r.total, linhas = [];
+  if (r.geral === 1) linhas.push('🏆 Campeão! Você venceu a prova!');
+  else if (r.geral <= 3) linhas.push(`🥇 Pódio geral! ${r.geral}º lugar entre ${r.total}.`);
+  else if (r.geral <= 5) linhas.push(`🔥 Top 5 geral! ${r.geral}º lugar — o pódio está logo ali.`);
+  else if (pct <= 0.1) linhas.push(`💪 Você terminou entre os 10% mais rápidos (${r.geral}º).`);
+  else if (pct <= 0.5) linhas.push(`👏 Metade de cima! ${r.geral}º de ${r.total}.`);
+  else linhas.push(`🏁 Prova completa: ${r.geral}º de ${r.total}. Cada km conta!`);
+  if (r.faixa <= 3) linhas.push(`🏅 Você pegou pódio por idade! (${r.faixa}º na sua faixa)`);
+  else if (r.faixa <= 5) linhas.push(`😮 Você quase pegou pódio por idade (${r.faixa}º na sua faixa). Continue os treinos para evoluir!`);
+  else linhas.push('📈 Continue os treinos: cada nível deixa seu pace mais forte para a próxima.');
+  return linhas;
+}

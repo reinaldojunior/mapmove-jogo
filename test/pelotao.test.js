@@ -29,3 +29,15 @@ test('colocação e ultrapassagens', () => {
   assert.equal(r.posicao, 1); assert.equal(r.ultrapassagens, 1);
   assert.equal(PL.lider(l, 120), 120);
 });
+
+test('resultado final: geral, faixa, prêmio e mensagens', () => {
+  const l = [{ s: 100, faixa: 1 }, { s: 90, faixa: 2 }, { s: 80, faixa: 1 }, { s: 10, faixa: 1 }];
+  const r = PL.resultadoFinal(l, 85, 1);
+  assert.deepEqual(r, { geral: 3, total: 5, faixa: 2, totalFaixa: 4 });
+  const p = PL.premioColocacao(r, '10K');
+  assert.deepEqual(p.map((i) => i.xp), [105, 53]);
+  assert.ok(PL.mensagemFinal(r).some((t) => t.includes('pódio por idade')));
+  const longe = PL.mensagemFinal({ geral: 80, total: 121, faixa: 5, totalFaixa: 15 });
+  assert.ok(longe.some((t) => t.includes('quase pegou pódio')));
+  assert.equal(PL.premioColocacao({ geral: 30, faixa: 6 }, '21K').length, 0);
+});
