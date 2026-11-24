@@ -897,7 +897,7 @@ const corInclinacao = (inc, out) => {
   return out;
 };
 
-function fita(amostras, d0, d1, material, { vCada = 8, dy = 0, inclinacao = false } = {}) {
+function fita(amostras, d0, d1, material, { vCada = 8, dy = 0, inclinacao = false, semLimite = false } = {}) {
   const n = amostras.length;
   const pos = new Float32Array(n * 2 * 3), uv = new Float32Array(n * 2 * 2), cor = inclinacao ? new Float32Array(n * 2 * 3) : null;
   const c = new THREE.Color();
@@ -907,7 +907,14 @@ function fita(amostras, d0, d1, material, { vCada = 8, dy = 0, inclinacao = fals
     const ang = Math.atan2(next.x - prev.x, -(next.z - prev.z));
     const [rx, rz] = direita(ang);
     for (let k = 0; k < 2; k++) {
-      const dd = k === 0 ? d0 : d1, d = typeof dd === 'function' ? dd(a) : dd, j = (i * 2 + k);
+      const dd = k === 0 ? d0 : d1, j = (i * 2 + k);
+      let d = typeof dd === 'function' ? dd(a) : dd;
+      // não invade outro trecho do percurso nem dobra em curva fechada; trecho repetido (2ª volta) não é desenhado de novo
+      if (a.lat && !semLimite) {
+        if (a.lat.dup) d = 0;
+        else if (d > R.MEIA_RUA) d = Math.min(d, Math.max(R.MEIA_RUA, a.lat.limD));
+        else if (d < -R.MEIA_RUA) d = Math.max(d, -Math.max(R.MEIA_RUA, a.lat.limE));
+      }
       pos[j * 3] = a.x + rx * d; pos[j * 3 + 1] = a.y + dy; pos[j * 3 + 2] = a.z + rz * d;
       uv[j * 2] = k; uv[j * 2 + 1] = a.s / vCada;
       if (cor) { corInclinacao(a.inclinacao, c); cor[j * 3] = c.r; cor[j * 3 + 1] = c.g; cor[j * 3 + 2] = c.b; }
@@ -961,7 +968,7 @@ function construirVisual() {
   visual = new THREE.Group();
   const fim = Number.isFinite(pista.total) ? pista.total + 80 : 420;
   const amostras = [];
-  for (let s = -60; s <= fim; s += 4) amostras.push({ s, ...emEst(s) });
+  for (let s = -60; s <= fim; s += 4) amostras.push({ s, ...emEst(s), lat: pista.lateral?.(Math.max(0, Math.min(s, pista.total))) || null });
   visual.add(fita(amostras, -R.MEIA_RUA, R.MEIA_RUA, matRua, { inclinacao: true }));
   visual.add(fita(amostras, -R.LIMITE_CALCADA, -R.MEIA_RUA, matCalcada, { vCada: 4, dy: 0.06 }));
   visual.add(fita(amostras, R.MEIA_RUA, R.LIMITE_CALCADA, matCalcada, { vCada: 4, dy: 0.06 }));
@@ -2614,6 +2621,7 @@ function aviso(txt, classe = '', ms = 1500) {
   el.className = classe; el.textContent = txt; el.hidden = false;
   // fora da corrida (telas por cima do jogo) o aviso sobe para o topo
   if (document.querySelector('.tela:not([hidden])')) el.classList.add('sobre-tela');
+  else if (estado.modo === 'jogando' || estado.modo === 'contagem') el.classList.add('na-corrida');
   el.style.animationDuration = `${Math.max(1500, ms)}ms`;
   clearTimeout(avisoTimer);
   avisoTimer = setTimeout(() => { el.hidden = true; }, ms);
@@ -3145,7 +3153,7 @@ function passo(dt) {
   for (const posto of postos) {
     if (!posto.avisado && posto.s - s.s < 70 && posto.s > s.s) {
       posto.avisado = true;
-      aviso(`💧 Hidratação à ${posto.lado > 0 ? 'direita' : 'esquerda'}: encoste na mesa e toque na gota no verde`, 'km', 2600);
+      aviso(posto.lado > 0 ? '💧 Água à direita ➡️' : '⬅️ Água à esquerda 💧', 'km', 2200);
     }
   }
 
@@ -3164,7 +3172,7 @@ function passo(dt) {
     const longe = dist >= 0 ? dist / 220 : -dist / 35;
     som.carro(Math.pow(Math.max(0, 1 - longe), 1.6) * 0.95);
     if (festa.policia) { const dp = festa.policia.s - s.s, lp = dp >= 0 ? dp / 260 : -dp / 45; som.sirene(Math.pow(Math.max(0, 1 - lp), 1.3)); }
-    if (!festa.avisado && dist < (festa.travessa ? 70 : 150)) { festa.avisado = true; aviso(festa.travessa ? '⚠️ Carro furou o bloqueio na travessa! Cuidado!' : festa.policia ? '🚨 Perseguição! O carro vem na contramão com a polícia atrás!' : '⚠️ Carro invadiu a pista na contramão! Desvie!', 'alerta', 2600); }
+    if (!festa.avisado && dist < (festa.travessa ? 70 : 150)) { festa.avisado = true; aviso(festa.travessa ? '⚠️ Carro na travessa!' : festa.policia ? '🚨 Perseguição na contramão!' : '⚠️ Carro na contramão!', 'alerta', 1800); }
     // o pelotão sai da frente
     for (const c of pelotao) {
       const ds = ce.s - c.s;

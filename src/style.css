@@ -250,6 +250,8 @@ html, body {
 #aviso { max-width: 92%; white-space: normal; text-align: center; font-size: 18px; }
 /* fica por cima das telas (início, loja...) e no alto, onde o dedo não cobre */
 #aviso { z-index: 60; }
+/* durante a corrida: aviso compacto no pé da tela, para não tampar a pista à frente (horizonte e o que vem vindo) */
+#aviso.na-corrida { top: auto; bottom: max(118px, calc(env(safe-area-inset-bottom) + 104px)); max-width: min(78vw, 340px); padding: 6px 14px; font-size: 14px; line-height: 1.25; opacity: 0.94; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7), 0 4px 14px rgba(0, 0, 0, 0.3); }
 #aviso.sobre-tela { position: fixed; top: max(14px, env(safe-area-inset-top)); width: max-content; max-width: min(92vw, 440px); border-radius: 18px; font-size: 16px; padding: 10px 18px; }
 
 @keyframes aviso {

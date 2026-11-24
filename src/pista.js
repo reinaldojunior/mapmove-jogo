@@ -113,6 +113,71 @@ export function unificarAlturas(x, z, s, y0, raio = 14) {
   return y;
 }
 
+// trechos que passam de novo pela mesma rua (voltas, ida e volta na mesma pista): o ponto é puxado para cima da
+// primeira passagem e marcado como repetido (dup) — o desenho é feito uma vez só
+export function colarVoltas(x, z, s, raio = 9, minDs = 300) {
+  const n = x.length, C = 20, grade = new Map(), dup = new Uint8Array(n);
+  const ch = (a, b) => a + ',' + b;
+  for (let i = 0; i < n - 1; i++) {
+    const k = ch(Math.floor(x[i] / C), Math.floor(z[i] / C));
+    if (!grade.has(k)) grade.set(k, []);
+    grade.get(k).push(i);
+  }
+  const x0 = Float64Array.from(x), z0 = Float64Array.from(z);
+  for (let i = 0; i < n; i++) {
+    const cx = Math.floor(x0[i] / C), cz = Math.floor(z0[i] / C);
+    let melhor = null;
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (const j of grade.get(ch(cx + a, cz + b)) || []) {
+      if (s[j] > s[i] - minDs) continue;
+      const dx = x0[j + 1] - x0[j], dz = z0[j + 1] - z0[j], l2 = dx * dx + dz * dz || 1;
+      const t = Math.max(0, Math.min(1, ((x0[i] - x0[j]) * dx + (z0[i] - z0[j]) * dz) / l2));
+      const qx = x0[j] + dx * t, qz = z0[j] + dz * t, d = Math.hypot(x0[i] - qx, z0[i] - qz);
+      // só cola se as duas passagens andam na mesma direção ou na contrária (mesma rua), não num cruzamento
+      const ex = x0[Math.min(n - 1, i + 1)] - x0[Math.max(0, i - 1)], ez = z0[Math.min(n - 1, i + 1)] - z0[Math.max(0, i - 1)];
+      const alinh = Math.abs(ex * dx + ez * dz) / (Math.hypot(ex, ez) * Math.sqrt(l2) || 1);
+      if (alinh < 0.9) continue;
+      if (!melhor || d < melhor.d) melhor = { d, qx, qz };
+    }
+    if (!melhor || melhor.d > raio) continue;
+    const w = Math.max(0, Math.min(1, (raio - melhor.d) / 3));
+    x[i] = x0[i] + (melhor.qx - x0[i]) * w; z[i] = z0[i] + (melhor.qz - z0[i]) * w;
+    if (melhor.d < raio - 3) dup[i] = 1;
+  }
+  return dup;
+}
+
+// para cada ponto: distância livre à direita e à esquerda até outro trecho do percurso (passagens repetidas não contam)
+// e o raio da curva com sinal (+ = curva para a direita)
+export function folgaLateral(x, z, s, dup, alcance = 30) {
+  const n = x.length, C = 15, grade = new Map(), ch = (a, b) => a + ',' + b;
+  for (let i = 0; i < n; i++) { const k = ch(Math.floor(x[i] / C), Math.floor(z[i] / C)); if (!grade.has(k)) grade.set(k, []); grade.get(k).push(i); }
+  const livreD = new Float32Array(n).fill(1e6), livreE = new Float32Array(n).fill(1e6), raio = new Float32Array(n).fill(1e6);
+  const viz = Math.ceil(alcance / C);
+  for (let i = 0; i < n; i++) {
+    const a = Math.max(0, i - 2), b = Math.min(n - 1, i + 2);
+    const fx = x[b] - x[a], fz = z[b] - z[a], fl = Math.hypot(fx, fz) || 1;
+    const [dx, dz] = direita(anguloDe(fx, fz));
+    const cx = Math.floor(x[i] / C), cz = Math.floor(z[i] / C);
+    for (let p = -viz; p <= viz; p++) for (let q = -viz; q <= viz; q++) for (const j of grade.get(ch(cx + p, cz + q)) || []) {
+      if (Math.abs(s[j] - s[i]) < 80) continue;
+      const vx = x[j] - x[i], vz = z[j] - z[i], d = Math.hypot(vx, vz);
+      if (d < 3 || d > alcance) continue; // passagem repetida (colada) não limita
+      const lat = vx * dx + vz * dz;
+      if (Math.abs(lat) < d * 0.7) continue; // só o que está de lado
+      if (lat > 0) livreD[i] = Math.min(livreD[i], lat); else livreE[i] = Math.min(livreE[i], -lat);
+    }
+    // curvatura: mudança de direção em ~12 m
+    const i0 = Math.max(0, i - 3), i1 = Math.min(n - 1, i + 3);
+    if (i0 + 1 < n && i1 - 1 >= 0) {
+      const a1 = anguloDe(x[i0 + 1] - x[i0], z[i0 + 1] - z[i0]), a2 = anguloDe(x[i1] - x[i1 - 1], z[i1] - z[i1 - 1]);
+      let da = a2 - a1; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+      const L = s[i1] - s[i0];
+      if (Math.abs(da) > 1e-3 && L > 0) raio[i] = L / da;
+    }
+  }
+  return { livreD, livreE, raio };
+}
+
 export class PistaReal {
   constructor(pontosLatLng, { passo = 5, exagero = 1.6 } = {}) {
     const validos = pontosLatLng.filter((p) => Array.isArray(p) && p.length >= 2);
@@ -143,7 +208,11 @@ export class PistaReal {
       x.push(ult.x); z.push(ult.z); e.push(ult.e); s.push(acumulado);
     }
 
+    // segunda volta / mesmo trecho de rua passado de novo: cola no desenho da primeira passagem (sem pista duplicada)
+    this.dup = colarVoltas(x, z, s);
     this.x = x; this.z = z; this.e = e; this.s = s;
+    // espaço livre de cada lado (até outro trecho do percurso) e raio das curvas: limitam o desenho de calçada e grama
+    Object.assign(this, folgaLateral(x, z, s, this.dup));
     this.total = s[s.length - 1];
     // altura do desenho: sem os picos do GPS, suave e com inclinação limitada (a do jogo continua vindo de `inc`)
     const eDesenho = suavizarAltitude(e);
@@ -168,6 +237,14 @@ export class PistaReal {
     let lo = 0, hi = arr.length - 1;
     while (hi - lo > 1) { const m = (lo + hi) >> 1; if (arr[m] <= s) lo = m; else hi = m; }
     return lo;
+  }
+
+  // limites de desenho no ponto s: o quanto a calçada/grama pode ir para cada lado sem invadir outro trecho
+  // nem dobrar numa curva fechada; dup = trecho repetido (já desenhado na primeira passagem)
+  lateral(s) {
+    const i = Math.min(this.s.length - 1, Math.round(s / Math.max(1e-6, this.s[1] - this.s[0])));
+    const r = this.raio[i], curvaD = r > 0 ? r * 0.85 : Infinity, curvaE = r < 0 ? -r * 0.85 : Infinity;
+    return { dup: !!this.dup[i], limD: Math.min(this.livreD[i] / 2 - 0.2, curvaD), limE: Math.min(this.livreE[i] / 2 - 0.2, curvaE) };
   }
 
   em(s) {
