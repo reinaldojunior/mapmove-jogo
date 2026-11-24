@@ -38,11 +38,14 @@ export function criarVitrine({ loader, preparar, personagens }) {
   let angulo = 0, velocidade = 0, arrastando = false, ultimoX = 0, ultimoT = 0;
   let ligado = false, relogio = new THREE.Clock(), aoCarregar = () => {};
 
-  function montar(id) {
-    if (cache.has(id)) return cache.get(id);
+  // anim: 'parado' na loja, 'correr' na tela inicial (correndo no lugar)
+  function montar(id, anim = 'parado') {
+    const chave = `${id}:${anim}`;
+    if (cache.has(chave)) return cache.get(chave);
     const p = personagens[id];
-    const arquivo = p.arquivo || (p.anims.find(([n]) => n === 'parado') || p.anims[0])[1];
-    const yaw = p.arquivo ? 0 : (p.anims.find(([n]) => n === 'parado') || [0, 0, 0])[2];
+    const entrada = p.arquivo ? null : (p.anims.find(([n]) => n === anim) || p.anims.find(([n]) => n === 'parado') || p.anims[0]);
+    const arquivo = p.arquivo || entrada[1];
+    const yaw = p.arquivo ? 0 : entrada[2];
     const pr = loader.loadAsync(`/modelos/${arquivo}`).then((gltf) => {
       const model = gltf.scene;
       model.updateMatrixWorld(true);
@@ -53,27 +56,28 @@ export function criarVitrine({ loader, preparar, personagens }) {
       grp.scale.setScalar(1.8 / h);
       grp.rotation.y = (yaw * Math.PI) / 180; // o modelo olha para +z, de frente para a câmera
       const mixer = new THREE.AnimationMixer(model);
-      const nomeClipe = p.clipes?.parado;
+      const nomeClipe = p.clipes?.[anim] || p.clipes?.parado;
       const clipe = (nomeClipe && gltf.animations.find((a) => a.name === nomeClipe)) || gltf.animations[0];
       if (clipe) mixer.clipAction(semAndar(clipe)).play();
       return { grp, mixer };
     });
-    pr.catch(() => cache.delete(id));
-    cache.set(id, pr);
+    pr.catch(() => cache.delete(chave));
+    cache.set(chave, pr);
     return pr;
   }
 
-  async function mostrar(id) {
-    if (id === idAtual && atual) return;
-    idAtual = id;
+  async function mostrar(id, { anim = 'parado', angulo: a0 = 0 } = {}) {
+    const chave = `${id}:${anim}`;
+    if (chave === idAtual && atual) return;
+    idAtual = chave;
     const vez = ++pedido;
     if (atual) { giro.remove(atual.grp); atual = null; }
     canvas.classList.add('carregando');
     try {
-      const m = await montar(id);
+      const m = await montar(id, anim);
       if (vez !== pedido) return;
       atual = m; giro.add(m.grp);
-      angulo = 0; velocidade = 0; // cada personagem começa de frente
+      angulo = a0; velocidade = 0; // cada personagem começa de frente (ou no ângulo pedido)
     } catch (e) { console.warn('vitrine', e); }
     finally { if (vez === pedido) { canvas.classList.remove('carregando'); aoCarregar(id); } }
   }
@@ -116,6 +120,6 @@ export function criarVitrine({ loader, preparar, personagens }) {
     aoCarregar(fn) { aoCarregar = fn; },
     ligar() { if (ligado) return; ligado = true; relogio.getDelta(); quadro(); },
     desligar() { ligado = false; },
-    preCarregar(id) { montar(id).catch(() => {}); }
+    preCarregar(id, anim) { montar(id, anim).catch(() => {}); }
   };
 }

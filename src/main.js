@@ -2631,7 +2631,7 @@ function aviso(txt, classe = '', ms = 1500) {
 }
 
 function mostrar(tela) {
-  if (tela !== 'telaLoja') vitrine?.desligar();
+  if (tela !== 'telaLoja' && tela !== 'telaInicio') vitrine?.desligar();
   for (const id of ['telaInicio', 'telaPausa', 'telaFim', 'telaTreino', 'telaLoja', 'telaClima', 'telaRanking']) $('#' + id).hidden = id !== tela;
   $('#hud').hidden = ['telaInicio', 'telaFim', 'telaTreino', 'telaLoja', 'telaClima', 'telaRanking'].includes(tela);
   $('#controles').hidden = tela !== null;
@@ -3479,6 +3479,7 @@ function mostrarConta() {
   const d = logado ? Conta.dadosDoUsuario(usuario) : null;
   $('#chipNome').textContent = d ? d.nome.split(' ')[0] : 'Entrar';
   $('#chipFoto').hidden = !d?.foto;
+  $('#chipInicial').textContent = d ? (d.nome || '?')[0].toUpperCase() : '👤';
   if (d?.foto) $('#chipFoto').src = d.foto;
 }
 async function entrouNaConta(u) {
@@ -3572,8 +3573,8 @@ async function carregarRanking() {
   try {
     const lista = await Conta.ranking(filtroRanking.periodo, filtroRanking.amigos);
     if (!lista?.length) { ul.innerHTML = `<li class="vazio">${filtroRanking.amigos ? 'Nenhum amigo correu ainda. Convide alguém!' : 'Ninguém pontuou ainda. Seja o primeiro!'}</li>`; return; }
-    const medalha = (p) => (p === 1 ? '🥇' : p === 2 ? '🥈' : p === 3 ? '🥉' : `${p}º`);
-    ul.innerHTML = lista.map((r) => `<li class="${r.eu ? 'eu' : ''}"><span class="pos">${medalha(Number(r.posicao))}</span>${r.foto ? `<img src="${escapar(r.foto)}" alt="" referrerpolicy="no-referrer">` : `<span class="sem-foto">${escapar((r.nome || '?')[0])}</span>`}<span>${escapar(r.nome)}${r.eu ? ' (você)' : ''}<small>${r.corridas} ${Number(r.corridas) === 1 ? 'corrida' : 'corridas'}</small></span><span class="pts">⭐ ${Number(r.pontos).toLocaleString('pt-BR')}</span></li>`).join('');
+    const medalha = (p) => `<i class="num${p <= 3 ? ` p${p}` : ''}">${p}</i>`;
+    ul.innerHTML = lista.map((r) => `<li class="${r.eu ? 'eu' : ''}${Number(r.posicao) === 1 && !r.eu ? ' top1' : ''}"><span class="pos">${medalha(Number(r.posicao))}</span>${r.foto ? `<img src="${escapar(r.foto)}" alt="" referrerpolicy="no-referrer">` : `<span class="sem-foto">${escapar((r.nome || '?')[0])}</span>`}<span class="nome">${r.eu ? 'Você' : escapar(r.nome)}<small>${r.corridas} ${Number(r.corridas) === 1 ? 'corrida' : 'corridas'}</small></span><span class="pts">⭐ ${Number(r.pontos).toLocaleString('pt-BR')}</span></li>`).join('');
   } catch (e) { ul.innerHTML = `<li class="vazio">Não deu para carregar o ranking: ${escapar(e.message)}</li>`; }
 }
 async function carregarAmigos() {
@@ -3627,6 +3628,7 @@ function paceDoPerfil() { return P.situacao(formaAtual().xp).pace; }
 function mostrarPerfil() {
   const forma = formaAtual(), st = P.situacao(forma.xp);
   $('#perfilNivel').textContent = st.rotulo;
+  $('#chipNivel').textContent = st.rotulo;
   $('#perfilPace').textContent = `${R.formatarPace(R.mps(st.pace))}/km`;
   $('#perfilBarra').style.width = `${Math.round(st.progresso * 100)}%`;
   $('#perfilXP').textContent = st.completo ? 'Nível máximo!' : `${st.xpNoDegrau} / ${st.xpDoDegrau} XP · próximo: ${R.formatarPace(R.mps(st.proximo?.pace || st.pace))}/km`;
@@ -3944,7 +3946,17 @@ function abrirPainel(nome) {
   const t = $('#telaInicio');
   if (nome) t.dataset.painel = nome; else delete t.dataset.painel;
   t.scrollTop = 0;
+  if (nome) vitrine?.desligar(); else mostrarHeroi();
 }
+// tela inicial: o personagem escolhido aparece em 3D, correndo no lugar (arrastar gira)
+function mostrarHeroi() {
+  if ($('#telaInicio').hidden) return;
+  vitrine ||= criarVitrine({ loader: gltfLoader, preparar: prepararMalhaAtleta, personagens: PERSONAGENS });
+  if (vitrine.canvas.parentElement !== $('#homePalco')) $('#homePalco').append(vitrine.canvas);
+  vitrine.mostrar(PERSONAGENS[perfil.personagem] ? perfil.personagem : 'portal', { anim: 'correr', angulo: 0.75 });
+  vitrine.ligar();
+}
+$('#btnTopoRanking').addEventListener('click', () => abrirRanking());
 $('#btnJogar').addEventListener('click', () => abrirPainel('provas'));
 $('#btnTileTreino').addEventListener('click', () => abrirPainel('treino'));
 $('#btnTileConta').addEventListener('click', () => abrirPainel('conta'));
@@ -3966,9 +3978,10 @@ function mostrarInicio() {
   const p = emEst(0);
   Object.assign(estado, { x: p.x, z: p.z, ang: p.ang, camAng: p.ang, s: 0, sMax: 0, d: 0, y: 0 });
   const rec = lerRecorde('mapmove-recorde');
-  $('#recordeTreino').textContent = rec ? `⭐ ${rec.toLocaleString('pt-BR')}` : '';
+  $('#recordeTreino').textContent = rec ? `⭐ ${rec.toLocaleString('pt-BR')}` : 'Bata seu recorde';
   hud.contagem.hidden = true;
   mostrar('telaInicio');
+  mostrarHeroi();
 }
 
 $('#btnTreino').addEventListener('click', () => abrirClima({ tipo: 'treino' }));

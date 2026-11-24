@@ -10,7 +10,7 @@
     if (location.hostname === 'mapmove-jogo.vercel.app') location.replace('https://jogo.mapmove.com.br' + location.pathname + location.search + location.hash);
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Lilita+One&display=swap" rel="stylesheet">
 </head>
 <body>
   <main id="palco">
@@ -68,25 +68,36 @@
 
     <section id="telaInicio" class="tela inicio">
       <div class="home" id="home">
-        <h1>Mapmove <span>Run</span></h1>
-        <div class="cartao perfil" id="cartaoPerfil">
-          <button class="chip-conta" id="btnContaChip"><img id="chipFoto" alt="" referrerpolicy="no-referrer" hidden><span id="chipNome">Entrar</span></button>
-          <div class="perfil-topo"><b id="perfilNivel">Iniciante 1</b><span id="perfilPace">7:00/km</span></div>
-          <span class="barra xp"><i id="perfilBarra"></i></span>
-          <div class="perfil-rodape"><small id="perfilXP">0 / 100 XP</small><small class="moves"><img src="/icones/moeda.webp" alt=""><span id="perfilMoves">0</span> Move$</small></div>
-          <small class="perfil-aviso" id="perfilAviso" hidden></small>
+        <div class="home-topo">
+          <button class="chip-conta" id="btnContaChip"><span class="avatar"><img id="chipFoto" alt="" referrerpolicy="no-referrer" hidden><i id="chipInicial">?</i></span><span class="chip-txt"><b id="chipNome">Entrar</b><small id="chipNivel">Iniciante 1</small></span></button>
+          <span class="pilula-moves"><img src="/icones/moeda.webp" alt=""><b id="perfilMoves">0</b></span>
+          <button class="btn-redondo" id="btnTopoRanking" aria-label="Ranking"><img src="/icones/trofeu.webp" alt=""></button>
         </div>
-        <button class="jogar" id="btnJogar"><span>▶ JOGAR</span><small id="jogarProva">Escolha a cidade e a prova</small></button>
+        <div class="hero">
+          <div class="home-palco" id="homePalco"></div>
+          <div class="logo" aria-label="Mapmove Run"><span class="l1">Mapmove</span><span class="l2">Run</span><small>Corra percursos reais</small></div>
+          <div class="cartao-nivel" id="cartaoPerfil">
+            <div class="perfil-topo"><b id="perfilNivel">Iniciante 1</b><span id="perfilPace">7:00/km</span></div>
+            <span class="barra xp"><i id="perfilBarra"></i></span>
+            <small id="perfilXP">0 / 100 XP</small>
+            <small class="perfil-aviso" id="perfilAviso" hidden></small>
+          </div>
+        </div>
+        <button class="jogar" id="btnJogar"><svg class="silhueta" viewBox="0 0 64 64" aria-hidden="true"><circle cx="40" cy="9" r="6"/><path d="M36 17l-12 5-6 11 4 2 5-8 6-2-5 14-10 10 3 4 13-11 3-6 6 8 1 14h5l-1-17-7-9 3-9 4 6 9 2 1-4-8-2-5-8c-2-2-5-3-9-1z"/></svg><span class="jogar-txt"><b>JOGAR <i>»</i></b><small id="jogarProva">Escolha a cidade e a prova</small></span></button>
         <div class="tiles">
-          <button class="tile" id="btnTileTreino"><span class="ico">🏋️</span><b>Treino do dia</b><i class="badge" id="tileTreinoBadge" hidden>grátis</i></button>
-          <button class="tile" id="btnTreino"><span class="ico">🏃</span><b>Treino de reta</b><small class="recorde" id="recordeTreino"></small></button>
-          <button class="tile" id="btnPersonagem"><span class="ico">🧍</span><b>Personagem</b></button>
-          <button class="tile" id="btnLoja"><span class="ico">🛍️</span><b>Loja</b></button>
-          <button class="tile" id="btnRanking"><span class="ico">⭐</span><b>Ranking e amigos</b></button>
-          <button class="tile" id="btnTileConta"><span class="ico">👤</span><b>Conta e Strava</b></button>
+          <button class="tile" id="btnTileTreino"><span class="ico"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="10" width="46" height="44" rx="7" fill="#fff"/><rect x="6" y="10" width="46" height="13" rx="7" fill="#ef3b3b"/><rect x="6" y="18" width="46" height="5" fill="#ef3b3b"/><rect x="15" y="5" width="5" height="11" rx="2.5" fill="#8a96a8"/><rect x="38" y="5" width="5" height="11" rx="2.5" fill="#8a96a8"/><g fill="#c9d3e0"><rect x="12" y="28" width="7" height="6" rx="1"/><rect x="22" y="28" width="7" height="6" rx="1"/><rect x="32" y="28" width="7" height="6" rx="1"/><rect x="12" y="37" width="7" height="6" rx="1"/><rect x="22" y="37" width="7" height="6" rx="1"/><rect x="12" y="46" width="7" height="5" rx="1"/></g><circle cx="46" cy="46" r="13" fill="#2fc15a" stroke="#fff" stroke-width="3"/><path d="M40 46l4.5 4.5L53 41" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>Treino do dia</b><small>Complete e evolua</small><i class="badge" id="tileTreinoBadge" hidden>grátis</i></button>
+          <button class="tile" id="btnTreino"><span class="ico"><img src="/icones/trofeu.webp" alt=""></span><b>Treino de reta</b><small class="recorde" id="recordeTreino">Bata seu recorde</small></button>
+          <button class="tile" id="btnPersonagem"><span class="ico"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M10 62c1-13 10-20 22-20s21 7 22 20z" fill="#1e5fe0"/><path d="M26 42l6 8 6-8" fill="#fff"/><rect x="27" y="34" width="10" height="9" rx="3" fill="#e9a77c"/><circle cx="32" cy="24" r="13" fill="#f2b88f"/><path d="M18 22c0-10 7-15 14-15s15 4 14 15c-3-4-7-6-10-5-4-3-12-2-18 5z" fill="#5a3418"/><circle cx="27" cy="25" r="1.8" fill="#2a1a10"/><circle cx="37" cy="25" r="1.8" fill="#2a1a10"/><path d="M27 31q5 4 10 0" stroke="#8a3d22" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><b>Personagem</b><small>Escolha seu atleta</small></button>
+          <button class="tile" id="btnLoja"><span class="ico"><img src="/icones/tenis-carbono.webp" alt=""></span><b>Loja</b><small>Itens e géis</small></button>
+          <button class="tile" id="btnRanking"><span class="ico"><svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="gOuro" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe680"/><stop offset="1" stop-color="#f0a800"/></linearGradient></defs><path d="M7 30c-3 8 0 18 7 22M57 30c3 8 0 18-7 22" stroke="#f5b400" stroke-width="3" fill="none" stroke-linecap="round"/><g fill="#f5b400"><ellipse cx="6" cy="38" rx="2.5" ry="4.5" transform="rotate(-20 6 38)"/><ellipse cx="8" cy="46" rx="2.5" ry="4.5" transform="rotate(-40 8 46)"/><ellipse cx="58" cy="38" rx="2.5" ry="4.5" transform="rotate(20 58 38)"/><ellipse cx="56" cy="46" rx="2.5" ry="4.5" transform="rotate(40 56 46)"/></g><rect x="24" y="18" width="16" height="38" rx="2" fill="url(#gOuro)"/><rect x="11" y="31" width="14" height="25" rx="2" fill="#e8edf4"/><rect x="39" y="37" width="14" height="19" rx="2" fill="#f0a35c"/><g font-family="Lilita One, Baloo 2, sans-serif" font-size="13" text-anchor="middle" fill="#1b2d55"><text x="32" y="35">1</text><text x="18" y="46">2</text><text x="46" y="50">3</text></g></svg></span><b>Ranking e amigos</b><small>Semana e 30 dias</small></button>
+          <button class="tile" id="btnTileConta"><span class="ico"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="9" width="40" height="50" rx="6" fill="#c88a4a"/><rect x="15" y="15" width="30" height="40" rx="3" fill="#fff"/><rect x="22" y="5" width="16" height="10" rx="3" fill="#8a96a8"/><g stroke="#2fc15a" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M19 25l3 3 5-5"/><path d="M19 37l3 3 5-5"/></g><g fill="#c9d3e0"><rect x="30" y="24" width="11" height="4" rx="2"/><rect x="30" y="36" width="11" height="4" rx="2"/><rect x="20" y="47" width="21" height="4" rx="2"/></g><circle cx="49" cy="49" r="11" fill="#1e5fe0" stroke="#fff" stroke-width="3"/><circle cx="49" cy="46" r="3.5" fill="#fff"/><path d="M42.5 55c1.5-4 11.5-4 13 0" fill="#fff"/></svg></span><b>Conta e Strava</b><small>Salve seu progresso</small></button>
         </div>
-        <button class="link-ajuda" id="btnTileAjuda">❔ Como jogar</button>
-      <small class="creditos">Mapa © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">colaboradores do OpenStreetMap</a></small>
+        <div class="faixa-desafio">
+          <img src="/icones/medalha-21k.webp" alt="">
+          <span>Conquiste novos <b>desafios!</b></span>
+          <button class="link-ajuda" id="btnTileAjuda"><i>?</i> Como jogar</button>
+        </div>
+        <small class="creditos">Mapa © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">colaboradores do OpenStreetMap</a></small>
       </div>
 
       <div class="painel" data-painel="provas">
@@ -198,9 +209,9 @@
       </div>
     </div>
 
-    <section id="telaRanking" class="tela" hidden>
+    <section id="telaRanking" class="tela ranking-tela" hidden>
       <div class="ranking">
-        <h2>⭐ Ranking de pontos</h2>
+        <h2><img src="/icones/trofeu.webp" alt="">Ranking e Amigos</h2>
         <div class="abas-ranking">
           <button class="aba-r ativa" data-periodo="semana">Semana</button>
           <button class="aba-r" data-periodo="30dias">30 dias</button>
