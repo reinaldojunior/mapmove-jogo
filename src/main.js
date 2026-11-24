@@ -31,6 +31,8 @@ import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono, placasDo
 const SUPABASE_URL = 'https://ssfsxdmzbubvygctdjgf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_s2yoUApfYl_ZvSUkqYYrVw_uXwKsybM';
 const PROVA_SLUG = '1-meia-maratona-de-indaiatuba-2026-12-13';
+// nome mostrado no jogo (genérico, sem o nome oficial do evento, para não usar a marca dos organizadores)
+const NOME_NO_JOGO = { '1-meia-maratona-de-indaiatuba-2026-12-13': 'Meia de Indaiatuba' };
 
 const $ = (s) => document.querySelector(s);
 const palco = $('#palco');
@@ -3267,8 +3269,9 @@ async function carregarProva() {
     if (!dist.length) throw new Error('sem percurso');
     const marcadores = {};
     for (const [rot, v] of Object.entries(c.percurso_3d?.por || {})) marcadores[rot] = v.pontos || [];
-    dadosProva = { nome: c.nome, distancias: dist, marcadores };
-    $('#provaNome').textContent = `🏅 ${c.nome}`;
+    const nome = NOME_NO_JOGO[PROVA_SLUG] || c.nome;
+    dadosProva = { nome, distancias: dist, marcadores };
+    $('#provaNome').textContent = `🏅 ${nome}`;
     $('#provaInfo').textContent = `Percurso e altimetria reais de ${c.cidade}. 1 km leva 1 minuto a 6:00/km.`;
     box.innerHTML = '';
     for (const d of dist) {
