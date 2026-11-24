@@ -34,7 +34,9 @@ const SUPABASE_KEY = 'sb_publishable_s2yoUApfYl_ZvSUkqYYrVw_uXwKsybM';
 // O nome mostrado é genérico (sem o nome oficial do evento, para não usar a marca dos organizadores).
 const PROVAS = [
   { slug: '1-meia-maratona-de-indaiatuba-2026-12-13', cidade: 'Indaiatuba', nome: 'Meia de Indaiatuba', curto: 'Meia de Indaiatuba' },
-  { slug: '9-maratona-sorocaba-novembro-azul-2026-11-21', cidade: 'Sorocaba', nome: 'Desafio 42K – Bora correr em Sorocaba', curto: 'Desafio 42K' }
+  // relevo: 0 = desenho plano (Sorocaba tem morros e trechos de ida e volta lado a lado: com o relevo desenhado
+  // a rua ficava em barrancos e com placas flutuando). A subida/descida continua valendo no jogo e no HUD.
+  { slug: '9-maratona-sorocaba-novembro-azul-2026-11-21', cidade: 'Sorocaba', relevo: 0, nome: 'Desafio 42K – Bora correr em Sorocaba', curto: 'Desafio 42K' }
 ];
 let PROVA_SLUG = (() => { try { const s = localStorage.getItem('mapmove-prova'); if (PROVAS.some((p) => p.slug === s)) return s; } catch { /* sem storage */ } return PROVAS[0].slug; })();
 const NOME_NO_JOGO = Object.fromEntries(PROVAS.map((p) => [p.slug, p.nome]));
@@ -970,12 +972,12 @@ function montarTufos() { tufos.montar(TUFOS_POR_NIVEL[nivel] || 0, estado?.s || 
 function construirVisual() {
   scene.remove(visual);
   visual = new THREE.Group();
-  // circuito (chegada no lugar da largada): sem o pedaço extra antes da largada e depois da chegada, que caía em cima
+  // circuito (chegada no lugar da largada): sem o pedaço extra depois da chegada, que caía em cima da largada
   const real = Number.isFinite(pista.total), a0 = emEst(0), a1 = real ? emEst(pista.total) : a0;
   const circuito = real && Math.hypot(a0.x - a1.x, a0.z - a1.z) < 40;
   const fim = real ? pista.total + (circuito ? 0 : 80) : 420;
   const amostras = [];
-  for (let s = circuito ? 0 : -60; s <= fim; s += 4) amostras.push({ s, ...emEst(s), lat: pista.lateral?.(Math.max(0, Math.min(s, pista.total))) || null });
+  for (let s = -60; s <= fim; s += 4) amostras.push({ s, ...emEst(s), lat: pista.lateral?.(Math.max(0, Math.min(s, pista.total))) || null });
   visual.add(fita(amostras, -R.MEIA_RUA, R.MEIA_RUA, matRua, { inclinacao: true }));
   visual.add(fita(amostras, -R.LIMITE_CALCADA, -R.MEIA_RUA, matCalcada, { vCada: 4, dy: 0.06 }));
   visual.add(fita(amostras, R.MEIA_RUA, R.LIMITE_CALCADA, matCalcada, { vCada: 4, dy: 0.06 }));
@@ -1828,8 +1830,10 @@ function construirAvenidas() {
     }));
     // numa curva fechada (ou perto de outro trecho do percurso) a faixa larga "dobra" e cai em cima da rua: não desenha
     const cabe = (a, lat) => { const [rx, rz] = direita(a.ang); return pista.pertoDe(a.x + rx * L * lat, a.z + rz * L * lat, lat + 10).dist > lat - 2.5; };
-    const okLonge = new Map(sub.map((a) => [a, !doPercurso.get(a) && cabe(a, D(a) + 7)]));
-    const okMeio = new Map(sub.map((a) => [a, cabe(a, D(a) - 4.5)]));
+    // outro trecho do percurso desse lado (ida e volta pela mesma avenida): a grama comum já preenche o meio
+    const livre = (a) => { const lim = a.lat ? (L > 0 ? a.lat.limD : a.lat.limE) : 1e6; return lim > D(a) + 6.2; };
+    const okLonge = new Map(sub.map((a) => [a, !doPercurso.get(a) && livre(a) && cabe(a, D(a) + 7)]));
+    const okMeio = new Map(sub.map((a) => [a, livre(a) && cabe(a, D(a) - 4.5)]));
     const fora = (a, v) => (okLonge.get(a) ? v : D(a) - 4.2); // largura zero onde não cabe a outra pista
     // faixa entre dois afastamentos (sempre do menor para o maior, dos dois lados)
     const faixa = (f0, f1, mat, opts) => grupo.add(fita(sub, L > 0 ? f0 : (a) => -f1(a), L > 0 ? f1 : (a) => -f0(a), mat, opts));
@@ -2423,7 +2427,7 @@ function prepararPercurso(escolha) {
   limparEntidades();
   limparPlacas();
   if (escolha.tipo === 'prova') {
-    pista = new PistaReal(escolha.distancia.percurso);
+    pista = new PistaReal(escolha.distancia.percurso, { exagero: PROVAS.find((p) => p.slug === PROVA_SLUG)?.relevo ?? 1.6 });
     prova = { nome: dadosProva.nome, rotulo: escolha.distancia.rotulo, total: pista.total };
   } else {
     pista = new PistaReta();
