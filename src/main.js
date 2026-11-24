@@ -2803,7 +2803,20 @@ function passo(dt) {
   s.tempoReal += dt * R.ESCALA_TEMPO;
   const cl = s.clima || CL.CLIMAS[0];
   s.agua = R.desidratar(s.agua, dt * CL.fatorSede(cl)); // calor e umidade secam mais rápido
-  if (s.agua <= 0) return terminar('Desidratou! 💧');
+  // sem água o corredor vai perdendo força (não cai de uma vez); água ou isotônico a tempo e ele volta a correr
+  s.semAgua = s.agua <= 0 ? (s.semAgua || 0) + dt : 0;
+  if (s.agua < R.AGUA_BAIXA && s.agua > 0 && !s.aguaAvisada) {
+    s.aguaAvisada = true;
+    const prox = postos.find((p) => p.s > s.s);
+    aviso(`💧 Água acabando!${prox ? ` Próximo posto em ${Math.round((prox.s - s.s) / 10) * 10} m` : ''}`, 'alerta', 2200);
+  }
+  if (s.agua >= R.AGUA_BAIXA) s.aguaAvisada = false;
+  if (s.semAgua > 0 && !s.desidratadoAvisado) {
+    s.desidratadoAvisado = true;
+    aviso(s.isotonicos ? '🥵 Desidratado! Tome o isotônico 🥤 ou pegue água no posto' : '🥵 Desidratado! Você vai perdendo força: pegue água no próximo posto', 'alerta', 2600);
+  }
+  if (!s.semAgua) s.desidratadoAvisado = false;
+  if (s.semAgua > 0 && R.fatorHidratacao(0, s.semAgua) === 0 && s.v < 0.3) return terminar('Desidratou! 💧 Parou antes do próximo posto');
 
   const p = emEst(s.s);
   if (s.parado > 0) {
@@ -2836,7 +2849,7 @@ function passo(dt) {
       aviso(s.geis ? '🔋 Energia baixa! Use um gel ⚡' : '🔋 Energia baixa! Pegue um gel ⚡', 'alerta', 1800);
     }
     const alvo = R.velocidadeAlvo({ gel: s.gelAtivo > 0, inclinacao: p.inclinacao, naCalcada: Math.abs(s.d) > R.MEIA_RUA, energia: s.energia, pace: s.paceBase / s.fatorTenis, freando: s.freio > 0 });
-    s.v = R.aproximarVelocidade(s.v, alvo * CL.fatorVento(cl, s.ang), dt); // vento de frente segura, a favor empurra
+    s.v = R.aproximarVelocidade(s.v, alvo * CL.fatorVento(cl, s.ang) * R.fatorHidratacao(s.agua, s.semAgua || 0), dt); // vento; sem água vai perdendo força
     const W = s.v * R.ESCALA_TEMPO;
     const [fx, fz] = frente(s.ang);
     s.x += fx * W * dt; s.z += fz * W * dt;
@@ -2989,12 +3002,14 @@ function desenhar(dt) {
   corredor.sombra.position.set(s.x, chao + 0.08, s.z);
   corredor.sombra.scale.setScalar(1 - Math.min(0.5, s.y / 4));
   const noAr = s.y > 0.05, agachado = s.agachado > 0;
-  const anim = s.modo === 'jogando' ? (s.saltoAnim > 0 ? 'pular' : s.parado > 0 ? 'parado' : 'correr')
+  // desidratado e quase parando: anda (quem tem animação de caminhada)
+  const andando = s.semAgua > 0 && s.v < R.mps(R.PACE_BASE) * 0.4 && corredor.atleta?.partes?.caminhar;
+  const anim = s.modo === 'jogando' ? (s.saltoAnim > 0 ? 'pular' : s.parado > 0 ? 'parado' : andando ? 'caminhar' : 'correr')
     : s.modo === 'fim' ? (s.concluiu ? 'comemorar' : 'parado')
     : s.modo === 'contagem' && s.chegada > 0 ? 'caminhar'
     : s.modo === 'inicio' || s.modo === 'contagem' ? 'aquecer' : 'parado';
   // a passada acelera com o nível; quem não tem caminhada chega num trote lento
-  const ritmo = s.modo === 'jogando' ? 1.25 * (s.v / R.mps(R.PACE_BASE)) : anim === 'caminhar' && !corredor.atleta?.partes?.caminhar ? 0.45 : 1;
+  const ritmo = s.modo === 'jogando' ? (andando ? Math.max(0.35, s.v / (R.mps(R.PACE_BASE) * 0.35)) : 1.25 * (s.v / R.mps(R.PACE_BASE))) : anim === 'caminhar' && !corredor.atleta?.partes?.caminhar ? 0.45 : 1;
   const comModelo = s.modo !== 'pausa' && animarAtleta(corredor, dt, { anim, ritmo, noAr, agachado });
   if (!comModelo) {
     if (s.modo === 'jogando') animarCorredor(corredor, s.fase, { noAr, agachado, parado: s.v < 0.2 });

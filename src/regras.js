@@ -100,6 +100,16 @@ export const coleta = (c, item) =>
   Math.abs(c.s - item.s) < 1.1 && Math.abs(c.d - item.d) < 1.1 && c.y < 2.2;
 
 export const desidratar = (h, dt) => Math.max(0, h - dt * DESIDRATACAO_POR_S);
+
+// desidratação aos poucos: abaixo de 15% de água o ritmo cai até 20%; com a água zerada o corredor vai
+// perdendo força até parar em ~60 s de jogo (dá para chegar ao próximo posto ou tomar um isotônico)
+export const AGUA_BAIXA = 15;
+export const SEM_AGUA_ATE_PARAR = 60;
+export function fatorHidratacao(agua, semAgua = 0) {
+  if (agua >= AGUA_BAIXA) return 1;
+  if (agua > 0) return 0.8 + 0.2 * (agua / AGUA_BAIXA);
+  return Math.max(0, 0.8 * (1 - semAgua / SEM_AGUA_ATE_PARAR));
+}
 export const hidratar = (h, qtd = AGUA_GOLE) => Math.min(100, h + qtd);
 
 export function formatarPace(v) {

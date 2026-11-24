@@ -101,3 +101,11 @@ test('deslizar para baixo reduz o ritmo e poupa energia', () => {
   const normal = 100 - R.gastarEnergia(100, 10), freando = 100 - R.gastarEnergia(100, 10, { freando: true });
   assert.ok(Math.abs(freando - normal * R.FREIO.economia) < 1e-9);
 });
+
+test('desidratação: perde ritmo aos poucos e só para depois de um tempo sem água', () => {
+  assert.equal(R.fatorHidratacao(50), 1);
+  assert.ok(Math.abs(R.fatorHidratacao(7.5) - 0.9) < 1e-9);
+  assert.equal(R.fatorHidratacao(0, 0), 0.8);
+  assert.ok(Math.abs(R.fatorHidratacao(0, 30) - 0.4) < 1e-9);
+  assert.equal(R.fatorHidratacao(0, 999), 0);
+});
