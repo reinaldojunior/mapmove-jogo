@@ -10,8 +10,9 @@ export const FAIXAS = 8; // faixas etárias virtuais: ninguém sabe qual é a su
 export function criarPelotao(n, pace, rnd = Math.random) {
   const lista = [];
   for (let i = 0; i < n; i++) {
-    // fator do pace: ~30% mais rápidos que o jogador, a maioria mais lenta (até 40% mais lenta)
-    const f = 0.85 + Math.pow(rnd(), 0.8) * 0.55;
+    // fator do pace: só uns poucos mais rápidos que o jogador (até 7%), a maioria mais lenta (até ~45%):
+    // o pódio é possível usando bem o gel, a água e o tênis
+    const f = 0.93 + Math.pow(rnd(), 0.7) * 0.52;
     lista.push({
       id: i,
       pace: pace * f,

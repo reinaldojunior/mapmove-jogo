@@ -15,6 +15,9 @@ export const ITENS = [
   { id: 'oculos', cat: 'visual', nome: 'Óculos espelhados', premioNivel: 3, slot: 'olhos', desc: 'Prêmio do Sub-elite.' },
   { id: 'viseira', cat: 'visual', nome: 'Viseira', preco: 60, slot: 'cabeca', desc: 'Clássico das provas de verão.' },
   { id: 'bandana', cat: 'visual', nome: 'Bandana', preco: 40, slot: 'cabeca', desc: 'Segura o suor com estilo.' },
+  // exclusivos da coleção de medalhas de pódio (não se compram)
+  { id: 'viseira-dourada', cat: 'visual', nome: 'Viseira dourada', premioMedalhas: 10, icone: 'viseira', dourado: true, slot: 'cabeca', desc: 'Exclusiva: ganhe 10 medalhas de pódio.' },
+  { id: 'oculos-dourado', cat: 'visual', nome: 'Óculos dourado', premioMedalhas: 20, icone: 'oculos', dourado: true, slot: 'olhos', desc: 'Exclusivo: ganhe 20 medalhas de pódio.' },
   { id: 'gel', cat: 'consumivel', nome: 'Gel avulso', preco: 20, consumo: { gel: 1 }, desc: 'Começa a próxima corrida com +1 gel no bolso.' },
   { id: 'kit-geis', cat: 'consumivel', nome: 'Kit de 3 géis', preco: 50, consumo: { gel: 3 }, desc: 'Começa a próxima corrida com +3 géis no bolso.' },
   { id: 'isotonico', cat: 'consumivel', nome: 'Isotônico', preco: 25, consumo: { isotonico: 1 }, desc: 'Vai na mochila. Na corrida, toque no 🥤 para tomar: +30% de água e +15% de energia.' },

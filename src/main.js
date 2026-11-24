@@ -20,6 +20,7 @@ import { criarBandana } from './bandana.js';
 import { criarCeu } from './ceu.js';
 import * as CL from './clima.js';
 import * as PL from './pelotao.js';
+import * as MD from './medalhas.js';
 import { manchasDeGrama, criarTufos, balancoDeArvore } from './grama.js';
 import { clone as clonarComOssos } from 'three/addons/utils/SkeletonUtils.js';
 import { pistasDuplas, duplaEm } from './osm.js';
@@ -3219,6 +3220,11 @@ function mostrarEvolucao(metros, concluiu) {
   perfil = r.perfil;
   salvarPerfil();
   const extras = entregarPremios();
+  if (prova && concluiu && estado.resultado?.geral <= 3) {
+    const m = MD.registrarMedalha(perfil, prova.rotulo, estado.resultado.geral);
+    perfil = m.perfil; salvarPerfil(); vestirAtleta();
+    extras.push(...m.linhas);
+  }
   if (prova && concluiu) {
     const c = L.conquistasDaProva(perfil, prova.rotulo);
     perfil = c.perfil; salvarPerfil();
@@ -3333,7 +3339,7 @@ function abrirLoja(cat = abaLoja) {
   vitrine?.desligar();
   const nivelNome = (n) => L.NOMES_NIVEL[n];
   const mochila = perfil.consumiveis || {};
-  $('#lojaItens').innerHTML = L.ITENS.filter((it) => it.cat === cat).map((it) => {
+  $('#lojaItens').innerHTML = (cat === 'conquista' ? painelMedalhas() : '') + L.ITENS.filter((it) => it.cat === cat).map((it) => {
     const est = L.estadoItem(perfil, it.id);
     let botao;
     if (est === 'usando') botao = `<button class="usando" data-acao="equipar" data-id="${it.id}">Usando ✓</button>`;
@@ -3341,14 +3347,28 @@ function abrirLoja(cat = abaLoja) {
     else if (est === 'comprar') botao = `<button data-acao="comprar" data-id="${it.id}">${moedaImg}${it.preco}</button>`;
     else if (est === 'sem-moves') botao = `<button disabled>${moedaImg}${it.preco}</button>`;
     else if (est === 'nivel') botao = `<button class="neutro" disabled>🔒 ${nivelNome(it.nivelMin)}</button>`;
-    else if (est === 'premio') botao = `<button class="neutro" disabled>🎁 Prêmio do ${nivelNome(it.premioNivel)}</button>`;
+    else if (est === 'premio') botao = `<button class="neutro" disabled>${it.premioMedalhas ? `🏅 ${it.premioMedalhas} medalhas` : `🎁 Prêmio do ${nivelNome(it.premioNivel)}`}</button>`;
     else if (est === 'conquistado') botao = `<button class="usando" disabled>🏅 Conquistada</button>`;
     else botao = `<button class="neutro" disabled>🔒 Ainda não</button>`;
     const tag = it.cat === 'consumivel' && (it.consumo.gel ? mochila.gel : mochila.isotonico)
       ? `<span class="tag">Na mochila: ${it.consumo.gel ? `${mochila.gel} ${mochila.gel > 1 ? 'géis' : 'gel'}` : `${mochila.isotonico} isotônico`}</span>` : '';
-    return `<div class="item ${est === 'bloqueado' ? 'bloqueado' : ''}"><img src="/icones/${it.id}.webp" alt="" loading="lazy"><b>${it.nome}</b><small>${it.desc}</small>${tag}${botao}</div>`;
+    return `<div class="item ${est === 'bloqueado' ? 'bloqueado' : ''}"><img src="/icones/${it.icone || it.id}.webp" alt="" loading="lazy"${it.dourado ? ' class="dourado"' : ''}><b>${it.nome}</b><small>${it.desc}</small>${tag}${botao}</div>`;
   }).join('');
   mostrar('telaLoja');
+}
+
+// coleção de medalhas de pódio: estoque, por distância, próximo marco e troca por Move$
+function painelMedalhas() {
+  const e = MD.estoque(perfil), ganhas = perfil.medalhasGanhas || 0, prox = (Math.floor(ganhas / 5) + 1) * 5;
+  const porDist = Object.entries(perfil.medalhas || {}).map(([rot, m]) => `${rot}: ${MD.TIPOS.map((t) => `${MD.EMOJI[t]}${m[t] || 0}`).join(' ')}`).join(' · ');
+  const proxItem = Object.entries(MD.ITENS_COLECAO).find(([n]) => Number(n) > ganhas);
+  return `<div class="medalhas">
+    <b>🏅 Medalhas de pódio</b>
+    <div class="estoque">${MD.TIPOS.map((t) => `<span>${MD.EMOJI[t]} ${e[t]}</span>`).join('')}</div>
+    <small>${porDist || 'Termine uma prova entre os 3 primeiros para ganhar sua primeira medalha.'}</small>
+    <small>${ganhas} ganhas · a cada 5: Move$ e kit${proxItem ? ` · com ${proxItem[0]}: ${L.item(proxItem[1]).nome}` : ''} · faltam ${prox - ganhas} para o próximo marco</small>
+    <div class="trocas">${MD.TIPOS.slice().reverse().map((t) => `<button data-acao="trocar" data-tipo="${t}" ${e[t] < 5 ? 'disabled' : ''}>5 ${MD.EMOJI[t]} → ${MD.TROCA[t]} M$</button>`).join('')}</div>
+  </div>`;
 }
 
 // vitrine de personagens: um de cada vez, no centro, com setas dos lados
@@ -3377,6 +3397,14 @@ $('#lojaItens').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-acao]');
   if (!b) return;
   const id = b.dataset.id;
+  if (b.dataset.acao === 'trocar') {
+    const r = MD.trocarMedalhas(perfil, b.dataset.tipo);
+    if (r.erro) return;
+    perfil = r.perfil; salvarPerfil();
+    aviso(`💰 Trocou 5 medalhas de ${b.dataset.tipo} por ${MD.TROCA[b.dataset.tipo]} Move$`, 'km', 2200);
+    abrirLoja('conquista');
+    return;
+  }
   if (b.dataset.acao === 'personagem') {
     perfil = { ...perfil, personagem: id }; salvarPerfil();
     carregarAtleta(corredor, id).catch((err) => console.error('personagem', err));
@@ -3400,16 +3428,20 @@ const ACESSORIOS_3D = {
   // bandana feita no código (faixa justa + nó atrás); tam = profundidade da faixa, largura = proporção lado/frente
   bandana: [{ osso: 'Head', pos: [0, 0.095, 0.015], rot: [-8, 0, 0], tam: 0.13, largura: 0.78 }],
   oculos: [{ osso: 'Head', pos: [0, 0.088, 0.066], rot: [0, -90, 0], tam: 0.088 }],
+  get 'oculos-dourado'() { return this.oculos; },
+  get 'viseira-dourada'() { return this.viseira; },
   relogio: [{ osso: 'LeftHand', pos: [0, -0.015, 0], rot: [90, 0, 0], tam: 0.05 }],
   pochete: [{ osso: 'Hips', pos: [0, -0.01, 0.02], rot: [0, -90, 0], tam: 0.21 }],
   'tenis-carbono': [{ osso: 'LeftFoot', pos: [0, 0.03, 0], rot: [-90, 0, 0], tam: 0.155 }, { osso: 'RightFoot', pos: [0, 0.03, 0], rot: [-90, 0, 0], tam: 0.155 }],
   'tenis-dourado': [{ osso: 'LeftFoot', pos: [0, 0.03, 0], rot: [-90, 0, 0], tam: 0.155 }, { osso: 'RightFoot', pos: [0, 0.03, 0], rot: [-90, 0, 0], tam: 0.155 }]
 };
 const cacheAcessorios = new Map();
+const DOURADOS = { 'viseira-dourada': 'viseira', 'oculos-dourado': 'oculos' };
 function carregarAcessorio(id) {
   if (!cacheAcessorios.has(id)) {
-    cacheAcessorios.set(id, gltfLoader.loadAsync(`/modelos/acessorios/${id}.glb`).then((g) => {
+    cacheAcessorios.set(id, gltfLoader.loadAsync(`/modelos/acessorios/${DOURADOS[id] || id}.glb`).then((g) => {
       const m = g.scene;
+      if (DOURADOS[id]) m.traverse((o) => { if (o.isMesh) o.material = new THREE.MeshStandardMaterial({ color: 0xffc83d, metalness: 0.85, roughness: 0.28, map: o.material.map || null }); });
       m.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(m, true), tam = box.getSize(new THREE.Vector3());
       m.position.sub(box.getCenter(new THREE.Vector3()));
@@ -3425,7 +3457,8 @@ function carregarAcessorio(id) {
 // cada personagem tem a cabeça num ponto diferente do osso: desloca o que vai na cabeça
 function ajustarNaCabeca(cfg, id, aj) {
   if (!aj || cfg.osso !== 'Head') return cfg;
-  if (aj[id]) return { ...cfg, ...aj[id] };
+  const chave = aj[id] ? id : DOURADOS[id];
+  if (aj[chave]) return { ...cfg, ...aj[chave] };
   return { ...cfg, pos: [cfg.pos[0] + aj.dx, cfg.pos[1] + aj.dy, cfg.pos[2] + aj.dz], rot: [cfg.rot[0] + aj.rx, cfg.rot[1], cfg.rot[2]], tam: cfg.tam * aj.esc };
 }
 let versaoVestir = 0;

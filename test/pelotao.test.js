@@ -4,10 +4,10 @@ import * as PL from '../src/pelotao.js';
 
 const seq = (vals) => { let i = 0; return () => vals[i++ % vals.length]; };
 
-test('pelotão: ritmos entre 15% mais rápido e 40% mais lento', () => {
+test('pelotão: ritmos entre 7% mais rápido e 45% mais lento', () => {
   const l = PL.criarPelotao(50, 360, seq([0, 0.5, 0.99, 0.3]));
   assert.equal(l.length, 50);
-  for (const c of l) { assert.ok(c.pace >= 360 * 0.85 - 1e-9 && c.pace <= 360 * 1.4 + 1e-9); assert.ok(Math.abs(c.d) <= 3.3); }
+  for (const c of l) { assert.ok(c.pace >= 360 * 0.93 - 1e-9 && c.pace <= 360 * 1.45 + 1e-9); assert.ok(Math.abs(c.d) <= 3.3); }
 });
 
 test('mais rápidos andam mais e todos ficam dentro da rua', () => {
