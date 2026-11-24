@@ -582,3 +582,13 @@ kbd {
 .provas-abas .linha-abas { display: flex; gap: 6px; flex-wrap: wrap; }
 .provas-abas button { padding: 5px 12px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.14); color: #fff; font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; }
 .provas-abas button.ativa { background: #ffd21f; color: #2a1a00; }
+
+/* convite de amizade */
+.convite { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 16px; background: rgba(5, 15, 35, 0.6); }
+.convite[hidden] { display: none; }
+.convite-card { width: min(360px, 100%); display: grid; justify-items: center; gap: 10px; padding: 20px; border-radius: 20px; background: #0f2a55; color: #fff; text-align: center; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45); }
+.convite-card img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; }
+.convite-card img[hidden] { display: none; }
+.convite-card p { margin: 0; font-size: 16px; line-height: 1.35; }
+.convite-botoes { display: flex; gap: 8px; }
+#btnConviteAceitar[hidden] { display: none; }

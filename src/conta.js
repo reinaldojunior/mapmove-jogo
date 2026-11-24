@@ -135,3 +135,4 @@ export async function salvarFantasma(u, { prova, rotulo, tempo, passo, amostras 
 }
 export const lerFantasma = async (id) => (await rpc('jogo_fantasma', { p_id: id }))?.[0] || null;
 export const linkDesafio = (id) => `https://jogo.mapmove.com.br/?desafio=${encodeURIComponent(id)}`;
+export const quemConvidou = async (codigo) => (await rpc('jogo_quem_convidou', { p_codigo: codigo }))?.[0] || null;

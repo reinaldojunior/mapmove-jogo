@@ -3463,16 +3463,39 @@ async function entrouNaConta(u) {
   if (c) {
     try { localStorage.setItem('mapmove-convite', c.toUpperCase()); } catch { /* sem storage */ }
     history.replaceState(null, '', location.pathname);
+    setTimeout(() => { if (!usuario) aceitarConvitePendente(); }, 2500);
   }
 }
+// convite pendente: mostra quem convidou e a pessoa escolhe aceitar ou não a amizade
 async function aceitarConvitePendente() {
   let c = null; try { c = localStorage.getItem('mapmove-convite'); } catch { /* sem storage */ }
-  if (!c || !usuario) return;
+  if (!c) return;
+  if (!usuario) { mostrarConvite({ semConta: true }); return; }
+  const esquecer = () => { try { localStorage.removeItem('mapmove-convite'); } catch { /* sem storage */ } };
   try {
-    const nome = await Conta.adicionarAmigo(c);
-    aviso(`👥 Agora você e ${nome} são amigos!`, 'km', 3000);
-  } catch (e) { if (!/seu código/.test(e.message)) console.warn('convite', e); }
-  try { localStorage.removeItem('mapmove-convite'); } catch { /* sem storage */ }
+    const q = await Conta.quemConvidou(c);
+    if (!q || q.eu_mesmo) { esquecer(); return; }
+    if (q.ja_amigos) { esquecer(); aviso(`👥 Você e ${q.nome} já são amigos`, 'km', 2200); return; }
+    mostrarConvite({ nome: q.nome, foto: q.foto, codigo: c });
+  } catch (e) { console.warn('convite', e); }
+}
+function mostrarConvite({ semConta, nome, foto, codigo }) {
+  const el = $('#convite');
+  $('#conviteFoto').hidden = !foto;
+  if (foto) $('#conviteFoto').src = foto;
+  $('#conviteTexto').textContent = semConta ? 'Você recebeu um convite de amizade! Entre com o Google para aceitar.' : `${nome} te convidou para ser amigo no Mapmove Run.`;
+  $('#btnConviteAceitar').hidden = !!semConta;
+  $('#btnConviteRecusar').textContent = semConta ? 'Depois' : 'Agora não';
+  el.hidden = false;
+  $('#btnConviteAceitar').onclick = async () => {
+    el.hidden = true;
+    try { const n = await Conta.adicionarAmigo(codigo); aviso(`👥 Agora você e ${n} são amigos!`, 'km', 3000); } catch (e) { aviso('Não deu para aceitar agora', 'alerta', 2000); return; }
+    try { localStorage.removeItem('mapmove-convite'); } catch { /* sem storage */ }
+  };
+  $('#btnConviteRecusar').onclick = () => {
+    el.hidden = true;
+    if (!semConta) try { localStorage.removeItem('mapmove-convite'); } catch { /* sem storage */ }
+  };
 }
 // top 3 da semana passada ganha o Troféu da semana (uma vez por semana)
 async function conferirTrofeuSemana() {
