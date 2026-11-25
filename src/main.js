@@ -2555,6 +2555,18 @@ function desenharMinimapa() {
 
 let hudTimer = 0;
 // cartão do jogador no HUD: foto da conta (ou o personagem), primeiro nome, nível e barra de XP
+// engrenagem do HUD: abre e fecha o som e a câmera (fecha sozinha depois de alguns segundos)
+{
+  const menu = $('#menuConfig'), btn = $('#btnConfig');
+  let timer = 0;
+  const fechar = () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
+  btn.addEventListener('pointerdown', (e) => {
+    e.stopPropagation(); e.preventDefault();
+    menu.hidden = !menu.hidden; btn.setAttribute('aria-expanded', String(!menu.hidden));
+    clearTimeout(timer); if (!menu.hidden) timer = setTimeout(fechar, 4000);
+  });
+}
+
 function preencherJogadorHud() {
   const d = usuario ? Conta.dadosDoUsuario(usuario) : null, st = P.situacao(formaAtual().xp);
   const av = $('#hudAvatar');
@@ -2592,17 +2604,21 @@ function atualizarHud() {
     }
   }
   const s = estado;
-  hud.km.textContent = R.formatarKm(prova ? Math.min(s.sMax, pista.total) : s.sMax);
-  hud.kmTotal.textContent = prova ? `/ ${R.formatarKm(pista.total)} km` : 'km';
+  // até 1 km em metros (670 m), depois em km (1,34 km); o total da prova vem pequeno ao lado
+  const feito = prova ? Math.min(s.sMax, pista.total) : s.sMax;
+  hud.km.textContent = feito < 1000 ? `${Math.floor(feito)} m` : `${R.formatarKm(feito)} km`;
+  hud.kmTotal.textContent = prova ? `/${R.formatarKm(pista.total)} km` : '';
   hud.tempo.textContent = R.formatarTempo(s.tempoReal);
   hud.pace.textContent = R.formatarPace(s.v);
   const inc = emEst(s.s).inclinacao;
   hud.agua.style.width = `${s.agua}%`;
   hud.aguaTxt.textContent = `${Math.round(s.agua)}%`;
   hud.aguaBox.classList.toggle('baixa', s.agua < 25);
+  hud.aguaBox.classList.toggle('medio', s.agua >= 25 && s.agua < 50);
   hud.energia.style.width = `${s.energia}%`;
   hud.energiaTxt.textContent = `${Math.round(s.energia)}%`;
   hud.energiaBox.classList.toggle('baixa', s.energia < R.ENERGIA_BAIXA);
+  hud.energiaBox.classList.toggle('medio', s.energia >= R.ENERGIA_BAIXA && s.energia < 55);
   // relógio GPS: distância até o próximo posto de água
   const proxPosto = s.relogio && prova ? postos.find((q) => q.s > s.s + 1) : null;
   hud.relogio.hidden = !proxPosto;
@@ -2613,6 +2629,7 @@ function atualizarHud() {
   hud.inc.classList.toggle('desce', pct <= -1);
   hud.incTxt.textContent = pct >= 1 ? `subida ${pct}%` : pct <= -1 ? `descida ${-pct}%` : 'plano';
   hud.penal.textContent = `${s.penal}/${R.PENALIDADES_MAX}`;
+  hud.penal.parentElement.classList.toggle('marcou', s.penal > 0);
   hud.gelQtd.textContent = s.geis;
   $('#btnIso').hidden = !s.isotonicos;
   $('#isoQtd').textContent = s.isotonicos;

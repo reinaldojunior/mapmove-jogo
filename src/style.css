@@ -740,156 +740,158 @@ kbd {
   .inicio .creditos { font-size: 9px; }
 }
 
-/* ─── HUD estilo jogo mobile (referência: pílulas grossas azul-marinho com borda clara, ícones grandes,
-   jogador no canto, recursos no topo, centro da tela livre, gel e pulo como botões grandes embaixo) ─── */
+/* ─── HUD compacto estilo jogo mobile: duas linhas finas no alto (jogador, distância, tempo, pausa/ajustes;
+   colocação à esquerda, energia/água e minimapa à direita), detalhes em pílulas pequenas translúcidas, centro livre ─── */
 :root {
-  --hud-fundo: linear-gradient(180deg, rgba(22, 53, 122, 0.92), rgba(10, 30, 78, 0.92));
-  --hud-borda: rgba(255, 255, 255, 0.35);
-  --hud-sombra: 0 3px 0 rgba(4, 14, 40, 0.55), 0 6px 14px rgba(0, 0, 0, 0.25);
+  --hud-fundo: linear-gradient(180deg, rgba(24, 56, 128, 0.88), rgba(10, 28, 74, 0.88));
+  --hud-borda: rgba(255, 255, 255, 0.3);
+  --hud-sombra: 0 2px 0 rgba(4, 14, 40, 0.5), 0 4px 10px rgba(0, 0, 0, 0.22);
+  --hud-topo: max(6px, env(safe-area-inset-top));
 }
 #hud { display: block; padding: 0; inset: 0; }
 #hud .pilula {
   background: var(--hud-fundo);
-  border: 2px solid var(--hud-borda);
+  border: 1.5px solid var(--hud-borda);
   box-shadow: var(--hud-sombra);
   backdrop-filter: none;
   font-weight: 800;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
-#hud .pilula small { font-weight: 700; }
 
-/* topo: cartão do jogador + botões redondos */
-.hud-topo {
-  position: absolute;
-  top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px;
-  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+/* linha 1 */
+.hud-l1 {
+  position: absolute; top: var(--hud-topo); left: 6px; right: 6px;
+  display: flex; align-items: center; gap: 5px;
+  z-index: 3;
 }
 .hud-jogador {
+  flex: none;
   display: flex; align-items: center;
-  min-width: 0; max-width: 58%;
-  padding: 3px 12px 3px 3px;
+  padding: 2px 9px 2px 2px;
   border-radius: 999px;
   background: var(--hud-fundo);
-  border: 2px solid var(--hud-borda);
+  border: 1.5px solid var(--hud-borda);
   box-shadow: var(--hud-sombra);
 }
 .hud-jogador .avatar {
-  flex: none;
-  display: grid; place-items: center;
-  width: 44px; height: 44px; margin-right: 8px;
+  flex: none; display: grid; place-items: center;
+  width: 32px; height: 32px; margin-right: 5px;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #7fd0ff, #1e88ff 70%);
-  border: 3px solid #fff;
-  font-size: 26px; line-height: 1; overflow: hidden;
+  border: 2px solid #fff;
+  font-size: 18px; line-height: 1; overflow: hidden;
 }
 .hud-jogador .avatar img { width: 100%; height: 100%; object-fit: cover; }
-.hud-jogador .txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.05; }
-.hud-jogador b { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hud-jogador small { font-size: 12px; font-weight: 800; color: var(--amarelo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hud-jogador .xp { display: block; width: 92px; height: 6px; margin-top: 3px; border-radius: 999px; background: rgba(0, 0, 0, 0.35); overflow: hidden; }
+.hud-jogador .txt { display: flex; flex-direction: column; min-width: 0; line-height: 1; }
+.hud-jogador b { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hud-jogador small { font-size: 10px; font-weight: 800; color: var(--amarelo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-jogador .xp { display: block; width: 100%; min-width: 46px; height: 3px; margin-top: 2px; border-radius: 999px; background: rgba(0, 0, 0, 0.4); overflow: hidden; }
 .hud-jogador .xp i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #ffe066, #ffb800); }
-.hud-botoes { display: flex; gap: 6px; }
+#hud .pilula.chip { flex: none; height: 28px; padding: 0 8px 0 6px; gap: 3px; font-size: 13.5px; }
+#hud .pilula.chip .ico { font-size: 13px; }
+#hud .pilula.chip small { font-size: 10px; opacity: 0.75; }
+#hud .pilula.distancia { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.hud-botoes { position: relative; margin-left: auto; display: flex; gap: 4px; }
 #hud .hud-botoes .pilula.botao {
   display: grid; place-items: center;
-  width: 40px; height: 40px; padding: 0;
-  border-radius: 12px;
-  font-size: 17px;
+  width: 30px; height: 30px; padding: 0;
+  border-radius: 10px;
+  font-size: 13px;
   background: linear-gradient(180deg, #2f6fe0, #1747a8);
+  pointer-events: auto;
 }
+.menu-config {
+  position: absolute; top: 36px; right: 0;
+  display: flex; gap: 4px; padding: 4px;
+  border-radius: 12px;
+  background: rgba(10, 28, 74, 0.8);
+  pointer-events: auto;
+}
+.menu-config[hidden] { display: none; }
 
-/* recursos: água, energia e pontos lado a lado, com o ícone saltando para fora da pílula */
-.hud-recursos {
-  position: absolute;
-  top: calc(max(8px, env(safe-area-inset-top)) + 58px); left: 8px; right: 8px;
-  display: flex; gap: 8px; justify-content: space-between;
-}
-#hud .pilula.recurso {
-  position: relative;
-  flex: 1 1 0; min-width: 0;
-  padding: 2px 10px 2px 30px;
-  height: 30px;
-  font-size: 15px;
-}
-#hud .pilula.recurso.pontos { flex: 0 0 auto; padding-left: 32px; }
-#hud .pilula.recurso .ico {
-  position: absolute; left: -6px; top: 50%; transform: translateY(-50%);
-  display: grid; place-items: center;
-  width: 34px; height: 34px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  font-size: 18px;
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
-}
-#hud .recurso.agua .ico { background: radial-gradient(circle at 35% 30%, #8fe0ff, #1e88ff); }
-#hud .recurso.energia .ico { background: radial-gradient(circle at 35% 30%, #d8ff8a, #22a84a); }
-#hud .recurso.pontos .ico { background: radial-gradient(circle at 35% 30%, #fff1a0, #f5a700); }
-#hud .recurso .barra { flex: 1; width: auto; min-width: 30px; height: 11px; background: rgba(0, 0, 0, 0.35); }
-#hud .recurso b { min-width: 3.6ch; text-align: right; font-size: 14px; }
-#hud .pilula.energia.baixa { animation: pulsoEnergiaNovo 1s ease-in-out infinite; }
-@keyframes pulsoEnergiaNovo { 50% { box-shadow: 0 0 0 3px #ff6b2b, var(--hud-sombra); } }
-#hud .pilula.agua.baixa { box-shadow: 0 0 0 3px #ff3b3b, var(--hud-sombra); }
-
-/* colunas: distância e colocação à esquerda; tempo, penalidades e mapa à direita */
+/* coluna da esquerda: colocação e detalhes pequenos */
 #hud .hud-esq, #hud .hud-dir {
-  position: absolute;
-  top: calc(max(8px, env(safe-area-inset-top)) + 100px);
-  display: flex; flex-direction: column; gap: 6px;
+  position: absolute; top: calc(var(--hud-topo) + 42px);
+  display: flex; flex-direction: column; gap: 4px;
 }
-#hud .hud-esq { left: 8px; align-items: flex-start; }
-#hud .hud-dir { right: 8px; align-items: flex-end; }
-#hud .pilula.grande { font-size: 19px; padding: 3px 14px 3px 8px; gap: 7px; }
-#hud .pilula.grande .ico { font-size: 19px; }
-#hud .pilula.grande small { font-size: 12px; }
-.hud-info { display: flex; flex-wrap: wrap; gap: 4px; max-width: 190px; }
-#hud .pilula.mini { font-size: 12px; padding: 1px 8px 1px 5px; gap: 3px; border-width: 1.5px; opacity: 0.92; }
-#hud .pilula.mini .ico { font-size: 12px; }
-#hud .pilula.mini small { font-size: 10px; }
-#hud .pilula.inclinacao.sobe { background: linear-gradient(180deg, #d9572b, #a8351a); }
-#hud .pilula.inclinacao.desce { background: linear-gradient(180deg, #2f8be8, #1559b0); }
+#hud .hud-esq { left: 6px; align-items: flex-start; }
+#hud .hud-dir { right: 6px; align-items: flex-end; }
+.hud-info { display: flex; flex-wrap: wrap; gap: 3px; max-width: 210px; }
+#hud .pilula.mini {
+  font-size: 10.5px; padding: 0 6px 0 4px; gap: 2px; height: 18px;
+  border-width: 1px; box-shadow: none;
+  background: rgba(10, 28, 74, 0.5);
+}
+#hud .pilula.mini .ico { font-size: 10px; }
+#hud .pilula.mini small { font-size: 9px; }
+#hud .pilula.mini.penal.marcou { background: linear-gradient(180deg, #e0442f, #a8231a); }
+#hud .pilula.inclinacao.sobe { background: rgba(200, 70, 30, 0.75); }
+#hud .pilula.inclinacao.desce { background: rgba(20, 110, 210, 0.7); }
 #hud .pilula.fantasma { background: linear-gradient(180deg, #8a6ad8, #5c3fae); }
-#hud #mapa { background: var(--hud-fundo); border: 2px solid var(--hud-borda); box-shadow: var(--hud-sombra); border-radius: 14px; }
-#palco #hud #minimapa { width: 86px; height: 86px; }
-#palco #hud #perfil { width: 86px; height: 24px; }
+#hud #ponto { max-width: 170px; padding: 4px 9px 4px 6px; }
+#hud #ponto .ico { font-size: 18px; }
+#hud #ponto b { font-size: 13px; }
 
-/* botões grandes embaixo: gel (amarelo, esquerda) e pulo (azul, direita) */
+/* coluna da direita: energia e água compactas, minimapa pequeno */
+.hud-recursos { display: flex; gap: 4px; }
+#hud .pilula.recurso { height: 30px; padding: 0 7px 0 3px; gap: 4px; border-radius: 12px; }
+#hud .pilula.recurso .ico { font-size: 16px; line-height: 1; }
+#hud .recurso.energia .ico { filter: drop-shadow(0 1px 0 #8a5a00); }
+#hud .recurso .dado { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; line-height: 1; }
+#hud .recurso b { font-size: 12px; min-width: 0; text-align: left; }
+#hud .recurso .barra { width: 38px; height: 4px; background: rgba(0, 0, 0, 0.4); }
+#hud .recurso.energia .barra i { background: linear-gradient(90deg, #8ee84f, #34c759); }
+#hud .recurso.agua .barra i { background: linear-gradient(90deg, #6fd3ff, #1e88ff); }
+#hud .recurso.medio .barra i { background: linear-gradient(90deg, #ffe066, #ffb800); }
+#hud .recurso.baixa .barra i { background: linear-gradient(90deg, #ff7a59, #ff2d2d); }
+#hud .recurso.baixa b { color: #ffb4a8; }
+#hud .pilula.recurso.baixa { animation: alertaRecurso 1s ease-in-out infinite; }
+@keyframes alertaRecurso { 50% { box-shadow: 0 0 0 2px #ff4b3b, var(--hud-sombra); } }
+@media (prefers-reduced-motion: reduce) { #hud .pilula.recurso.baixa { animation: none; box-shadow: 0 0 0 2px #ff4b3b; } }
+#hud #mapa { padding: 3px; gap: 2px; background: rgba(8, 22, 56, 0.55); border: 1.5px solid var(--hud-borda); border-radius: 12px; }
+#palco #hud #minimapa { width: 66px; height: 66px; }
+#palco #hud #perfil { width: 66px; height: 16px; }
+
+/* botões embaixo: gel discreto (círculo escuro, raio amarelo) e pulo grande */
 .gel {
-  width: 76px; height: 76px;
-  background: radial-gradient(circle at 35% 30%, #fff07a, #ffc400 60%, #f0a500);
-  border: 3px solid #fff;
-  box-shadow: 0 5px 0 #b37f00, 0 10px 20px rgba(0, 0, 0, 0.3);
+  width: 64px; height: 64px;
+  background: radial-gradient(circle at 35% 30%, rgba(70, 86, 120, 0.75), rgba(20, 28, 48, 0.75));
+  border: 3px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
-.gel .ico { font-size: 32px; margin-top: 0; filter: drop-shadow(0 1px 0 #b37f00); }
+.gel .ico { font-size: 30px; margin-top: 0; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5)); }
 .gel b {
-  bottom: -6px; right: -6px;
+  bottom: -4px; right: -4px;
   display: grid; place-items: center;
-  min-width: 28px; height: 28px; padding: 0 5px;
+  min-width: 24px; height: 24px; padding: 0 4px;
   border-radius: 999px;
   background: #13306f; color: #fff;
   border: 2px solid #fff;
-  font-size: 15px;
+  font-size: 13px;
 }
-.gel #gelAnel { mask: radial-gradient(circle, transparent 40px, #000 41px); -webkit-mask: radial-gradient(circle, transparent 40px, #000 41px); }
+.gel #gelAnel { mask: radial-gradient(circle, transparent 33px, #000 34px); -webkit-mask: radial-gradient(circle, transparent 33px, #000 34px); }
 .pular {
   right: 14px;
   bottom: max(120px, calc(env(safe-area-inset-bottom) + 100px));
-  width: 76px; height: 76px;
-  color: #eaf2ff;
-  background: radial-gradient(circle at 35% 30%, #4a6fb8, #1d2f63 70%);
-  border: 3px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 5px 0 #0b1638, 0 10px 20px rgba(0, 0, 0, 0.3);
+  width: 74px; height: 74px;
+  color: #fff;
+  background: radial-gradient(circle at 35% 30%, #3f7be6, #13379a 70%);
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 0 #0b1f5c, 0 8px 18px rgba(0, 0, 0, 0.3);
 }
-.pular svg { width: 40px; height: 40px; }
-.pular:active, .gel:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4); }
-.iso { left: 22px; bottom: max(212px, calc(env(safe-area-inset-bottom) + 192px)); border: 3px solid #fff; }
+.pular svg { width: 38px; height: 38px; }
+.pular:active, .gel:active { transform: translateY(3px); }
+.iso { left: 16px; bottom: max(198px, calc(env(safe-area-inset-bottom) + 178px)); width: 52px; height: 52px; border: 2px solid #fff; }
 
+/* celular estreito: o nome some (fica avatar e nível) e as pílulas encolhem */
+@media (max-width: 400px) { #hud .hud-l1 > .pilula.chip:not(.distancia) .ico { display: none; } }
 @media (max-width: 380px) {
-  .hud-jogador .avatar { width: 38px; height: 38px; font-size: 22px; }
-  .hud-jogador b { font-size: 14px; }
-  .hud-jogador .xp { width: 72px; }
-  #hud .hud-botoes .pilula.botao { width: 36px; height: 36px; font-size: 15px; }
-  #hud .pilula.recurso { font-size: 13px; padding-left: 27px; }
-  #hud .recurso b { font-size: 12px; }
-  #hud .pilula.grande { font-size: 17px; }
-  #palco #hud #minimapa { width: 74px; height: 74px; }
-  #palco #hud #perfil { width: 74px; height: 20px; }
+  .hud-jogador b { display: none; }
+  .hud-jogador .txt small { font-size: 9.5px; }
+  .hud-jogador .avatar { width: 28px; height: 28px; font-size: 16px; }
+  #hud .pilula.chip { font-size: 13px; padding: 0 7px 0 5px; }
+  #hud .hud-botoes .pilula.botao { width: 28px; height: 28px; }
+  #palco #hud #minimapa { width: 60px; height: 60px; }
+  #palco #hud #perfil { width: 60px; height: 14px; }
 }
+@media (max-width: 350px) { #hud .pilula.distancia small { display: none; } }
