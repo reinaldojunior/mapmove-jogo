@@ -43,6 +43,8 @@
       <symbol id="i-pessoa" viewBox="0 0 48 48"><path d="M6 50c2-12 9-18 18-18s16 6 18 18z" fill="url(#gBranco)" stroke="#061440" stroke-width="2"/><circle cx="24" cy="18" r="9" fill="#f2c9a0" stroke="#061440" stroke-width="2"/><path d="M15 16c1-7 17-8 19 0-5-3-13-3-19 0z" fill="#3a2414"/></symbol>
       <symbol id="i-moeda" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="url(#gAmarelo)" stroke="#061440" stroke-width="2"/><circle cx="16" cy="16" r="10" fill="none" stroke="#b36b00" stroke-width="1.5" opacity=".6"/><text x="16" y="21.5" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-style="italic" font-weight="900" font-size="15" fill="#8a4a00">M$</text></symbol>
       <symbol id="i-pino-simples" viewBox="0 0 24 24"><path d="M12 2a7 7 0 00-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 00-7-7z" fill="currentColor"/><circle cx="12" cy="9" r="2.6" fill="var(--pino-miolo, #1e6bff)"/></symbol>
+      <symbol id="i-pista" viewBox="0 0 24 24"><path d="M9 3L4 21h16L15 3z" fill="#4a5578" stroke="#061440" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 5v3M12 11v3M12 17v3" stroke="#fff" stroke-width="2" stroke-linecap="round"/></symbol>
+      <symbol id="i-pista-molhada" viewBox="0 0 24 24"><path d="M9 3L4 21h16L15 3z" fill="#4a5578" stroke="#061440" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 5v3M12 11v3M12 17v3" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M18 10s3 3.5 3 5.5a3 3 0 01-6 0c0-2 3-5.5 3-5.5z" fill="#4fb4ff" stroke="#061440" stroke-width="1.3"/></symbol>
       <symbol id="i-pausa" viewBox="0 0 20 20"><rect x="4" y="3" width="4" height="14" rx="1.5" fill="url(#gBranco)"/><rect x="12" y="3" width="4" height="14" rx="1.5" fill="url(#gBranco)"/></symbol>
       <symbol id="i-engrenagem" viewBox="0 0 24 24"><path fill="url(#gBranco)" fill-rule="evenodd" d="M10.3 2h3.4l.5 2.6 1.9.8 2.2-1.5 2.4 2.4-1.5 2.2.8 1.9 2.6.5v3.4l-2.6.5-.8 1.9 1.5 2.2-2.4 2.4-2.2-1.5-1.9.8-.5 2.6h-3.4l-.5-2.6-1.9-.8-2.2 1.5-2.4-2.4 1.5-2.2-.8-1.9L2 13.7v-3.4l2.6-.5.8-1.9-1.5-2.2 2.4-2.4 2.2 1.5 1.9-.8zM12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z"/></symbol>
       <symbol id="i-som" viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3z" fill="url(#gBranco)"/><path d="M15.5 8.5a5 5 0 010 7M18 6a8.5 8.5 0 010 12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></symbol>
@@ -266,17 +268,28 @@
       <button class="cta secundario voltar-painel" id="btnPainelVoltar">Voltar</button>
     </section>
 
-    <section id="telaClima" class="tela" hidden>
-      <div class="clima-card">
-        <small class="clima-prova" id="climaProva"></small>
-        <div class="clima-topo"><span class="clima-emoji" id="climaEmoji"></span><div><h2 id="climaNome"></h2><span id="climaDados"></span></div></div>
-        <h3>Como afeta a corrida</h3>
-        <ul id="climaEfeitos"></ul>
-        <h3>Cuidados</h3>
-        <ul id="climaCuidados" class="cuidados"></ul>
+    <section id="telaClima" class="tela tela-clima" hidden>
+      <div class="clima-topo">
+        <button class="botao-3d clima-voltar" id="btnClimaVoltar" aria-label="Voltar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <div class="clima-cab"><b id="climaTitulo"></b><small id="climaProva"></small></div>
       </div>
-      <button id="btnLargar" class="cta">🏁 Largar</button>
-      <button id="btnClimaVoltar" class="cta secundario">Voltar</button>
+      <div class="clima-principal painel-3d">
+        <div class="clima-ceu" id="climaCeu"></div>
+        <div class="clima-linha">
+          <div class="clima-cond"><b id="climaNome"></b><small id="climaDesc"></small></div>
+          <div class="clima-temp"><b id="climaTemp"></b><span>°C</span></div>
+        </div>
+        <div class="clima-dados">
+          <span class="clima-dado"><svg><use href="#i-gota"/></svg><span id="climaUmid"></span></span>
+          <span class="clima-dado"><svg><use href="#i-vento"/></svg><span id="climaVento"></span></span>
+          <span class="clima-dado xp"><svg><use href="#i-estrela"/></svg><span id="climaXp"></span></span>
+        </div>
+      </div>
+      <h3 class="clima-tit">Como afeta a corrida</h3>
+      <div class="clima-inds" id="climaIndicadores"></div>
+      <h3 class="clima-tit">Cuidados</h3>
+      <ul class="clima-cuidados" id="climaCuidados"></ul>
+      <button id="btnLargar" class="largar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 22V3" stroke="#0b1d4a" stroke-width="2.6" stroke-linecap="round"/><path d="M5 4h14l-3 4.5 3 4.5H5z" fill="#fff" stroke="#0b1d4a" stroke-width="2" stroke-linejoin="round"/><path d="M8 4h3v3H8zM14 4h3v3h-3zM11 7h3v3h-3zM8 10h3v3H8zM14 10h2.5l-.8 1.5.8 1.5H14z" fill="#0b1d4a"/></svg><span>LARGAR</span></button>
     </section>
 
     <section id="telaTreino" class="tela" hidden>

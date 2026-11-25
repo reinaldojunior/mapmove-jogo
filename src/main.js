@@ -19,6 +19,7 @@ import { criarVitrine } from './vitrine.js';
 import { criarBandana } from './bandana.js';
 import { criarCeu } from './ceu.js';
 import * as CL from './clima.js';
+import { CEUS } from './ceus.js';
 import * as PL from './pelotao.js';
 import * as MD from './medalhas.js';
 import { gerarCartao } from './cartao.js';
@@ -2754,18 +2755,42 @@ function aplicarEquipamento() {
 
 // previsão do tempo antes da largada: sorteia o clima, mostra os efeitos e os cuidados, e o céu já muda atrás
 let climaDaLargada = null, escolhaDaLargada = null;
+// tela de clima: frase curta de cada condição e os 4 indicadores (valores lidos das mesmas funções que a corrida
+// usa; nada aqui muda cálculo). Tons: ruim (vermelho), medio (laranja), bom (verde).
+const DESCRICAO_CLIMA = {
+  sol: 'Céu aberto e sol suave', calor: 'Sol forte e pouco vento', abafado: 'Calor com ar úmido', nublado: 'Céu encoberto e temperatura amena',
+  chuva: 'Pista molhada e vento moderado', vento: 'Rajadas fortes no percurso', frio: 'Ar gelado e céu claro'
+};
+function indicadoresClima(c) {
+  const pct = (f) => Math.round(Math.abs(f - 1) * 100);
+  const sede = CL.fatorSede(c), energia = CL.fatorEnergiaClima(c);
+  const hid = sede >= 1.15 ? ['i-gota', 'Hidratação', `+${pct(sede)}%`, 'água acaba mais rápido', sede >= 1.25 ? 'ruim' : 'medio']
+    : sede <= 0.95 ? ['i-gota', 'Hidratação', `−${pct(sede)}%`, 'a água dura mais', 'bom']
+    : ['i-gota', 'Hidratação', 'Normal', 'quase sem efeito', 'bom'];
+  const ene = energia > 1 ? ['i-raio', 'Energia', `+${pct(energia)}%`, 'o calor cansa mais', energia >= 1.3 ? 'ruim' : 'medio'] : ['i-raio', 'Energia', 'Normal', 'sem gasto extra', 'bom'];
+  const ven = c.vento >= 3 ? ['i-vento', 'Vento', `${c.vento} m/s`, `contra: até ${Math.round(c.vento * 1.1)}% mais lento`, c.vento >= 6 ? 'ruim' : 'medio'] : ['i-vento', 'Vento', 'Fraco', 'sem efeito no ritmo', 'bom'];
+  const pis = c.chuva ? ['i-pista-molhada', 'Pista', 'Molhada', 'curvas e pulo menores', 'ruim'] : ['i-pista', 'Pista', 'Seca', 'aderência normal', 'bom'];
+  return [hid, ene, ven, pis];
+}
 function abrirClima(escolha) {
   escolhaDaLargada = escolha;
   climaDaLargada = CL.sortearClima();
   aplicarClima(climaDaLargada);
   const c = climaDaLargada, x = CL.explicarClima(c, perfil.consumiveis || {});
   const alvo = escolha || ultimaEscolha;
-  $('#climaProva').textContent = alvo?.tipo === 'prova' && alvo.distancia ? `Previsão para a largada · ${alvo.distancia.rotulo}` : 'Previsão para o treino';
-  $('#climaEmoji').textContent = c.emoji;
+  const ehProva = alvo?.tipo === 'prova' && alvo.distancia;
+  $('#climaTitulo').textContent = ehProva ? (PROVAS.find((p) => p.slug === PROVA_SLUG)?.curto || dadosProva?.nome || 'Prova') : 'Treino de reta';
+  $('#climaProva').textContent = ehProva ? `Previsão para a largada · ${alvo.distancia.rotulo}` : 'Previsão para o treino';
+  $('#climaCeu').innerHTML = CEUS[c.id] || CEUS.sol;
   $('#climaNome').textContent = c.nome;
-  $('#climaDados').textContent = `🌡️ ${c.temp} °C · 💧 ${c.umidade}% umidade · 💨 ${c.vento} m/s`;
-  $('#climaEfeitos').innerHTML = x.efeitos.map((t) => `<li>${t}</li>`).join('');
-  $('#climaCuidados').innerHTML = x.cuidados.map((t) => `<li>${t}</li>`).join('');
+  $('#climaDesc').textContent = DESCRICAO_CLIMA[c.id] || '';
+  $('#climaTemp').textContent = c.temp;
+  $('#climaUmid').textContent = `${c.umidade}% umidade`;
+  $('#climaVento').textContent = `${c.vento} m/s`;
+  $('#climaXp').textContent = x.bonus ? `+${Math.round(x.bonus * 100)}% XP` : 'Bom p/ recorde';
+  $('#climaIndicadores').innerHTML = indicadoresClima(c).map(([ico, rot, valor, sub, tom]) =>
+    `<div class="clima-ind ${tom}"><span class="ic"><svg><use href="#${ico}"/></svg></span><span class="tx"><span class="lab">${rot}</span><b>${valor}</b><small>${sub}</small></span></div>`).join('');
+  $('#climaCuidados').innerHTML = x.cuidados.map((t, i) => `<li><span class="n">${i + 1}</span><span>${t}</span></li>`).join('');
   mostrar('telaClima');
 }
 $('#btnLargar').addEventListener('click', () => iniciar(escolhaDaLargada, climaDaLargada));
