@@ -740,134 +740,197 @@ kbd {
   .inicio .creditos { font-size: 9px; }
 }
 
-/* ─── HUD limpo: o nível/XP é a peça principal (canto superior esquerdo, cresce durante a corrida);
-   distância, tempo e colocação numa barra só; energia e água pequenas à direita; o resto em texto miúdo sem caixa ─── */
+/* ═══ IDENTIDADE MAPMOVE RUN — material "painel 3D" (base para todas as telas) ═══════════════════════════════
+   Gradiente azul de cima para baixo, filete de brilho no topo, contorno azul-noite e uma base de alguns px que dá
+   volume (como botão físico). Ícones SVG próprios (#i-*) com o mesmo contorno. Medidas em cqw (largura do palco)
+   com limites em px: o HUD acompanha o tamanho da tela sem crescer demais em tablet nem apertar em celular pequeno. */
 :root {
-  --hud-fundo: linear-gradient(180deg, rgba(24, 56, 128, 0.86), rgba(10, 28, 74, 0.86));
-  --hud-borda: rgba(255, 255, 255, 0.3);
-  --hud-sombra: 0 2px 0 rgba(4, 14, 40, 0.45), 0 4px 10px rgba(0, 0, 0, 0.2);
-  --hud-topo: max(8px, env(safe-area-inset-top));
-  --botao-hud: 36px;
-  --botao-jogo: 68px;
+  --mm-noite: #061440;
+  --mm-p1: #2c5fd6; --mm-p2: #12318a; --mm-p3: #0a1f5e;
+  --mm-azul: #1e6bff; --mm-amarelo: #ffd21f; --mm-laranja: #ff9f1c; --mm-verde: #34c759; --mm-vermelho: #ff3b30;
+  --mm-brilho: rgba(255, 255, 255, 0.42);
+  --mm-base: 3px;
 }
-#hud { display: block; padding: 0; inset: 0; }
-#hud .pilula { background: var(--hud-fundo); border: 1.5px solid var(--hud-borda); box-shadow: var(--hud-sombra); backdrop-filter: none; font-weight: 800; }
-#hud b, #hud small, #hud em { text-shadow: 0 1px 1px rgba(0, 0, 0, 0.45); }
+#palco { container-type: inline-size; }
+.sprite-icones { position: absolute; width: 0; height: 0; overflow: hidden; }
+.painel-3d {
+  background: linear-gradient(180deg, var(--mm-p1) 0%, var(--mm-p2) 58%, var(--mm-p3) 100%);
+  border: 2px solid var(--mm-noite);
+  box-shadow: inset 0 1.5px 0 var(--mm-brilho), inset 0 -2px 0 rgba(0, 0, 0, 0.22), 0 var(--mm-base) 0 var(--mm-noite), 0 6px 12px rgba(0, 0, 0, 0.22);
+}
+.botao-3d {
+  display: grid; place-items: center; padding: 0; cursor: pointer; color: #fff; font: inherit;
+  background: linear-gradient(180deg, #5594ff 0%, #2160e0 55%, #1747b8 100%);
+  border: 2px solid var(--mm-noite);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.55), inset 0 -2px 0 rgba(0, 0, 0, 0.2), 0 var(--mm-base) 0 var(--mm-noite), 0 5px 10px rgba(0, 0, 0, 0.25);
+  -webkit-tap-highlight-color: transparent;
+}
+.botao-3d:active { transform: translateY(2px); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.5), 0 1px 0 var(--mm-noite); }
+.botao-3d svg { width: 55%; height: 55%; filter: drop-shadow(0 1.5px 0 rgba(0, 0, 0, 0.35)); }
+#hud svg.ico { flex: none; filter: drop-shadow(0 1.5px 0 rgba(0, 0, 0, 0.3)); }
+#hud b, #hud small, #hud em { font-variant-numeric: tabular-nums; text-shadow: 0 1.5px 0 rgba(0, 0, 0, 0.35); }
 
-/* linha 1: nível e XP em destaque + pausa e ajustes */
-.hud-l1 { position: absolute; top: var(--hud-topo); left: 8px; right: 8px; z-index: 3; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.hud-jogador {
-  display: flex; align-items: center; gap: 8px;
-  width: min(62%, 250px);
-  padding: 4px 12px 4px 4px;
-  border-radius: 999px;
-  background: var(--hud-fundo);
-  border: 2px solid rgba(255, 210, 31, 0.75);
-  box-shadow: var(--hud-sombra);
+/* ─── HUD ─── */
+#hud { display: block; padding: 0; inset: 0; --m: clamp(8px, 2.6cqw, 14px); --topo: max(var(--m), env(safe-area-inset-top)); }
+
+/* nível e XP: compacto, avatar saindo do cartão */
+.hud-nivel {
+  position: absolute; left: calc(var(--m) + 4px); top: calc(var(--topo) + 4px);
+  display: flex; align-items: center;
+  width: clamp(150px, 44cqw, 196px);
+  height: clamp(42px, 11.5cqw, 50px);
+  padding: 0 clamp(7px, 2cqw, 10px) 0 clamp(44px, 12cqw, 54px);
+  border-radius: 14px;
 }
-.hud-jogador .avatar {
-  flex: none; display: grid; place-items: center;
-  width: 46px; height: 46px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #7fd0ff, #1e88ff 70%);
-  border: 2.5px solid #fff;
-  font-size: 26px; line-height: 1; overflow: hidden;
-}
-.hud-jogador .avatar img { width: 100%; height: 100%; object-fit: cover; }
-.hud-jogador .txt { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; line-height: 1; }
-.hud-jogador .linha-nivel { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
-.hud-jogador .linha-nivel b { font-size: 15px; color: var(--amarelo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hud-jogador .linha-nivel em { font-style: normal; font-weight: 800; font-size: 12px; color: #9dffb0; white-space: nowrap; }
-.hud-jogador .xp { position: relative; display: block; height: 9px; border-radius: 999px; background: rgba(0, 0, 0, 0.45); overflow: hidden; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5); }
-.hud-jogador .xp i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: inherit; background: linear-gradient(180deg, #ffe680, #ffb800); }
-.hud-jogador .xp i.ganho { background: linear-gradient(180deg, #b8ff9e, #34c759); transition: width 0.4s; }
-.hud-jogador small { font-size: 11px; font-weight: 700; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hud-jogador.subiu { animation: subiuNivel 1.2s ease-in-out 3; }
-@keyframes subiuNivel { 50% { box-shadow: 0 0 0 4px var(--amarelo), var(--hud-sombra); } }
-.hud-botoes { position: relative; flex: none; display: flex; gap: 6px; }
-#hud .hud-botoes .pilula.botao {
+.hud-nivel .avatar {
+  position: absolute; left: -6px; top: 50%; transform: translateY(-50%);
   display: grid; place-items: center;
-  width: var(--botao-hud); height: var(--botao-hud); padding: 0;
+  width: clamp(44px, 12.5cqw, 54px); aspect-ratio: 1;
   border-radius: 50%;
-  font-size: 15px;
-  background: linear-gradient(180deg, #2f6fe0, #1747a8);
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  pointer-events: auto;
+  background: radial-gradient(circle at 35% 30%, #a6e6ff, #1e6bff 62%, #0f3fae);
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px var(--mm-noite), 0 4px 8px rgba(0, 0, 0, 0.3);
+  font-size: clamp(22px, 6.5cqw, 28px); line-height: 1; overflow: hidden;
 }
-.menu-config { position: absolute; top: calc(var(--botao-hud) + 6px); right: 0; display: flex; gap: 6px; padding: 5px; border-radius: 999px; background: rgba(10, 28, 74, 0.85); pointer-events: auto; }
+.hud-nivel .avatar img { width: 100%; height: 100%; object-fit: cover; }
+.hud-nivel .avatar .pessoa { width: 86%; height: 86%; margin-top: 22%; }
+.hud-nivel .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; line-height: 1; }
+.hud-nivel .linha { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; }
+.hud-nivel .linha b { font-size: clamp(12px, 3.6cqw, 15px); font-weight: 800; color: var(--mm-amarelo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-nivel .linha em { font-style: normal; font-weight: 800; font-size: clamp(10px, 2.9cqw, 12px); color: #8dffa6; white-space: nowrap; }
+.hud-nivel .xp { position: relative; display: block; height: clamp(7px, 2cqw, 9px); border-radius: 999px; background: var(--mm-noite); overflow: hidden; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6); }
+.hud-nivel .xp i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: inherit; }
+.hud-nivel .xp i.ganho { background: linear-gradient(180deg, #c6ff9a, #2fbf55); transition: width 0.4s; }
+.hud-nivel .xp #hudXp { z-index: 1; background: linear-gradient(180deg, #ffe98a, #ffb400); }
+.hud-nivel .xp::after { content: ""; position: absolute; left: 2px; right: 2px; top: 1px; height: 30%; border-radius: 999px; background: rgba(255, 255, 255, 0.35); z-index: 2; }
+.hud-nivel small { font-size: clamp(9px, 2.5cqw, 10.5px); font-weight: 700; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-nivel.subiu { animation: subiuNivel 1.2s ease-in-out 3; }
+@keyframes subiuNivel { 50% { box-shadow: 0 0 0 3px var(--mm-amarelo), 0 var(--mm-base) 0 var(--mm-noite); } }
+
+/* pausa e ajustes */
+.hud-botoes { position: absolute; right: var(--m); top: calc(var(--topo) + 4px); display: flex; gap: clamp(6px, 2cqw, 9px); z-index: 3; }
+.hud-botoes .botao-3d { width: clamp(34px, 9.6cqw, 40px); aspect-ratio: 1; border-radius: 12px; pointer-events: auto; }
+.menu-config { position: absolute; top: calc(100% + 8px); right: 0; display: flex; gap: 6px; padding: 6px; border-radius: 14px; pointer-events: auto; }
 .menu-config[hidden] { display: none; }
 
-/* esquerda: barra única com distância, tempo e colocação; detalhes em texto miúdo */
-#hud .hud-esq, #hud .hud-dir { position: absolute; top: calc(var(--hud-topo) + 62px); display: flex; flex-direction: column; gap: 5px; }
-#hud .hud-esq { left: 8px; align-items: flex-start; }
-#hud .hud-dir { right: 8px; align-items: flex-end; top: calc(var(--hud-topo) + 46px); }
-.barra-info {
-  display: flex; align-items: center;
-  height: 30px; padding: 0 4px;
+/* placar: distância e tempo num bloco, números grandes */
+.hud-placar {
+  position: absolute; left: var(--m); top: calc(var(--topo) + clamp(56px, 15cqw, 64px));
+  display: flex; align-items: stretch;
+  height: clamp(40px, 11cqw, 46px);
+  border-radius: 14px;
+}
+.hud-placar .cel { display: flex; align-items: center; gap: 6px; padding: 0 clamp(9px, 3cqw, 13px) 0 clamp(7px, 2cqw, 9px); }
+.hud-placar .cel + .cel { border-left: 2px solid rgba(0, 0, 0, 0.28); box-shadow: inset 1.5px 0 0 rgba(255, 255, 255, 0.14); }
+.hud-placar .ico { width: clamp(18px, 5.4cqw, 22px); height: clamp(18px, 5.4cqw, 22px); }
+.hud-placar .v { display: flex; flex-direction: column; line-height: 1; }
+.hud-placar .v b { font-size: clamp(16px, 4.9cqw, 20px); font-weight: 800; }
+.hud-placar .v small { font-size: clamp(9px, 2.5cqw, 10.5px); font-weight: 700; opacity: 0.75; }
+.hud-placar #hudKmTotal:empty { display: none; }
+
+/* colocação, pontos e penalidades; abaixo, um aviso do momento por vez */
+#hud .hud-esq { position: absolute; left: var(--m); top: calc(var(--topo) + clamp(104px, 28.5cqw, 120px)); display: flex; flex-direction: column; align-items: flex-start; gap: 7px; }
+.linha-pos { display: flex; align-items: center; gap: 10px; }
+.hud-pos { display: flex; align-items: center; gap: 6px; height: clamp(30px, 8.4cqw, 34px); padding: 0 12px 0 7px; border-radius: 999px; }
+.hud-pos[hidden] { display: none; }
+.hud-pos .ico { width: clamp(18px, 5.2cqw, 22px); height: clamp(18px, 5.2cqw, 22px); }
+.hud-pos b { font-size: clamp(14px, 4.2cqw, 17px); font-weight: 800; }
+.hud-pontos, .hud-penal { display: flex; align-items: center; gap: 3px; font-size: clamp(12px, 3.4cqw, 13.5px); }
+.hud-pontos .ico, .hud-penal .ico { width: 15px; height: 15px; }
+#hud .hud-pontos b, #hud .hud-penal b { font-weight: 800; color: #fff; text-shadow: 1px 0 0 var(--mm-noite), -1px 0 0 var(--mm-noite), 0 1px 0 var(--mm-noite), 0 -1px 0 var(--mm-noite), 0 2px 0 var(--mm-noite), 0 2px 4px rgba(0, 0, 0, 0.4); }
+.hud-penal { display: none; }
+.hud-penal.marcou { display: flex; }
+.hud-penal.marcou b { color: #ffe0da; }
+.hud-contexto {
+  display: flex; align-items: center; gap: 5px;
+  height: clamp(24px, 6.8cqw, 28px); padding: 0 11px 0 7px;
   border-radius: 999px;
-  background: var(--hud-fundo);
-  border: 1.5px solid var(--hud-borda);
-  box-shadow: var(--hud-sombra);
-  white-space: nowrap;
+  font-size: clamp(11.5px, 3.3cqw, 13px); font-weight: 800;
+  background: linear-gradient(180deg, #3f78e6, #1747a8);
+  border: 2px solid var(--mm-noite);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.45), 0 2px 0 var(--mm-noite);
+  animation: entraAviso 0.25s ease-out;
 }
-.barra-info .seg { display: flex; align-items: baseline; gap: 3px; padding: 0 8px; font-size: 14px; }
-.barra-info .seg + .seg { border-left: 1px solid rgba(255, 255, 255, 0.22); }
-.barra-info .seg[hidden] { display: none; }
-.barra-info .ico { font-size: 12px; }
-.barra-info small { font-size: 10px; font-weight: 700; opacity: 0.7; }
-.linha-detalhe { display: flex; flex-wrap: wrap; gap: 2px 10px; padding-left: 6px; max-width: 230px; font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.92); }
-.linha-detalhe b { font-weight: 800; }
-.linha-detalhe span { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7); }
-.linha-detalhe .inclinacao.sobe b { color: #ffb38a; }
-.linha-detalhe .inclinacao.desce b { color: #9fd8ff; }
-.linha-detalhe [hidden] { display: none; }
-#hud .alerta-penal { display: none; height: 24px; padding: 0 9px 0 6px; gap: 3px; font-size: 13px; background: linear-gradient(180deg, #e0442f, #a8231a); }
-#hud .alerta-penal.marcou { display: flex; }
-#hud .pilula.fantasma { height: 24px; font-size: 12px; padding: 0 9px; background: linear-gradient(180deg, #8a6ad8, #5c3fae); }
-#hud #ponto { max-width: 180px; padding: 4px 9px 4px 6px; }
-#hud #ponto .ico { font-size: 18px; }
-#hud #ponto b { font-size: 13px; }
+.hud-contexto[hidden] { display: none; }
+.hud-contexto .ico { width: 17px; height: 17px; }
+.hud-contexto.inclinacao.sobe { background: linear-gradient(180deg, #ff8a4c, #d9481f); border-color: #5a1604; box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.45), 0 2px 0 #5a1604; }
+.hud-contexto.relogio { background: linear-gradient(180deg, #3fb7ff, #1676d8); }
+.hud-contexto.fantasma { background: linear-gradient(180deg, #9a7ae6, #5c3fae); }
+@keyframes entraAviso { from { opacity: 0; transform: translateX(-8px); } }
+#hud #ponto { max-width: 190px; padding: 5px 10px 5px 7px; border-radius: 12px; border: 2px solid var(--mm-noite); box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.35), 0 3px 0 var(--mm-noite); }
 
-/* direita: energia e água do mesmo tamanho, e o minimapa pequeno embaixo */
-#hud .pilula.recurso { width: 86px; height: 26px; padding: 0 7px 0 4px; gap: 4px; border-radius: 999px; }
-#hud .pilula.recurso .ico { font-size: 14px; }
-#hud .recurso b { font-size: 12px; min-width: 3.3ch; }
-#hud .recurso .barra { flex: 1; width: auto; height: 5px; background: rgba(0, 0, 0, 0.4); }
-#hud .recurso.energia .barra i { background: linear-gradient(90deg, #8ee84f, #34c759); }
-#hud .recurso.agua .barra i { background: linear-gradient(90deg, #6fd3ff, #1e88ff); }
-#hud .recurso.medio .barra i { background: linear-gradient(90deg, #ffe066, #ffb800); }
-#hud .recurso.baixa .barra i { background: linear-gradient(90deg, #ff7a59, #ff2d2d); }
-#hud .recurso.baixa b { color: #ffb4a8; }
-#hud .pilula.recurso.baixa { animation: alertaRecurso 1s ease-in-out infinite; }
-@keyframes alertaRecurso { 50% { box-shadow: 0 0 0 2px #ff4b3b, var(--hud-sombra); } }
-@media (prefers-reduced-motion: reduce) { #hud .pilula.recurso.baixa { animation: none; box-shadow: 0 0 0 2px #ff4b3b; } .hud-jogador.subiu { animation: none; } }
-#hud #mapa { padding: 3px; gap: 2px; background: rgba(8, 22, 56, 0.5); border: 1.5px solid var(--hud-borda); border-radius: 12px; }
-#palco #hud #minimapa { width: 78px; height: 78px; }
-#palco #hud #perfil { width: 78px; height: 18px; }
-
-/* botões de baixo do mesmo tamanho e da mesma família: gel (escuro, raio amarelo) e pulo (azul) */
-.gel, .pular {
-  bottom: max(120px, calc(env(safe-area-inset-bottom) + 100px));
-  width: var(--botao-jogo); height: var(--botao-jogo);
-  border: 3px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 4px 0 rgba(4, 14, 40, 0.6), 0 8px 16px rgba(0, 0, 0, 0.28);
+/* energia e água: anéis pequenos com o percentual embaixo */
+#hud .hud-dir { position: absolute; right: var(--m); top: calc(var(--topo) + clamp(54px, 14.5cqw, 62px)); display: flex; flex-direction: column; align-items: flex-end; gap: clamp(14px, 4cqw, 18px); }
+.medidores { display: flex; gap: clamp(7px, 2.2cqw, 10px); }
+.medidor { position: relative; width: clamp(40px, 11.4cqw, 48px); aspect-ratio: 1; }
+.medidor .anel { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.medidor .trilho { fill: none; stroke: var(--mm-noite); stroke-width: 6.5; }
+.medidor .prog { fill: none; stroke-width: 4.5; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 0; transition: stroke-dashoffset 0.3s linear, stroke 0.3s; }
+.medidor.energia .prog { stroke: url(#gVerde); }
+.medidor.agua .prog { stroke: url(#gAzul); }
+.medidor.medio .prog { stroke: url(#gLaranja); }
+.medidor.baixa .prog { stroke: url(#gVermelho); }
+.medidor .miolo {
+  position: absolute; inset: 17%; border-radius: 50%; display: grid; place-items: center;
+  background: linear-gradient(180deg, var(--mm-p1), var(--mm-p3));
+  border: 1.5px solid var(--mm-noite);
+  box-shadow: inset 0 1.5px 0 var(--mm-brilho);
 }
-.gel { left: 16px; background: radial-gradient(circle at 35% 30%, rgba(74, 90, 126, 0.85), rgba(18, 26, 46, 0.85)); }
-.gel .ico { font-size: 30px; margin-top: 0; }
-.gel b { bottom: -4px; right: -4px; display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 4px; border-radius: 999px; background: #13306f; color: #fff; border: 2px solid #fff; font-size: 13px; }
-.gel #gelAnel { mask: radial-gradient(circle, transparent 35px, #000 36px); -webkit-mask: radial-gradient(circle, transparent 35px, #000 36px); }
-.pular { right: 16px; color: #fff; background: radial-gradient(circle at 35% 30%, #3f7be6, #13379a 70%); }
-.pular svg { width: 34px; height: 34px; }
-.pular:active, .gel:active { transform: translateY(3px); }
-.iso { left: 22px; bottom: max(198px, calc(env(safe-area-inset-bottom) + 178px)); width: 56px; height: 56px; border: 3px solid rgba(255, 255, 255, 0.9); }
+.medidor .miolo .ico { width: 62%; height: 62%; }
+.medidor b {
+  position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%);
+  min-width: 34px; padding: 0 5px; text-align: center;
+  font-size: clamp(10.5px, 3cqw, 12px); font-weight: 800; line-height: 15px;
+  border-radius: 999px; background: var(--mm-p3); border: 1.5px solid var(--mm-noite);
+}
+.medidor.baixa b { color: #ffd0c8; background: #8a1a12; }
+.medidor.baixa { animation: alertaMedidor 1s ease-in-out infinite; }
+@keyframes alertaMedidor { 50% { filter: drop-shadow(0 0 6px #ff3b30); } }
+@media (prefers-reduced-motion: reduce) { .medidor.baixa, .hud-nivel.subiu, .hud-contexto { animation: none; } }
 
-@media (max-width: 370px) {
-  :root { --botao-hud: 32px; --botao-jogo: 62px; }
-  .hud-jogador .avatar { width: 40px; height: 40px; font-size: 22px; }
-  .barra-info .seg { padding: 0 6px; font-size: 13px; }
-  .barra-info .seg { padding: 0 5px; }
-  .barra-info small { font-size: 9px; }
-  #hud .pilula.recurso { width: 80px; }
-  #palco #hud #minimapa { width: 68px; height: 68px; }
-  #palco #hud #perfil { width: 68px; height: 16px; }
+/* minimapa: discreto (translúcido) e legível (contorno claro, traço grosso, bandeira de chegada) */
+#hud #mapa { display: flex; flex-direction: column; gap: 2px; padding: 3px; border-radius: 14px; background: rgba(6, 20, 64, 0.5); border: 2px solid rgba(255, 255, 255, 0.4); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2); }
+#hud #mapa[hidden] { display: none; }
+#palco #hud #minimapa { width: clamp(66px, 19cqw, 82px); height: clamp(66px, 19cqw, 82px); }
+#palco #hud #perfil { width: clamp(66px, 19cqw, 82px); height: clamp(15px, 4.4cqw, 19px); border-radius: 0 0 9px 9px; }
+
+/* botões de jogo: mesma família 3D; o pulo é maior por ser a ação principal */
+#controles .botao-jogo { border: 3px solid #fff; box-shadow: 0 0 0 2.5px var(--mm-noite), 0 5px 0 var(--mm-noite), 0 10px 18px rgba(0, 0, 0, 0.28); }
+#controles .botao-jogo:active { transform: translateY(3px); box-shadow: 0 0 0 2.5px var(--mm-noite), 0 2px 0 var(--mm-noite); }
+#controles .botao-jogo .ico { width: 56%; height: 56%; margin: 0; font-size: 0; filter: drop-shadow(0 1.5px 0 rgba(0, 0, 0, 0.35)); }
+#controles .gel .ico { width: 66%; height: 66%; }
+.gel {
+  left: calc(var(--m, 12px) + 6px); bottom: max(118px, calc(env(safe-area-inset-bottom) + 98px));
+  width: clamp(58px, 17cqw, 68px); height: auto; aspect-ratio: 1;
+  background: radial-gradient(circle at 35% 28%, #6277aa, #24336a 60%, #18214a);
+}
+.gel b {
+  position: absolute; right: -6px; bottom: -4px;
+  display: grid; place-items: center; min-width: 26px; height: 26px; padding: 0 5px; border-radius: 999px;
+  background: linear-gradient(180deg, #ffe066, #ff9f1c); color: #3a1d00; border: 2px solid var(--mm-noite);
+  font-size: 14px; font-weight: 800;
+}
+.gel:disabled { opacity: 0.55; }
+.gel #gelAnel { inset: -6px; mask: radial-gradient(circle, transparent 62%, #000 63%); -webkit-mask: radial-gradient(circle, transparent 62%, #000 63%); }
+.pular {
+  right: calc(var(--m, 12px) + 6px); bottom: max(110px, calc(env(safe-area-inset-bottom) + 90px));
+  width: clamp(70px, 20.5cqw, 82px); height: auto; aspect-ratio: 1;
+  background: radial-gradient(circle at 35% 28%, #6ea8ff, #1e6bff 55%, #1242b8);
+}
+.pular .ico { width: 64% !important; height: 64% !important; }
+.iso {
+  left: calc(var(--m, 12px) + 12px); bottom: max(200px, calc(env(safe-area-inset-bottom) + 180px));
+  width: clamp(48px, 13.5cqw, 54px); height: auto; aspect-ratio: 1;
+  background: radial-gradient(circle at 35% 28%, #8fd8ff, #1e88ff 60%, #1559b0);
+}
+.iso b { position: absolute; right: -6px; bottom: -4px; display: grid; place-items: center; min-width: 22px; height: 22px; border-radius: 999px; background: #fff; color: var(--mm-noite); border: 2px solid var(--mm-noite); font-size: 12px; }
+.gota { background: radial-gradient(circle at 35% 28%, rgba(120, 190, 255, 0.55), rgba(10, 40, 110, 0.55)); }
+.gota .ico { width: 50%; height: 50%; }
+.dica-gestos { background: rgba(6, 20, 64, 0.55); border: 1.5px solid rgba(255, 255, 255, 0.25); border-radius: 999px; padding: 5px 14px; font-weight: 700; font-size: clamp(11px, 3.1cqw, 13px); }
+#hud .hud-esq, #hud .hud-dir, #hud .hud-placar, #hud .hud-nivel { pointer-events: none; }
+
+/* telas baixas (celular deitado/16:9 curto): aproxima as linhas */
+@media (max-height: 640px) {
+  #hud .hud-esq { top: calc(var(--topo) + 98px); }
+  .gel, .pular { bottom: 86px; }
 }

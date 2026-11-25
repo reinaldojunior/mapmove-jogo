@@ -2494,9 +2494,9 @@ function bip(freq, dur, volume = 0.18) {
 
 const hud = {
   km: $('#hudKm'), kmTotal: $('#hudKmTotal'), tempo: $('#hudTempo'), pace: $('#hudPace'),
-  agua: $('#hudAgua'), aguaTxt: $('#hudAguaTxt'), aguaBox: $('.pilula.agua'),
+  agua: $('#hudAgua'), aguaTxt: $('#hudAguaTxt'), aguaBox: $('#hudAguaBox'),
   relogio: $('#hudRelogio'), relogioTxt: $('#hudRelogioTxt'),
-  energia: $('#hudEnergia'), energiaTxt: $('#hudEnergiaTxt'), energiaBox: $('.pilula.energia'), pontos: $('#hudPontos'),
+  energia: $('#hudEnergia'), energiaTxt: $('#hudEnergiaTxt'), energiaBox: $('#hudEnergiaBox'), pontos: $('#hudPontos'),
   inc: $('#hudInc'), incTxt: $('#hudIncTxt'), penal: $('#hudPenalTxt'),
   gel: $('#btnGel'), gelQtd: $('#gelQtd'), gota: $('#btnAgua'), dica: $('#dicaGestos'), contagem: $('#contagem')
 };
@@ -2532,6 +2532,13 @@ function desenharMinimapa() {
   const iFim = pista.indice(estado.sMax);
   for (let i = 0; i <= iFim; i += 2) { const [a, b] = mapaEscala(pista.x[i], pista.z[i]); i ? c.lineTo(a, b) : c.moveTo(a, b); }
   c.stroke();
+  {
+    // chegada: quadradinho xadrez (deixa claro para onde o percurso vai)
+    const iUlt = pista.x.length - 1, [fx, fz] = mapaEscala(pista.x[iUlt], pista.z[iUlt]);
+    c.fillStyle = '#fff'; c.fillRect(fx - 9, fz - 9, 18, 18);
+    c.fillStyle = '#061440'; c.fillRect(fx - 9, fz - 9, 9, 9); c.fillRect(fx, fz, 9, 9);
+    c.strokeStyle = '#061440'; c.lineWidth = 2; c.strokeRect(fx - 9, fz - 9, 18, 18);
+  }
   const [cx, cz] = mapaEscala(estado.x, estado.z);
   c.fillStyle = '#e63946'; c.strokeStyle = '#fff'; c.lineWidth = 4;
   c.beginPath(); c.arc(cx, cz, 9, 0, Math.PI * 2); c.fill(); c.stroke();
@@ -2569,14 +2576,15 @@ let hudTimer = 0;
 
 function preencherJogadorHud() {
   const d = usuario ? Conta.dadosDoUsuario(usuario) : null, st = P.situacao(formaAtual().xp);
-  const av = $('#hudAvatar');
-  av.textContent = '';
+  // foto da conta Google; sem foto (ou se não carregar), o boneco desenhado no estilo dos ícones do jogo
+  const av = $('#hudAvatar'), boneco = '<svg class="pessoa"><use href="#i-pessoa"/></svg>';
+  av.innerHTML = boneco;
   if (d?.foto) {
     const img = document.createElement('img');
     img.src = d.foto; img.alt = ''; img.referrerPolicy = 'no-referrer';
-    img.onerror = () => { av.textContent = (PERSONAGENS[perfil.personagem] || PERSONAGENS.portal).emoji; };
-    av.append(img);
-  } else av.textContent = (PERSONAGENS[perfil.personagem] || PERSONAGENS.portal).emoji;
+    img.onerror = () => { av.innerHTML = boneco; };
+    av.replaceChildren(img);
+  }
   $('#hudNome').textContent = d ? d.nome.split(' ')[0] : 'Você';
   $('#hudJogador')?.classList.remove('subiu');
   xpHud.base = formaAtual().xp; xpHud.degrau = st.indice; xpHud.ganho = -1;
@@ -2596,6 +2604,7 @@ function atualizarXpHud(metros) {
   $('#hudXp').style.width = agora.indice === inicio.indice ? `${Math.round(inicio.progresso * 100)}%` : '0%';
   $('#hudXpCorrida').style.width = `${Math.round(agora.progresso * 100)}%`;
   $('#hudXpGanho').textContent = `+${ganho} XP`;
+  $('#hudXpTxt').textContent = agora.completo ? 'nível máximo' : `${agora.xpNoDegrau} / ${agora.xpDoDegrau} XP`;
   if (agora.indice > xpHud.degrau) { xpHud.degrau = agora.indice; $('#hudJogador').classList.add('subiu'); aviso(`🎉 Subiu para ${agora.rotulo}!`, 'km', 2200); }
 }
 
@@ -2610,15 +2619,12 @@ function atualizarHud() {
     el.hidden = !p;
     if (p) $('#hudPosTxt').textContent = `${p.posicao}º/${p.total}`;
   }
-  {
-    // clima: temperatura e de onde vem o vento em relação ao corredor
-    const c = estado.clima, el = $('#hudClima');
-    el.hidden = !c;
-    if (c) {
-      const contra = c.vento >= 3 ? CL.ventoRelativo(c, estado.ang) : 0;
-      const vento = contra > 0.5 ? ' 💨 contra' : contra < -0.5 ? ' 💨 a favor' : '';
-      $('#hudClimaTxt').textContent = `${c.emoji} ${c.temp}°${vento}`;
-    }
+  // clima: temperatura e de onde vem o vento em relação ao corredor
+  const clima = estado.clima;
+  const ventoContra = clima && clima.vento >= 3 ? CL.ventoRelativo(clima, estado.ang) : 0;
+  if (clima) {
+    $('#hudClimaIco').setAttribute('href', `#c-${{ sol: 'sol', nublado: 'nuvem', calor: 'calor', abafado: 'abafado', chuva: 'chuva', vento: 'vento', frio: 'frio' }[clima.id] || 'sol'}`);
+    $('#hudClimaTxt').textContent = `${clima.temp}°${ventoContra > 0.5 ? ' · vento contra' : ventoContra < -0.5 ? ' · vento a favor' : ''}`;
   }
   const s = estado;
   // até 1 km em metros (670 m), depois em km (1,34 km); o total da prova vem pequeno ao lado
@@ -2629,26 +2635,36 @@ function atualizarHud() {
   hud.tempo.textContent = R.formatarTempo(s.tempoReal);
   hud.pace.textContent = R.formatarPace(s.v);
   const inc = emEst(s.s).inclinacao;
-  hud.agua.style.width = `${s.agua}%`;
+  // anéis: o traço vai de 0 a 100 (pathLength) e esvazia conforme o consumo
+  hud.agua.style.strokeDashoffset = `${100 - Math.max(0, Math.min(100, s.agua))}`;
   hud.aguaTxt.textContent = `${Math.round(s.agua)}%`;
   hud.aguaBox.classList.toggle('baixa', s.agua < 25);
   hud.aguaBox.classList.toggle('medio', s.agua >= 25 && s.agua < 50);
-  hud.energia.style.width = `${s.energia}%`;
+  hud.energia.style.strokeDashoffset = `${100 - Math.max(0, Math.min(100, s.energia))}`;
   hud.energiaTxt.textContent = `${Math.round(s.energia)}%`;
   hud.energiaBox.classList.toggle('baixa', s.energia < R.ENERGIA_BAIXA);
   hud.energiaBox.classList.toggle('medio', s.energia >= R.ENERGIA_BAIXA && s.energia < 55);
   // relógio GPS: distância até o próximo posto de água
   const proxPosto = s.relogio && prova ? postos.find((q) => q.s > s.s + 1) : null;
-  hud.relogio.hidden = !proxPosto;
-  if (proxPosto) hud.relogioTxt.textContent = `💧 ${Math.round((proxPosto.s - s.s) / 10) * 10} m`;
+  if (proxPosto) hud.relogioTxt.textContent = `Água em ${Math.round((proxPosto.s - s.s) / 10) * 10} m`;
   hud.pontos.textContent = Math.floor(s.pontos).toLocaleString('pt-BR');
   const pct = Math.round(inc * 100);
   hud.inc.classList.toggle('sobe', pct >= 1);
   hud.inc.classList.toggle('desce', pct <= -1);
-  hud.incTxt.textContent = pct >= 1 ? `⛰️ subida ${pct}%` : pct <= -1 ? `⛰️ descida ${-pct}%` : '';
-  hud.inc.hidden = Math.abs(pct) < 1; // no plano não mostra nada
+  hud.incTxt.textContent = pct >= 1 ? `Subida ${pct}%` : pct <= -1 ? `Descida ${-pct}%` : '';
   hud.penal.textContent = `${s.penal}/${R.PENALIDADES_MAX}`;
   hud.penal.parentElement.classList.toggle('marcou', s.penal > 0);
+  // um aviso do momento por vez, por prioridade: posto de água perto, subida/descida forte, vento contra,
+  // clima nos primeiros segundos, próximo posto, relevo leve. O resto do tempo a tela fica livre.
+  const avisos = [
+    [hud.relogio, !!proxPosto && proxPosto.s - s.s < 400],
+    [hud.inc, Math.abs(pct) >= 3],
+    [$('#hudClima'), !!clima && (ventoContra > 0.5 || (s.t || 0) < 10)],
+    [hud.relogio, !!proxPosto],
+    [hud.inc, Math.abs(pct) >= 1]
+  ];
+  const mostrado = avisos.find(([, on]) => on)?.[0];
+  for (const el of [hud.relogio, hud.inc, $('#hudClima')]) el.hidden = el !== mostrado;
   hud.gelQtd.textContent = s.geis;
   $('#btnIso').hidden = !s.isotonicos;
   $('#isoQtd').textContent = s.isotonicos;
@@ -2708,6 +2724,7 @@ const som = criarSom();
 const MUSICAS = (() => { const a = ['musica-2', 'musica-3', 'musica-4']; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; })();
 const musica = { el: null, faixa: 0, ligada: (() => { try { return localStorage.getItem('mapmove-musica') !== '0'; } catch { return true; } })() };
 som.ligar(musica.ligada);
+function iconeSom() { $('#btnMusica use').setAttribute('href', musica.ligada ? '#i-som' : '#i-mudo'); }
 function tocarMusica(tocar) {
   if (!musica.el) {
     const a = new Audio(); a.preload = 'none'; a.setAttribute('playsinline', ''); a.volume = 0.4;
@@ -2720,7 +2737,7 @@ function tocarMusica(tocar) {
 function alternarMusica() {
   musica.ligada = !musica.ligada;
   try { localStorage.setItem('mapmove-musica', musica.ligada ? '1' : '0'); } catch { /* sem storage */ }
-  $('#btnMusica').textContent = musica.ligada ? '🔊' : '🔇';
+  iconeSom();
   som.ligar(musica.ligada);
   tocarMusica(musica.ligada && estado.modo !== 'pausa');
 }
@@ -4076,7 +4093,7 @@ $('#btnDeNovo').addEventListener('click', () => abrirClima());
 $('#btnTrocar').addEventListener('click', mostrarInicio);
 $('#btnSair').addEventListener('click', mostrarInicio);
 $('#btnPausa').addEventListener('click', pausar);
-$('#btnMusica').textContent = musica.ligada ? '🔊' : '🔇';
+iconeSom();
 $('#btnMusica').addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); alternarMusica(); });
 $('#btnTrocar').addEventListener('click', () => { tocarMusica(false); som.pararLoops(); });
 $('#btnSair').addEventListener('click', () => { tocarMusica(false); som.pararLoops(); som.pausar(false); });
