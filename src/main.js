@@ -2502,63 +2502,59 @@ const hud = {
   gel: $('#btnGel'), gelQtd: $('#gelQtd'), gota: $('#btnAgua'), dica: $('#dicaGestos'), contagem: $('#contagem')
 };
 
-const mapaBase = document.createElement('canvas');
-mapaBase.width = 192; mapaBase.height = 192;
-let mapaEscala = null;
-
-function desenharMapaBase() {
-  const g = mapaBase.getContext('2d');
-  g.clearRect(0, 0, 192, 192);
-  const xs = pista.x, zs = pista.z;
-  const minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs);
-  const esc = 170 / Math.max(maxX - minX, maxZ - minZ, 1);
-  const ox = (192 - (maxX - minX) * esc) / 2, oz = (192 - (maxZ - minZ) * esc) / 2;
-  mapaEscala = (x, z) => [ox + (x - minX) * esc, oz + (z - minZ) * esc];
-  g.lineWidth = 7; g.lineCap = g.lineJoin = 'round'; g.strokeStyle = 'rgba(255,255,255,0.35)';
-  g.beginPath();
-  for (let i = 0; i < xs.length; i += 2) { const [a, b] = mapaEscala(xs[i], zs[i]); i ? g.lineTo(a, b) : g.moveTo(a, b); }
-  g.stroke();
-  // postos de hidratação
-  g.fillStyle = '#4fc3ff';
-  for (const p of postos) { const q = pista.em(p.s); const [a, b] = mapaEscala(q.x, q.z); g.beginPath(); g.arc(a, b, 7, 0, Math.PI * 2); g.fill(); }
-}
-
+// ─── MINIMAPA DE NAVEGAÇÃO ─────────────────────────────────────────────────────
+// Só a vizinhança do corredor, com a rota real (pista.em): frente da corrida para cima, corredor um pouco abaixo do
+// centro, zoom pelo formato dos próximos 320 m (perto nas curvas, longe nas retas), trecho percorrido em amarelo,
+// postos de água e chegada quando entram na área. Só visual: não mexe em posição, GPS ou distância.
+function desenharMapaBase() { radar.esc = null; }
+const radar = { esc: null };
 function desenharMinimapa() {
   if (!prova) return;
-  const c = $('#minimapa').getContext('2d');
-  c.clearRect(0, 0, 192, 192);
-  c.drawImage(mapaBase, 0, 0);
-  c.lineWidth = 7; c.lineCap = c.lineJoin = 'round'; c.strokeStyle = '#ffd21f';
-  c.beginPath();
-  const iFim = pista.indice(estado.sMax);
-  for (let i = 0; i <= iFim; i += 2) { const [a, b] = mapaEscala(pista.x[i], pista.z[i]); i ? c.lineTo(a, b) : c.moveTo(a, b); }
-  c.stroke();
-  {
-    // chegada: quadradinho xadrez (deixa claro para onde o percurso vai)
-    const iUlt = pista.x.length - 1, [fx, fz] = mapaEscala(pista.x[iUlt], pista.z[iUlt]);
-    c.fillStyle = '#fff'; c.fillRect(fx - 9, fz - 9, 18, 18);
-    c.fillStyle = '#061440'; c.fillRect(fx - 9, fz - 9, 9, 9); c.fillRect(fx, fz, 9, 9);
-    c.strokeStyle = '#061440'; c.lineWidth = 2; c.strokeRect(fx - 9, fz - 9, 18, 18);
+  const cv = $('#minimapa'), g = cv.getContext('2d'), W = cv.width, C = W / 2, R = C - 6, CY = C + 36;
+  const total = pista.total, s = Math.min(Math.max(estado.s, 0), total);
+  const p = emEst(s), f = emEst(s + 12), b = emEst(s - 12);
+  const dir = Math.atan2(f.x - b.x, f.z - b.z), cs = Math.cos(dir), sn = Math.sin(dir);
+  const loc = (q) => { const dx = q.x - p.x, dz = q.z - p.z; return [dx * cs - dz * sn, -(dx * sn + dz * cs)]; };
+  let alcance = 60;
+  for (let d = 20; d <= 320 && s + d <= total + 30; d += 20) { const [x, y] = loc(emEst(s + d)); alcance = Math.max(alcance, Math.hypot(x, y)); }
+  const alvo = Math.min(Math.max(118 / alcance, 0.18), 0.9); // px por metro
+  radar.esc = radar.esc == null ? alvo : radar.esc + (alvo - radar.esc) * 0.06;
+  const k = radar.esc;
+  const tela = (q) => { const [x, y] = loc(q); return [C + x * k, CY + y * k]; };
+  g.clearRect(0, 0, W, W);
+  g.save(); g.beginPath(); g.arc(C, C, R, 0, Math.PI * 2); g.clip();
+  const fundo = g.createRadialGradient(C, CY, 10, C, C, R); fundo.addColorStop(0, '#16408f'); fundo.addColorStop(1, '#0a1f5e');
+  g.fillStyle = fundo; g.fillRect(0, 0, W, W);
+  // grade que corre junto (dá noção de movimento e escala)
+  g.strokeStyle = 'rgba(255,255,255,0.06)'; g.lineWidth = 2;
+  const pg = 40 * k, off = (s * k) % pg;
+  for (let y = off - pg * 3; y < W + pg; y += pg) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+  for (let x = C % pg; x < W; x += pg) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, W); g.stroke(); }
+  const linha = (a, z) => { g.beginPath(); let i = 0; for (let d = a; d <= z; d += 6, i++) { const [x, y] = tela(emEst(d)); i ? g.lineTo(x, y) : g.moveTo(x, y); } };
+  g.lineJoin = g.lineCap = 'round';
+  linha(Math.max(0, s - 150), s); g.strokeStyle = 'rgba(255,210,31,0.95)'; g.lineWidth = 10; g.stroke();
+  const fim = Math.min(total, s + 900);
+  if (fim > s) {
+    linha(s, fim); g.strokeStyle = 'rgba(79,180,255,0.45)'; g.lineWidth = 22; g.stroke();
+    linha(s, fim); g.strokeStyle = '#ffffff'; g.lineWidth = 10; g.stroke();
   }
-  const [cx, cz] = mapaEscala(estado.x, estado.z);
-  c.fillStyle = '#e63946'; c.strokeStyle = '#fff'; c.lineWidth = 4;
-  c.beginPath(); c.arc(cx, cz, 9, 0, Math.PI * 2); c.fill(); c.stroke();
-
-  // altimetria: subidas em laranja, descidas em azul
-  const pf = $('#perfil').getContext('2d');
-  pf.clearRect(0, 0, 192, 56);
-  const n = 96, ys = pista.y;
-  const minY = Math.min(...ys), maxY = Math.max(...ys), alt = Math.max(1, maxY - minY);
-  for (let k = 0; k < n; k++) {
-    const s = (k / n) * pista.total, p = pista.em(s);
-    const h = 8 + ((p.y - minY) / alt) * 44;
-    pf.fillStyle = p.inclinacao > 0.01 ? '#ff7a45' : p.inclinacao < -0.01 ? '#4fa3ff' : '#d8e2ee';
-    pf.globalAlpha = s > estado.sMax ? 0.45 : 1;
-    pf.fillRect(k * 2, 56 - h, 2, h);
+  for (let d = Math.ceil(s / 100) * 100; d < fim; d += 100) { const [x, y] = tela(emEst(d)); g.beginPath(); g.arc(x, y, 3.2, 0, Math.PI * 2); g.fillStyle = '#1e6bff'; g.fill(); }
+  for (const q of postos) if (q.s > s && q.s < fim) { const [x, y] = tela(emEst(q.s)); g.beginPath(); g.arc(x, y, 7, 0, Math.PI * 2); g.fillStyle = '#4fc3ff'; g.fill(); g.lineWidth = 3; g.strokeStyle = '#061440'; g.stroke(); }
+  if (total - s < 900) {
+    const [x, y] = tela(emEst(total));
+    g.fillStyle = '#fff'; g.fillRect(x - 13, y - 13, 26, 26); g.fillStyle = '#061440';
+    for (let a = 0; a < 4; a++) for (let c = 0; c < 4; c++) if ((a + c) % 2 === 0) g.fillRect(x - 13 + a * 6.5, y - 13 + c * 6.5, 6.5, 6.5);
+    g.strokeStyle = '#061440'; g.lineWidth = 3; g.strokeRect(x - 13, y - 13, 26, 26);
   }
-  pf.globalAlpha = 1;
-  pf.fillStyle = '#fff';
-  pf.fillRect((estado.s / pista.total) * 192 - 1.5, 0, 3, 56);
+  g.restore();
+  g.save(); g.translate(C, CY);
+  g.beginPath(); g.moveTo(0, -16); g.lineTo(12, 12); g.lineTo(0, 6); g.lineTo(-12, 12); g.closePath();
+  g.fillStyle = '#ff3b30'; g.fill(); g.lineWidth = 4; g.strokeStyle = '#fff'; g.stroke();
+  g.restore();
+  g.beginPath(); g.arc(C, C, R, 0, Math.PI * 2); g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,0.35)'; g.stroke();
+  const falta = Math.max(0, total - s), rot = $('#hudFaltam');
+  const txt = falta < 1000 ? `chegada ${Math.round(falta / 10) * 10} m` : `faltam ${(falta / 1000).toFixed(1).replace('.', ',')} km`;
+  if (rot.textContent !== txt) rot.textContent = txt;
 }
 
 let hudTimer = 0;
@@ -2609,6 +2605,20 @@ function atualizarXpHud(metros) {
   if (agora.indice > xpHud.degrau) { xpHud.degrau = agora.indice; $('#hudJogador').classList.add('subiu'); aviso(`🎉 Subiu para ${agora.rotulo}!`, 'km', 2200); }
 }
 
+// +pontos: só quando o ganho é de uma vez (ultrapassagem, água, carro, item); a soma contínua da distância não pisca
+const pontosHud = { ultimo: 0, timer: 0 }, penalHud = { n: 0, ate: 0 };
+function mostrarGanhoPontos(pontos) {
+  const ganho = Math.floor(pontos) - pontosHud.ultimo;
+  pontosHud.ultimo = Math.floor(pontos);
+  if (ganho < 4 || ganho > 5000) return; // 5000+: recomeço de corrida
+  const el = $('#hudPontosGanho');
+  el.textContent = `+${ganho}`;
+  el.hidden = false;
+  el.classList.remove('sobe'); void el.offsetWidth; el.classList.add('sobe');
+  clearTimeout(pontosHud.timer);
+  pontosHud.timer = setTimeout(() => { el.hidden = true; }, 900);
+}
+
 function atualizarHud() {
   {
     const el = $('#hudFantasma'), on = estado.desafioAtivo && (estado.modo === 'jogando' || estado.modo === 'fim');
@@ -2618,14 +2628,17 @@ function atualizarHud() {
   {
     const p = estado.posicao, el = $('#hudPos');
     el.hidden = !p;
-    if (p) $('#hudPosTxt').textContent = `${p.posicao}º/${p.total}`;
+    if (p) $('#hudPosTxt').textContent = `${p.posicao}º`;
   }
   // clima: temperatura e de onde vem o vento em relação ao corredor
   const clima = estado.clima;
   const ventoContra = clima && clima.vento >= 3 ? CL.ventoRelativo(clima, estado.ang) : 0;
+  // clima num selo pequeno junto do mapa: ícone, temperatura e, com vento contra, uma seta de vento laranja
+  $('#hudClima').hidden = !clima;
   if (clima) {
     $('#hudClimaIco').setAttribute('href', `#c-${{ sol: 'sol', nublado: 'nuvem', calor: 'calor', abafado: 'abafado', chuva: 'chuva', vento: 'vento', frio: 'frio' }[clima.id] || 'sol'}`);
-    $('#hudClimaTxt').textContent = `${clima.temp}°${ventoContra > 0.5 ? ' · vento contra' : ventoContra < -0.5 ? ' · vento a favor' : ''}`;
+    $('#hudClimaTxt').textContent = `${clima.temp}°`;
+    $('#hudVentoContra').hidden = !(ventoContra > 0.5);
   }
   const s = estado;
   // até 1 km em metros (670 m), depois em km (1,34 km); o total da prova vem pequeno ao lado
@@ -2649,30 +2662,32 @@ function atualizarHud() {
   const proxPosto = s.relogio && prova ? postos.find((q) => q.s > s.s + 1) : null;
   if (proxPosto) hud.relogioTxt.textContent = `Água em ${Math.round((proxPosto.s - s.s) / 10) * 10} m`;
   hud.pontos.textContent = Math.floor(s.pontos).toLocaleString('pt-BR');
+  mostrarGanhoPontos(s.pontos);
   const pct = Math.round(inc * 100);
   hud.inc.classList.toggle('sobe', pct >= 1);
   hud.inc.classList.toggle('desce', pct <= -1);
   hud.incTxt.textContent = pct >= 1 ? `Subida ${pct}%` : pct <= -1 ? `Descida ${-pct}%` : '';
+  // penalidade: alerta vermelho só nos 4 s depois de levar (o aviso grande "Saiu do percurso!" continua)
   hud.penal.textContent = `${s.penal}/${R.PENALIDADES_MAX}`;
-  hud.penal.parentElement.classList.toggle('marcou', s.penal > 0);
+  if (s.penal > penalHud.n) penalHud.ate = performance.now() + 4000;
+  penalHud.n = s.penal;
+  $('#hudPenal').hidden = !(s.penal > 0 && performance.now() < penalHud.ate);
   // um aviso do momento por vez, por prioridade: posto de água perto, subida/descida forte, vento contra,
   // clima nos primeiros segundos, próximo posto, relevo leve. O resto do tempo a tela fica livre.
   const avisos = [
     [hud.relogio, !!proxPosto && proxPosto.s - s.s < 400],
     [hud.inc, Math.abs(pct) >= 3],
-    [$('#hudClima'), !!clima && (ventoContra > 0.5 || (s.t || 0) < 10)],
     [hud.relogio, !!proxPosto],
     [hud.inc, Math.abs(pct) >= 1]
   ];
   const mostrado = avisos.find(([, on]) => on)?.[0];
-  for (const el of [hud.relogio, hud.inc, $('#hudClima')]) el.hidden = el !== mostrado;
+  for (const el of [hud.relogio, hud.inc]) el.hidden = el !== mostrado;
   hud.gelQtd.textContent = s.geis;
   $('#btnIso').hidden = !s.isotonicos;
   $('#isoQtd').textContent = s.isotonicos;
   hud.gel.disabled = !s.geis || s.gelAtivo > 0;
   hud.gel.style.setProperty('--gel', `${(s.gelAtivo / R.GEL_DURACAO) * 360}deg`);
   hud.dica.classList.toggle('some', s.t > 7);
-  desenharMinimapa();
 }
 
 // gota de água: aparece perto da mesa; anel vermelho piscando e verde na hora certa
@@ -3445,6 +3460,7 @@ function loop() {
   medirDesempenho(dtReal);
   if (estado.modo === 'contagem') passoContagem(dt);
   if (estado.modo === 'jogando') passo(dt);
+  if (estado.modo === 'jogando' || estado.modo === 'contagem') desenharMinimapa(); // gira junto: a cada quadro
   atualizarGota(dt);
   desenhar(dt);
   requestAnimationFrame(loop);

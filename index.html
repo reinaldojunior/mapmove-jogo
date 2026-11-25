@@ -80,14 +80,15 @@
       </div>
 
       <!-- 3º colocação, pontos, penalidades · um aviso do momento por vez -->
+      <!-- pontuação no centro (dourada) e, logo abaixo, a penalidade como alerta temporário -->
+      <div class="hud-pontos" id="hudPontosBox"><svg class="ico"><use href="#i-estrela"/></svg><b id="hudPontos">0</b><span class="ganho-pts" id="hudPontosGanho" hidden></span></div>
+      <div class="alerta-penal" id="hudPenal" hidden><svg class="ico"><use href="#i-alerta"/></svg><b>Penalidade <span id="hudPenalTxt">0/3</span></b></div>
+
       <div class="hud-esq">
         <div class="linha-pos">
           <div class="hud-pos painel-3d" id="hudPos" hidden><svg class="ico"><use href="#i-trofeu"/></svg><b id="hudPosTxt"></b></div>
-          <span class="hud-pontos"><svg class="ico"><use href="#i-estrela"/></svg><b id="hudPontos">0</b></span>
-          <span class="hud-penal" id="hudPenal"><svg class="ico"><use href="#i-alerta"/></svg><b id="hudPenalTxt">0/3</b></span>
         </div>
         <div class="hud-contexto inclinacao" id="hudInc" hidden><svg class="ico"><use href="#i-montanha"/></svg><b id="hudIncTxt"></b></div>
-        <div class="hud-contexto clima" id="hudClima" hidden><svg class="ico"><use id="hudClimaIco" href="#c-sol"/></svg><b id="hudClimaTxt"></b></div>
         <div class="hud-contexto relogio" id="hudRelogio" hidden><svg class="ico"><use href="#i-gota"/></svg><b id="hudRelogioTxt"></b></div>
         <div class="hud-contexto fantasma" id="hudFantasma" hidden><b id="hudFantasmaTxt"></b></div>
         <div id="ponto" hidden><span class="ico"></span><span class="txt"><small>Ponto turístico</small><b></b></span></div>
@@ -107,9 +108,10 @@
             <b id="hudAguaTxt">100%</b>
           </div>
         </div>
+        <div class="hud-clima" id="hudClima" hidden><svg class="ico"><use id="hudClimaIco" href="#c-sol"/></svg><b id="hudClimaTxt"></b><span class="vento" id="hudVentoContra" hidden><svg viewBox="0 0 24 24"><path d="M3 9h11a3 3 0 10-3-3M3 14h15a3 3 0 11-3 3M3 19h7" fill="none" stroke="#ffb347" stroke-width="2.6" stroke-linecap="round"/></svg></span></div>
         <div id="mapa" hidden>
-          <canvas id="minimapa" width="192" height="192" aria-label="Mapa do percurso"></canvas>
-          <canvas id="perfil" width="192" height="56" aria-label="Altimetria"></canvas>
+          <canvas id="minimapa" width="220" height="220" aria-label="Mapa do percurso perto de você"></canvas>
+          <span class="dist-chegada" id="hudFaltam"></span>
         </div>
       </div>
     </div>
