@@ -1043,22 +1043,30 @@ const texAsfaltoLiso = textura(512, 512, (g, w, h) => {
 });
 const matRuaOSM = new THREE.MeshStandardMaterial({ map: texAsfaltoLiso, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
 const matCalcadaOSM = new THREE.MeshStandardMaterial({ map: texCalcada, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
+const ACIMA_RUA = 0.06; // = ACIMA em src/ruasOSM.js
+const matRuaOSMToco = new THREE.MeshStandardMaterial({ map: texAsfaltoLiso, roughness: 0.95, vertexColors: true, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -3 });
+const matCalcadaOSMToco = new THREE.MeshStandardMaterial({ map: texCalcada, roughness: 1, vertexColors: true, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
 function malhasRuasOSM(dados) {
   const grupo = new THREE.Group();
-  const porMat = [[['asfalto', 'alargamento'], matRuaOSM, 0.01, 8], [['calcada', 'alargamentoCalcada'], matCalcadaOSM, 0, 4]];
+  // asfalto ACIMA (6 cm) acima da calçada: pequenas diferenças de altura numa rampa não deixam a calçada aparecer por
+  // cima do asfalto; as ruas que cruzam (4c) somem no fim (alfa por vértice) e ficam numa malha transparente própria
+  const porMat = [[['asfalto', 'alargamento', 'cruzamento'], matRuaOSM, ACIMA_RUA, 8, false], [['calcada', 'alargamentoCalcada'], matCalcadaOSM, 0, 4, false],
+    [['toco'], matRuaOSMToco, ACIMA_RUA - 0.01, 8, true], [['tocoCalcada'], matCalcadaOSMToco, -0.01, 4, true]];
   const tris = montarRuas(pista, dados);
-  for (const [tipos, material, dy, rep] of porMat) {
+  for (const [tipos, material, dy, rep, comAlfa] of porMat) {
     const lista = tris.filter((q) => tipos.includes(q.tipo));
-    const pos = new Float32Array(lista.length * 9), uv = new Float32Array(lista.length * 6);
+    if (!lista.length) continue;
+    const pos = new Float32Array(lista.length * 9), uv = new Float32Array(lista.length * 6), cor = comAlfa ? new Float32Array(lista.length * 12) : null;
     lista.forEach((q, i) => {
-      let [a, b, c] = q.t, [ya, yb, yc] = q.y;
+      let [a, b, c] = q.t, [ya, yb, yc] = q.y, [aa, ab, ac] = q.a || [1, 1, 1];
       // face para cima (normal +y): senão o triângulo some com o corte de faces de trás
-      if ((b[1] - a[1]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[1] - a[1]) < 0) { [b, c] = [c, b]; [yb, yc] = [yc, yb]; }
-      [[a, ya], [b, yb], [c, yc]].forEach(([p, y], k) => { pos.set([p[0], y + dy, p[1]], i * 9 + k * 3); uv.set([p[0] / rep, p[1] / rep], i * 6 + k * 2); });
+      if ((b[1] - a[1]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[1] - a[1]) < 0) { [b, c] = [c, b]; [yb, yc] = [yc, yb]; [ab, ac] = [ac, ab]; }
+      [[a, ya, aa], [b, yb, ab], [c, yc, ac]].forEach(([p, y, al], k) => { pos.set([p[0], y + dy, p[1]], i * 9 + k * 3); uv.set([p[0] / rep, p[1] / rep], i * 6 + k * 2); if (cor) cor.set([1, 1, 1, al], i * 12 + k * 4); });
     });
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    if (cor) geo.setAttribute('color', new THREE.BufferAttribute(cor, 4));
     geo.computeVertexNormals();
     const m = new THREE.Mesh(geo, material); m.receiveShadow = true; m.name = 'ruasOSM';
     grupo.add(m);
@@ -1588,6 +1596,7 @@ function adicionarPistaTravessa(t, sPista) {
   const p = emEst(sPista);
   const [rx, rz] = direita(p.ang);
   for (const lado of t.lados) {
+    if (prova?.ruasOSM?.cruzamentos) continue; // ruas do mapa (4c): a rua que cruza de verdade já está desenhada
     const rua = planoChao(7, 34, matTravessa);
     rua.position.set(p.x + rx * lado * 21, p.y + 0.02, p.z + rz * lado * 21);
     rua.rotation.y = Math.PI / 2 - p.ang;

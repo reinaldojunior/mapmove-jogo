@@ -145,7 +145,9 @@ para a etapa 4, o novo desenho das ruas): relatório em `docs/percursos/etapa3/R
 **Etapa 4 (novo desenho das ruas a partir do OSM), em andamento, uma sub-etapa por aprovação:**
 
 - **4a aprovada:** imagens em `docs/percursos/etapa4/`.
-- **4b feita, aguardando avaliação:** ruas do percurso e avenidas duplas no jogo, só com `?ruas=osm` junto com
+- **4c feita, aguardando avaliação:** cruzamentos (cantos arredondados) e ruas que cruzam (50 m, somem no fim).
+  Relatório em `docs/percursos/etapa4/ETAPA-4C.md`. **Falta medir no Galaxy A05 real** antes de qualquer publicação.
+- **4b aprovada:** ruas do percurso e avenidas duplas no jogo, só com `?ruas=osm` junto com
   `?percurso=ajustado`. Relatório em `docs/percursos/etapa4/ETAPA-4B.md`.
   - Geometria em `src/ruasOSM.js`; dados em `public/ruas/`, gerados por
     `node scripts/percurso/exportar-ruas-jogo.mjs`.
