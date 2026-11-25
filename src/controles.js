@@ -8,6 +8,8 @@ const LIMIAR_DESLIZE = 30;
 const LIMIAR_ARRASTO = 12;
 const ARRASTO_CHEIO_PX = 70;
 const TOQUE_MAX_MS = 260;
+const PETELECO_PX = 16; // deslize curto e rápido para cima também pula
+const DESLIZE_NO_ARRASTO = 45; // virando e puxando o dedo para cima no mesmo gesto: pula também
 
 export function criarControles({ area, onAcao }) {
   const dedos = new Map();
@@ -25,12 +27,16 @@ export function criarControles({ area, onAcao }) {
     if (!d) return;
     const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
     if (!d.modo) {
-      if (Math.abs(dy) > LIMIAR_DESLIZE && Math.abs(dy) > Math.abs(dx) * 1.3) {
+      if (Math.abs(dy) > LIMIAR_DESLIZE && Math.abs(dy) > Math.abs(dx) * 0.9) {
         d.modo = 'deslize';
         onAcao(dy < 0 ? 'pular' : 'abaixar');
-      } else if (Math.abs(dx) > LIMIAR_ARRASTO) d.modo = 'arrasto';
+      } else if (Math.abs(dx) > LIMIAR_ARRASTO && Math.abs(dx) > Math.abs(dy) * 1.2) d.modo = 'arrasto';
     }
-    if (d.modo === 'arrasto') giro = Math.max(-1, Math.min(1, dx / ARRASTO_CHEIO_PX));
+    if (d.modo === 'arrasto') {
+      giro = Math.max(-1, Math.min(1, dx / ARRASTO_CHEIO_PX));
+      // gesto diagonal (virar e pular juntos): o arrasto continua e o pulo sai uma vez
+      if (!d.pulou && -dy > DESLIZE_NO_ARRASTO && -dy > Math.abs(dx) * 0.8) { d.pulou = true; onAcao('pular'); }
+    }
   });
   const soltar = (e) => {
     const d = dedos.get(e.pointerId);
@@ -38,6 +44,9 @@ export function criarControles({ area, onAcao }) {
     dedos.delete(e.pointerId);
     if (d.modo === 'arrasto') giro = 0;
     if (!d.modo && e.type === 'pointerup' && performance.now() - d.t0 < TOQUE_MAX_MS) {
+      const dy = e.clientY - d.y0;
+      // peteleco para cima que não chegou no limiar do deslize: pula em vez de contar como toque de virar
+      if (-dy > PETELECO_PX && -dy > Math.abs(e.clientX - d.x0)) return onAcao('pular');
       const r = area.getBoundingClientRect();
       toques += e.clientX < r.left + r.width / 2 ? -1 : 1;
     }

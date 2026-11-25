@@ -41,7 +41,7 @@ export function fatorVento(c, ang) {
 
 // chuva: o corredor vira mais devagar (escorrega) e o pulo sai mais curto
 export const aderencia = (c) => (c.chuva ? 0.6 : 1);
-export const fatorPulo = (c) => (c.chuva ? 0.93 : 1);
+export const fatorPulo = (c) => (c.chuva ? 0.97 : 1);
 
 // bônus de XP pelo clima difícil (no máximo +25%)
 export function bonusClima(c) {

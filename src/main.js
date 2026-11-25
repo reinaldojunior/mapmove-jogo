@@ -890,6 +890,25 @@ scene.add(fundo);
 // posição da pista também antes da largada e depois da chegada (segue reto)
 const emEst = (s) => posicaoEstendida(pista, s);
 
+// quanto o percurso vira (rad) de um pouco atrás até alguns metros à frente de s: mede curvas fechadas e retornos.
+// Guardado a cada 4 m (o pelotão inteiro consulta a cada quadro); zera quando a pista muda.
+let cacheCurva = new Map(), pistaDaCurva = null;
+function curvaEm(s) {
+  if (pistaDaCurva !== pista) { cacheCurva = new Map(); pistaDaCurva = pista; }
+  const k = Math.round(s / 4);
+  let c = cacheCurva.get(k);
+  if (c === undefined) {
+    const s0 = k * 4, atras = emEst(s0 - R.CURVA.atras).ang, aqui = emEst(s0).ang;
+    c = 0;
+    for (const m of R.CURVA.olhar) {
+      const a = emEst(s0 + m).ang;
+      c = Math.max(c, Math.abs(difAngulo(a, atras)), Math.abs(difAngulo(a, aqui)));
+    }
+    cacheCurva.set(k, c);
+  }
+  return c;
+}
+
 const corInclinacao = (inc, out) => {
   if (inc > 0.01) { const f = Math.min(1, (inc - 0.01) / 0.06); out.setRGB(1, 1 - f * 0.48, 1 - f * 0.6); }
   else if (inc < -0.01) { const f = Math.min(1, (-inc - 0.01) / 0.06); out.setRGB(1 - f * 0.5, 1 - f * 0.25, 1); }
@@ -1127,7 +1146,7 @@ function atualizarCenario(sCorredor) {
 // ─── OBSTÁCULOS E ITENS (EM COORDENADAS DA PISTA: s AO LONGO, d PARA OS LADOS) ─
 
 let entidades = [];
-if (import.meta.env.DEV) window.__dbg = { ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString()]); } }; // só no modo de desenvolvimento, para testes
+if (import.meta.env.DEV) window.__dbg = { passo: (dt) => passo(dt), curva: (s) => curvaEm(s), ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString()]); } }; // só no modo de desenvolvimento, para testes
 let postos = [];
 let travessas = [];
 
@@ -3034,7 +3053,9 @@ function acao(tipo) {
   if (tipo === 'pausa') return s.modo === 'pausa' ? continuar() : pausar();
   if (tipo === 'camera') return trocarCamera();
   if (s.modo !== 'jogando' || s.parado > 0) return;
-  if (tipo === 'pular' && s.y === 0) {
+  if (tipo === 'pular' && s.y > 0) s.puloPend = R.PULO_ANTECIPADO; // ainda no ar: pula assim que pousar
+  else if (tipo === 'pular' && s.y === 0) {
+    s.puloPend = 0;
     // carro da travessa logo à frente: salto alto com rolamento
     const carros = entidades.filter((e) => e.tipo === 'carro' && !e.atingido);
     const pulo = CL.fatorPulo(estado.clima || CL.CLIMAS[0]); // na chuva o pulo sai mais curto
@@ -3123,6 +3144,11 @@ function passo(dt) {
     }
     const alvo = R.velocidadeAlvo({ gel: s.gelAtivo > 0, inclinacao: p.inclinacao, naCalcada: Math.abs(s.d) > R.MEIA_RUA, energia: s.energia, pace: s.paceBase / s.fatorTenis, freando: s.freio > 0 });
     s.v = R.aproximarVelocidade(s.v, alvo * CL.fatorVento(cl, s.ang) * R.fatorHidratacao(s.agua, s.semAgua || 0), dt); // vento; sem água vai perdendo força
+    // curva fechada ou retorno à frente (ou ainda virando): tira o pé sozinho, mais rápido do que o soltar normal
+    const fCurva = R.fatorCurva(Math.max(curvaEm(s.s), Math.abs(difAngulo(p.ang, s.ang))));
+    if (s.v > alvo * fCurva) s.v = Math.max(alvo * fCurva, s.v - R.CURVA.freio * dt);
+    if (fCurva < 0.8 && !s.curvaAvisada) { s.curvaAvisada = true; aviso('↪️ Curva fechada: tirando o pé', '', 900); }
+    if (fCurva > 0.97) s.curvaAvisada = false;
     const W = s.v * R.ESCALA_TEMPO;
     const [fx, fz] = frente(s.ang);
     s.x += fx * W * dt; s.z += fz * W * dt;
@@ -3136,7 +3162,13 @@ function passo(dt) {
     if (idx !== s.passoIdx) { s.passoIdx = idx; if (s.y === 0) som.passo(Math.abs(s.d) > R.MEIA_RUA); }
     if (Math.abs(s.d) > R.LIMITE_CALCADA) penalizar();
     if (pelotao.length) {
-      PL.avancarPelotao(pelotao, dt, s.t, s, Math.random, (c) => CL.fatorNpc(s.clima, emEst(c.s).ang)); // calor e vento também valem para eles
+      // calor, vento e curvas também valem para eles: na curva fechada reduzem antes e voltam a acelerar aos poucos
+      PL.avancarPelotao(pelotao, dt, s.t, s, Math.random, (c) => {
+        const alvoCurva = R.fatorCurva(curvaEm(c.s));
+        c.fCurva = c.fCurva ?? 1;
+        c.fCurva += (alvoCurva - c.fCurva) * Math.min(1, (alvoCurva < c.fCurva ? 2.5 : 0.8) * dt);
+        return CL.fatorNpc(s.clima, emEst(c.s).ang) * c.fCurva;
+      });
       const pos = PL.colocacao(pelotao, s.s);
       if (s.posicao && pos.posicao < s.posicao.posicao && s.s > 60) {
         // sobe de posição: avisa nos marcos (30º, 20º, 10º e no top 5)
@@ -3162,8 +3194,10 @@ function passo(dt) {
     if (s.y === 0) {
       s.vy = 0;
       if (s.saltandoCarro) { s.saltandoCarro = false; s.pontos += 30; aviso('🚗 Pulou o carro! +30'); }
+      if (s.puloPend > 0) acao('pular');
     }
   }
+  s.puloPend = Math.max(0, (s.puloPend || 0) - dt);
   s.saltoAnim = Math.max(0, (s.saltoAnim || 0) - dt);
   s.agachado = Math.max(0, s.agachado - dt);
 

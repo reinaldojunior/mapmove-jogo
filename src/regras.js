@@ -13,7 +13,9 @@ export const MEIA_RUA = 4; // rua com 8 m de largura
 export const LIMITE_CALCADA = 7.6; // além disso saiu do percurso
 export const PENALIDADES_MAX = 3;
 
-export const PULO = { velocidade: 8.6, gravidade: -26 }; // sobe ~1,4 m: passa cone e cavalete (1,1 m)
+export const PULO = { velocidade: 9.4, gravidade: -24 }; // sobe ~1,8 m e fica ~0,5 s acima do cavalete (1,1 m)
+export const PULO_ANTECIPADO = 0.22; // deslizou para cima um pouco antes de pousar: pula assim que encostar no chão
+export const FOLGA_PE = 0.15; // o pé raspando no alto do obstáculo não conta como batida
 // salto sobre o carro da travessa: mais alto que o pulo normal, só o bastante para passar o carro (sobe ~2,6 m; carro tem 2,2 m)
 // o carro precisa estar perto (3 a 9 m), para o corredor estar no alto quando passar por ele
 export const SALTO_CARRO = { velocidade: 11.6, de: 3, ate: 9 };
@@ -69,6 +71,14 @@ export function velocidadeAlvo({ gel = false, inclinacao = 0, naCalcada = false,
   return v;
 }
 
+// curva fechada à frente: o corredor tira o pé sozinho para conseguir virar (como na vida real).
+// `curva` = quanto a direção muda (rad) nos próximos metros; até ~25° não freia, retorno (180°) corre à metade
+export const CURVA = { livre: 0.45, minimo: 0.5, freio: 1.4, atras: 6, olhar: [6, 12, 18, 24] };
+export function fatorCurva(curva) {
+  const f = (Math.abs(curva) - CURVA.livre) / (Math.PI - CURVA.livre);
+  return f <= 0 ? 1 : Math.max(CURVA.minimo, 1 - (1 - CURVA.minimo) * Math.min(1, f));
+}
+
 // acelera mais rápido do que freia: ao soltar, o corredor vai perdendo velocidade aos poucos
 export function aproximarVelocidade(v, alvo, dt) {
   const taxa = alvo > v ? 0.7 : 0.35;
@@ -80,7 +90,7 @@ export function aproximarVelocidade(v, alvo, dt) {
 export const colide = (c, o) =>
   Math.abs(c.s - o.s) < o.prof / 2 + 0.35 &&
   Math.abs(c.d - o.d) < o.larg / 2 + 0.35 &&
-  c.y < o.h &&
+  c.y + FOLGA_PE < o.h &&
   c.y + c.altura > (o.base || 0);
 
 // pegar água: só no verde (mesa ao lado) e encostado do lado da mesa

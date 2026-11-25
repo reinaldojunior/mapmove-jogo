@@ -109,3 +109,25 @@ test('desidratação: perde ritmo aos poucos e só para depois de um tempo sem �
   assert.ok(Math.abs(R.fatorHidratacao(0, 30) - 0.4) < 1e-9);
   assert.equal(R.fatorHidratacao(0, 999), 0);
 });
+
+test('pulo: passa o cavalete com folga de tempo e sobe pouco o bastante para cair logo', () => {
+  const { velocidade: v, gravidade: g } = R.PULO;
+  const h = 1.08 - R.FOLGA_PE; // cavalete, com a folga do pé
+  // tempo acima do cavalete: raízes de v t + g t²/2 = h
+  const disc = v * v + 2 * g * h, acima = (2 * Math.sqrt(disc)) / -g;
+  assert.ok(acima > 0.45, `só ${acima.toFixed(2)} s acima do cavalete`);
+  assert.ok((2 * v) / -g < 0.9, 'fica tempo demais no ar');
+});
+
+test('pé raspando no alto do cone não conta como batida', () => {
+  assert.equal(colide(emPe(50, 0, 0.85), cone), false);
+  assert.equal(colide(emPe(50, 0, 0.7), cone), true);
+});
+
+test('curva fechada: reta e curva leve sem freio, retorno bem mais devagar', () => {
+  assert.equal(R.fatorCurva(0), 1);
+  assert.equal(R.fatorCurva(0.3), 1);
+  assert.ok(R.fatorCurva(Math.PI / 2) < 0.85 && R.fatorCurva(Math.PI / 2) > 0.6);
+  assert.ok(Math.abs(R.fatorCurva(Math.PI) - R.CURVA.minimo) < 1e-9);
+  assert.ok(R.fatorCurva(-Math.PI / 2) === R.fatorCurva(Math.PI / 2));
+});
