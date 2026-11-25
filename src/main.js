@@ -26,6 +26,7 @@ import * as FT from './fantasma.js';
 import { manchasDeGrama, criarTufos, balancoDeArvore } from './grama.js';
 import { clone as clonarComOssos } from 'three/addons/utils/SkeletonUtils.js';
 import { pistasDuplas, duplaEm, viadutosDoPercurso } from './osm.js';
+import { construirViadutos as montarViadutos, ajustarCameraViaduto } from './viaduto.js';
 import { posicaoEstendida, amostrasDoPercurso, planoFita, faixasAvenida, faixasComuns, amostrasAvenida } from './faixas.js';
 import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono, placasDoPercurso, abreviarRua } from './osm.js';
 
@@ -985,68 +986,11 @@ function construirVisual() {
   scene.add(visual);
 }
 
-// ─── VIADUTO: MURETA, LATERAL DE CONCRETO, LAJE POR BAIXO E PILARES ───────────
-const matConcreto = new THREE.MeshStandardMaterial({ color: 0xd6d2c8, roughness: 0.9, side: THREE.DoubleSide });
-const matLaje = new THREE.MeshStandardMaterial({ color: 0xa9a59c, roughness: 1, side: THREE.DoubleSide });
-// parede vertical ao longo de uma linha: pontos [{ x, z, y0, y1 }]
-function parede(pontos, material) {
-  const pos = new Float32Array(pontos.length * 6), idx = [];
-  pontos.forEach((p, i) => { pos.set([p.x, p.y0, p.z, p.x, p.y1, p.z], i * 6); if (i) { const a = (i - 1) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); } });
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setIndex(idx);
-  geo.computeVertexNormals();
-  const m = new THREE.Mesh(geo, material);
-  m.castShadow = true; m.receiveShadow = true;
-  return m;
-}
+// ─── VIADUTO / PONTE (estrutura em src/viaduto.js) ───────────────────────────
 function construirViadutos(amostras) {
-  if (!pista.elev) return;
-  const g = new THREE.Group();
-  const VAO = 4.6; // daqui para cima o viaduto tem vão livre por baixo (pilares); abaixo disso é aterro com muro
-  const elevA = (a) => a.lat?.elev || 0;
-  const beiras = [planoFita(amostras, -R.LIMITE_CALCADA, -R.MEIA_RUA), planoFita(amostras, R.MEIA_RUA, R.LIMITE_CALCADA)];
-  // mureta de 1 m e a lateral (até o chão no aterro, só a espessura da laje no vão), na beira da calçada de cada lado;
-  // onde a calçada encolheu (outro trecho do percurso ao lado, começo da rampa) a parede é interrompida
-  for (const [k, b] of [[0, beiras[0]], [2, beiras[1]]]) {
-    let linha = [];
-    const fechar = () => {
-      if (linha.length > 1) {
-        g.add(parede(linha.map((p) => ({ x: p.x, z: p.z, y0: p.a.y + 0.06, y1: p.a.y + 1.06 })), matConcreto));
-        g.add(parede(linha.map((p) => ({ x: p.x, z: p.z, y0: elevA(p.a) >= VAO ? p.a.y - 1 : p.a.y - elevA(p.a) - 0.3, y1: p.a.y + 0.06 })), matConcreto));
-      }
-      linha = [];
-    };
-    amostras.forEach((a, i) => {
-      const x = b.xz[i * 4 + k], z = b.xz[i * 4 + k + 1];
-      const inteira = Math.hypot(x - a.x, z - a.z) > R.LIMITE_CALCADA - 0.3 && (i === 0 || b.ativo[i - 1] || b.ativo[i]);
-      if (elevA(a) > 0.05 && inteira) linha.push({ x, z, a }); else fechar();
-    });
-    fechar();
-  }
-  // laje vista de baixo (quem passa por baixo do viaduto)
-  const laje = fita(amostras, (a) => (elevA(a) >= VAO ? -R.LIMITE_CALCADA : 0), (a) => (elevA(a) >= VAO ? R.LIMITE_CALCADA : 0), matLaje, { dy: -1 });
-  g.add(laje);
-  // pilares a cada ~20 m, longe da rua de baixo
-  const longeDeOutroTrecho = (x, z, s) => {
-    for (let i = 0; i < pista.s.length; i++) if (Math.abs(pista.s[i] - s) > 60 && Math.hypot(pista.x[i] - x, pista.z[i] - z) < R.LIMITE_CALCADA + 2) return false;
-    return true;
-  };
-  for (const a of amostras) {
-    if (elevA(a) < VAO + 0.5 || Math.round(a.s) % 20 !== 0) continue;
-    const [rx, rz] = direita(a.ang);
-    for (const lado of [-1, 1]) {
-      const x = a.x + rx * lado * 3, z = a.z + rz * lado * 3;
-      if (!longeDeOutroTrecho(x, z, a.s)) continue;
-      const chao = a.y - elevA(a), h = elevA(a) - 1;
-      const pilar = malha(G.caixa, matConcreto, x, chao + h / 2 - 0.3, z);
-      pilar.scale.set(1.1, h + 0.6, 1.1);
-      pilar.rotation.y = -a.ang;
-      pilar.castShadow = true;
-      g.add(pilar);
-    }
-  }
-  visual.add(g);
+  if (!pista.elev) { montarViadutos({ pista }); return; } // sem viaduto (limpa o da prova anterior)
+  const g = montarViadutos({ pista, amostras, osm, matAgua: matRio });
+  if (g) visual.add(g);
 }
 
 // cenário reciclado numa janela à frente do corredor
@@ -1748,6 +1692,9 @@ function plantarArvores() {
   const pontos = [];
   let semente = 1;
   const rnd = () => { semente = (semente * 16807) % 2147483647; return semente / 2147483647; };
+  // parque que avança sobre o rio (o mapa às vezes desenha o parque por cima da água): nada de árvore na água
+  const aguas = osm.areas.filter((a) => a.tipo === 'agua');
+  const naAgua = (x, z) => aguas.some(({ caixa: [x0, z0, x1, z1], pts }) => x >= x0 && x <= x1 && z >= z0 && z <= z1 && pontoNoPoligono(x, z, pts));
   for (const a of osm.areas) {
     const dens = DENS[a.tipo];
     if (!dens) continue;
@@ -1761,14 +1708,14 @@ function plantarArvores() {
       if (areasSemArvore.some(([ax, az, r]) => (x - ax) ** 2 + (z - az) ** 2 < r * r)) continue;
       if (perto.dist < 45 && vistasLivres.length) { const q = pista.em(perto.s), [rx, rz] = direita(q.ang); if (naVistaLivre(perto.s, Math.sign((x - q.x) * rx + (z - q.z) * rz))) continue; }
       const aqui = areaEm(osm, x, z);
-      if (aqui && (aqui.tipo === 'agua' || aqui.tipo === 'esporte')) continue;
+      if ((aqui && (aqui.tipo === 'agua' || aqui.tipo === 'esporte')) || naAgua(x, z)) continue;
       pontos.push([x, perto.y, z]);
       plantadas++;
     }
   }
   for (const [x, z] of osm.arvores) {
     const perto = pista.pertoDe(x, z);
-    if (perto.dist > 12 && !areasSemArvore.some(([ax, az, r]) => (x - ax) ** 2 + (z - az) ** 2 < r * r)) pontos.push([x, perto.y, z]);
+    if (perto.dist > 12 && !naAgua(x, z) && !areasSemArvore.some(([ax, az, r]) => (x - ax) ** 2 + (z - az) ** 2 < r * r)) pontos.push([x, perto.y, z]);
   }
   const variantes = [0, 1, 2].map(() => {
     const g = achatar(arvore(1)).children[0].geometry;
@@ -3339,6 +3286,8 @@ function desenhar(dt) {
     camera.position.x += (Math.random() - 0.5) * s.tremor;
     camera.position.y += (Math.random() - 0.5) * s.tremor;
   }
+  // passando por baixo (ou ao lado) do viaduto, a câmera desce para não atravessar o tabuleiro
+  ajustarCameraViaduto(camera.position, s.x, chao + s.y + 1.6, s.z);
   const alvo = emEst(s.s + cam.olhar);
   camera.lookAt(s.x + fx * cam.olhar, (alvo.y + chao) / 2 + 1.4, s.z + fz * cam.olhar);
   // câmera livre só para os testes automáticos (fotos aéreas)
