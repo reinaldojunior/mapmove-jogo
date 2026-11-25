@@ -1,0 +1,3673 @@
+{
+ "slug": "1-meia-maratona-de-indaiatuba-2026-12-13",
+ "rotulo": "10K",
+ "resumo": {
+  "distanciaPistaKm": 10.001,
+  "cobertura": {
+   "antes": {
+    "faltaAsfaltoPontos": 1714,
+    "faltaCalcadaPontos": 6333,
+    "pontos": 310062
+   },
+   "depois": {
+    "faltaAsfaltoPontos": 0,
+    "faltaCalcadaPontos": 0,
+    "pontos": 310062
+   }
+  },
+  "alargamentos": 202,
+  "alargadoAsfaltoM": 840,
+  "alargadoCalcadaM": 2774,
+  "ruasDoPercurso": 123,
+  "ruasQueCruzam": 132,
+  "cruzamentos": 117,
+  "ruasAlargadas": [
+   {
+    "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+    "larguraRealM": 6.6,
+    "fonte": "OSM lanes",
+    "desenhadaM": 8.5,
+    "m": 2391
+   },
+   {
+    "rua": "Rua Martinho Lutero",
+    "larguraRealM": 6.5,
+    "fonte": "padrão da categoria",
+    "desenhadaM": 8.5,
+    "m": 1869
+   },
+   {
+    "rua": "Estrada General Motors",
+    "larguraRealM": 7,
+    "fonte": "padrão da categoria",
+    "desenhadaM": 8.5,
+    "m": 1339
+   },
+   {
+    "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+    "larguraRealM": 7,
+    "fonte": "padrão da categoria",
+    "desenhadaM": 8.5,
+    "m": 1103
+   },
+   {
+    "rua": "Rua Jacob Lyra",
+    "larguraRealM": 7,
+    "fonte": "padrão da categoria",
+    "desenhadaM": 8.5,
+    "m": 510
+   },
+   {
+    "rua": "Alça Nilson Cardoso de Carvalho",
+    "larguraRealM": 5.5,
+    "fonte": "padrão da categoria",
+    "desenhadaM": 8.5,
+    "m": 376
+   },
+   {
+    "rua": "Rua Jabaquara",
+    "larguraRealM": 7,
+    "fonte": "padrão da categoria",
+    "desenhadaM": 8.5,
+    "m": 203
+   },
+   {
+    "rua": "Rua Martinho Lutero",
+    "larguraRealM": 8,
+    "fonte": "padrão da categoria",
+    "desenhadaM": 8.5,
+    "m": 168
+   },
+   {
+    "rua": "(secondary sem nome)",
+    "larguraRealM": 7,
+    "fonte": "padrão da categoria",
+    "desenhadaM": 8.5,
+    "m": 143
+   },
+   {
+    "rua": "Rua Butantã",
+    "larguraRealM": 7,
+    "fonte": "padrão da categoria",
+    "desenhadaM": 8.5,
+    "m": 109
+   },
+   {
+    "rua": "(service sem nome)",
+    "larguraRealM": 4,
+    "fonte": "padrão da categoria",
+    "desenhadaM": 8.5,
+    "m": 104
+   },
+   {
+    "rua": "(tertiary sem nome)",
+    "larguraRealM": 6.5,
+    "fonte": "padrão da categoria",
+    "desenhadaM": 8.5,
+    "m": 99
+   },
+   {
+    "rua": "Rua Jaraguá",
+    "larguraRealM": 5.5,
+    "fonte": "padrão da categoria",
+    "desenhadaM": 8.5,
+    "m": 88
+   },
+   {
+    "rua": "(secondary_link sem nome)",
+    "larguraRealM": 3.3,
+    "fonte": "OSM lanes",
+    "desenhadaM": 8.5,
+    "m": 30
+   },
+   {
+    "rua": "(residential sem nome)",
+    "larguraRealM": 5.5,
+    "fonte": "padrão da categoria",
+    "desenhadaM": 8.5,
+    "m": 27
+   },
+   {
+    "rua": "(secondary_link sem nome)",
+    "larguraRealM": 5.5,
+    "fonte": "padrão da categoria",
+    "desenhadaM": 8.5,
+    "m": 25
+   },
+   {
+    "rua": "(cycleway sem nome)",
+    "larguraRealM": 2.5,
+    "fonte": "padrão da categoria",
+    "desenhadaM": 8.5,
+    "m": 19
+   }
+  ],
+  "ruasNaLarguraReal": 1423,
+  "ruasAlargadasM": 8602,
+  "largura": [
+   {
+    "fonte": "padrão da categoria",
+    "m": 6671
+   },
+   {
+    "fonte": "OSM lanes",
+    "m": 3355
+   }
+  ],
+  "fallbackS": [],
+  "cones": [
+   0.64
+  ],
+  "viadutosDoJogo": [],
+  "pontesOsmNoPercurso": [
+   {
+    "nome": "Elevado Agostinho de Mello Gonçalves",
+    "m": 51,
+    "noTrechoElevado": 0
+   },
+   {
+    "nome": "Avenida Engenheiro Fábio Roberto Barnabé",
+    "m": 35,
+    "noTrechoElevado": 0
+   },
+   {
+    "nome": "Rua Jacob Lyra",
+    "m": 40,
+    "noTrechoElevado": 0
+   }
+  ],
+  "vaoLivreMinM": null,
+  "degrauMaxM": 0.89,
+  "degraus": 6,
+  "degrauKm": [
+   1.89,
+   1.95,
+   1.96,
+   2.89
+  ],
+  "triangulos": {
+   "novoMalha": 31249,
+   "novoPintura": 22028,
+   "novoPorTipo": {
+    "asfalto": 7154,
+    "calcada": 17368,
+    "cruzamento": 1017,
+    "alargamento": 1604,
+    "alargamentoCalcada": 4106,
+    "pintura": 11496,
+    "pinturaAmarela": 530,
+    "azul": 10002
+   },
+   "atualFaixas": 28544
+  },
+  "restantes": []
+ },
+ "alargamentos": [
+  {
+   "tipo": "asfalto",
+   "lado": -1,
+   "s0": 0,
+   "s1": 5,
+   "faltaAPartirDeM": 0.1,
+   "passada": 1,
+   "km": [
+    0,
+    0.005
+   ],
+   "m": 5,
+   "rua": "(service sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": -1,
+   "s0": 1986,
+   "s1": 1997,
+   "faltaAPartirDeM": 3.6,
+   "passada": 1,
+   "km": [
+    1.986,
+    1.997
+   ],
+   "m": 11,
+   "rua": "(tertiary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": -1,
+   "s0": 2903,
+   "s1": 2918,
+   "faltaAPartirDeM": 2.6,
+   "passada": 1,
+   "km": [
+    2.903,
+    2.918
+   ],
+   "m": 15,
+   "rua": "(tertiary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": -1,
+   "s0": 3198,
+   "s1": 3211,
+   "faltaAPartirDeM": 3.6,
+   "passada": 1,
+   "km": [
+    3.198,
+    3.211
+   ],
+   "m": 13,
+   "rua": "Rua Jabaquara",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": -1,
+   "s0": 3521,
+   "s1": 3533,
+   "faltaAPartirDeM": 0.1,
+   "passada": 1,
+   "km": [
+    3.521,
+    3.533
+   ],
+   "m": 12,
+   "rua": "(tertiary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": -1,
+   "s0": 3537,
+   "s1": 3566,
+   "faltaAPartirDeM": 0.1,
+   "passada": 1,
+   "km": [
+    3.537,
+    3.566
+   ],
+   "m": 29,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": -1,
+   "s0": 3698,
+   "s1": 3747,
+   "faltaAPartirDeM": 0.1,
+   "passada": 1,
+   "km": [
+    3.698,
+    3.747
+   ],
+   "m": 49,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": -1,
+   "s0": 3817,
+   "s1": 3858,
+   "faltaAPartirDeM": 0.1,
+   "passada": 1,
+   "km": [
+    3.817,
+    3.858
+   ],
+   "m": 41,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": -1,
+   "s0": 3991,
+   "s1": 4027,
+   "faltaAPartirDeM": 0.1,
+   "passada": 1,
+   "km": [
+    3.991,
+    4.027
+   ],
+   "m": 36,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": -1,
+   "s0": 4058,
+   "s1": 4093,
+   "faltaAPartirDeM": 0.1,
+   "passada": 1,
+   "km": [
+    4.058,
+    4.093
+   ],
+   "m": 35,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": -1,
+   "s0": 4316,
+   "s1": 4352,
+   "faltaAPartirDeM": 0.1,
+   "passada": 1,
+   "km": [
+    4.316,
+    4.352
+   ],
+   "m": 36,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": -1,
+   "s0": 4408,
+   "s1": 4445,
+   "faltaAPartirDeM": 0.1,
+   "passada": 1,
+   "km": [
+    4.408,
+    4.445
+   ],
+   "m": 37,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": -1,
+   "s0": 4493,
+   "s1": 4516,
+   "faltaAPartirDeM": 0.1,
+   "passada": 1,
+   "km": [
+    4.493,
+    4.516
+   ],
+   "m": 23,
+   "rua": "(secondary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": -1,
+   "s0": 7624,
+   "s1": 7634,
+   "faltaAPartirDeM": 0.6,
+   "passada": 1,
+   "km": [
+    7.624,
+    7.634
+   ],
+   "m": 10,
+   "rua": "Elevado Agostinho de Mello Gonçalves",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": -1,
+   "s0": 7790,
+   "s1": 7800,
+   "faltaAPartirDeM": 2.6,
+   "passada": 1,
+   "km": [
+    7.79,
+    7.8
+   ],
+   "m": 10,
+   "rua": "Elevado Agostinho de Mello Gonçalves",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": -1,
+   "s0": 9632,
+   "s1": 9642,
+   "faltaAPartirDeM": 2.1,
+   "passada": 1,
+   "km": [
+    9.632,
+    9.642
+   ],
+   "m": 10,
+   "rua": "Alça Nilson Cardoso de Carvalho",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 0,
+   "s1": 5,
+   "faltaAPartirDeM": 0.4,
+   "passada": 1,
+   "km": [
+    0,
+    0.005
+   ],
+   "m": 5,
+   "rua": "(service sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 17,
+   "s1": 28,
+   "faltaAPartirDeM": 3.9,
+   "passada": 1,
+   "km": [
+    0.017,
+    0.028
+   ],
+   "m": 11,
+   "rua": "(service sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 37,
+   "s1": 53,
+   "faltaAPartirDeM": 3.4,
+   "passada": 1,
+   "km": [
+    0.037,
+    0.053
+   ],
+   "m": 16,
+   "rua": "(service sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 89,
+   "s1": 109,
+   "faltaAPartirDeM": 1.4,
+   "passada": 1,
+   "km": [
+    0.089,
+    0.109
+   ],
+   "m": 20,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 1462,
+   "s1": 1475,
+   "faltaAPartirDeM": 1.9,
+   "passada": 1,
+   "km": [
+    1.462,
+    1.475
+   ],
+   "m": 13,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 1920,
+   "s1": 1930,
+   "faltaAPartirDeM": 3.4,
+   "passada": 1,
+   "km": [
+    1.92,
+    1.93
+   ],
+   "m": 10,
+   "rua": "(secondary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 1944,
+   "s1": 1958,
+   "faltaAPartirDeM": 3.9,
+   "passada": 1,
+   "km": [
+    1.944,
+    1.958
+   ],
+   "m": 14,
+   "rua": "(tertiary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 2885,
+   "s1": 2895,
+   "faltaAPartirDeM": 3.9,
+   "passada": 1,
+   "km": [
+    2.885,
+    2.895
+   ],
+   "m": 10,
+   "rua": "(tertiary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 2992,
+   "s1": 3003,
+   "faltaAPartirDeM": 3.9,
+   "passada": 1,
+   "km": [
+    2.992,
+    3.003
+   ],
+   "m": 11,
+   "rua": "Rua Jaraguá",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 3009,
+   "s1": 3019,
+   "faltaAPartirDeM": 2.4,
+   "passada": 1,
+   "km": [
+    3.009,
+    3.019
+   ],
+   "m": 10,
+   "rua": "(residential sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 3019,
+   "s1": 3032,
+   "faltaAPartirDeM": 3.9,
+   "passada": 1,
+   "km": [
+    3.019,
+    3.032
+   ],
+   "m": 13,
+   "rua": "Rua Jabaquara",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 3328,
+   "s1": 3343,
+   "faltaAPartirDeM": 3.9,
+   "passada": 1,
+   "km": [
+    3.328,
+    3.343
+   ],
+   "m": 15,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 3520,
+   "s1": 3554,
+   "faltaAPartirDeM": 0.4,
+   "passada": 1,
+   "km": [
+    3.52,
+    3.554
+   ],
+   "m": 34,
+   "rua": "(tertiary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 3712,
+   "s1": 3733,
+   "faltaAPartirDeM": 0.4,
+   "passada": 1,
+   "km": [
+    3.712,
+    3.733
+   ],
+   "m": 21,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 4006,
+   "s1": 4078,
+   "faltaAPartirDeM": 0.4,
+   "passada": 1,
+   "km": [
+    4.006,
+    4.078
+   ],
+   "m": 72,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 4338,
+   "s1": 4369,
+   "faltaAPartirDeM": 0.4,
+   "passada": 1,
+   "km": [
+    4.338,
+    4.369
+   ],
+   "m": 31,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 4391,
+   "s1": 4431,
+   "faltaAPartirDeM": 0.4,
+   "passada": 1,
+   "km": [
+    4.391,
+    4.431
+   ],
+   "m": 40,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 4494,
+   "s1": 4504,
+   "faltaAPartirDeM": 3.9,
+   "passada": 1,
+   "km": [
+    4.494,
+    4.504
+   ],
+   "m": 10,
+   "rua": "(secondary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 4504,
+   "s1": 4553,
+   "faltaAPartirDeM": 0.4,
+   "passada": 1,
+   "km": [
+    4.504,
+    4.553
+   ],
+   "m": 49,
+   "rua": "(secondary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 5540,
+   "s1": 5550,
+   "faltaAPartirDeM": 2.9,
+   "passada": 1,
+   "km": [
+    5.54,
+    5.55
+   ],
+   "m": 10,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 9617,
+   "s1": 9648,
+   "faltaAPartirDeM": 3.4,
+   "passada": 1,
+   "km": [
+    9.617,
+    9.648
+   ],
+   "m": 31,
+   "rua": "Alça Nilson Cardoso de Carvalho",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 9938,
+   "s1": 9948,
+   "faltaAPartirDeM": 3.9,
+   "passada": 1,
+   "km": [
+    9.938,
+    9.948
+   ],
+   "m": 10,
+   "rua": "Alça Nilson Cardoso de Carvalho",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "asfalto",
+   "lado": 1,
+   "s0": 9970,
+   "s1": 9982,
+   "faltaAPartirDeM": 3.9,
+   "passada": 1,
+   "km": [
+    9.97,
+    9.982
+   ],
+   "m": 12,
+   "rua": "Alça Nilson Cardoso de Carvalho",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "eixo fora do centro da rua (retorno em metade da rua, esquina, desvio OSM)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 28,
+   "s1": 38,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    0.028,
+    0.038
+   ],
+   "m": 10,
+   "rua": "(service sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 95,
+   "s1": 109,
+   "faltaAPartirDeM": 5.1,
+   "passada": 1,
+   "km": [
+    0.095,
+    0.109
+   ],
+   "m": 14,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 174,
+   "s1": 184,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    0.174,
+    0.184
+   ],
+   "m": 10,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 354,
+   "s1": 364,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    0.354,
+    0.364
+   ],
+   "m": 10,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 552,
+   "s1": 586,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    0.552,
+    0.586
+   ],
+   "m": 34,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 633,
+   "s1": 644,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    0.633,
+    0.644
+   ],
+   "m": 11,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 847,
+   "s1": 857,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    0.847,
+    0.857
+   ],
+   "m": 10,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 1113,
+   "s1": 1129,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    1.113,
+    1.129
+   ],
+   "m": 16,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 1409,
+   "s1": 1432,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    1.409,
+    1.432
+   ],
+   "m": 23,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 1462,
+   "s1": 1475,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    1.462,
+    1.475
+   ],
+   "m": 13,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 1518,
+   "s1": 1542,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    1.518,
+    1.542
+   ],
+   "m": 24,
+   "rua": "(secondary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 1542,
+   "s1": 1558,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    1.542,
+    1.558
+   ],
+   "m": 16,
+   "rua": "(secondary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 1558,
+   "s1": 1570,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    1.558,
+    1.57
+   ],
+   "m": 12,
+   "rua": "(secondary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 1881,
+   "s1": 1891,
+   "faltaAPartirDeM": 5.1,
+   "passada": 1,
+   "km": [
+    1.881,
+    1.891
+   ],
+   "m": 10,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 1902,
+   "s1": 1930,
+   "faltaAPartirDeM": 5.1,
+   "passada": 1,
+   "km": [
+    1.902,
+    1.93
+   ],
+   "m": 28,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 1939,
+   "s1": 1950,
+   "faltaAPartirDeM": 5.1,
+   "passada": 1,
+   "km": [
+    1.939,
+    1.95
+   ],
+   "m": 11,
+   "rua": "(tertiary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 1985,
+   "s1": 1999,
+   "faltaAPartirDeM": 4.1,
+   "passada": 1,
+   "km": [
+    1.985,
+    1.999
+   ],
+   "m": 14,
+   "rua": "(tertiary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 2073,
+   "s1": 2089,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    2.073,
+    2.089
+   ],
+   "m": 16,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 2121,
+   "s1": 2138,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    2.121,
+    2.138
+   ],
+   "m": 17,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 2485,
+   "s1": 2499,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    2.485,
+    2.499
+   ],
+   "m": 14,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 2525,
+   "s1": 2540,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    2.525,
+    2.54
+   ],
+   "m": 15,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 2812,
+   "s1": 2830,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    2.812,
+    2.83
+   ],
+   "m": 18,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 2869,
+   "s1": 2892,
+   "faltaAPartirDeM": 6.1,
+   "passada": 1,
+   "km": [
+    2.869,
+    2.892
+   ],
+   "m": 23,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 2893,
+   "s1": 2904,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    2.893,
+    2.904
+   ],
+   "m": 11,
+   "rua": "(tertiary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 2903,
+   "s1": 2918,
+   "faltaAPartirDeM": 4.1,
+   "passada": 1,
+   "km": [
+    2.903,
+    2.918
+   ],
+   "m": 15,
+   "rua": "(tertiary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 2990,
+   "s1": 3004,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    2.99,
+    3.004
+   ],
+   "m": 14,
+   "rua": "Rua Jaraguá",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 3015,
+   "s1": 3032,
+   "faltaAPartirDeM": 5.1,
+   "passada": 1,
+   "km": [
+    3.015,
+    3.032
+   ],
+   "m": 17,
+   "rua": "Rua Jabaquara",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 3196,
+   "s1": 3242,
+   "faltaAPartirDeM": 5.6,
+   "passada": 1,
+   "km": [
+    3.196,
+    3.242
+   ],
+   "m": 46,
+   "rua": "Rua Jabaquara",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 3494,
+   "s1": 3524,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    3.494,
+    3.524
+   ],
+   "m": 30,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 3999,
+   "s1": 4014,
+   "faltaAPartirDeM": 4.1,
+   "passada": 1,
+   "km": [
+    3.999,
+    4.014
+   ],
+   "m": 15,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 4042,
+   "s1": 4061,
+   "faltaAPartirDeM": 6.1,
+   "passada": 1,
+   "km": [
+    4.042,
+    4.061
+   ],
+   "m": 19,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 4317,
+   "s1": 4333,
+   "faltaAPartirDeM": 6.1,
+   "passada": 1,
+   "km": [
+    4.317,
+    4.333
+   ],
+   "m": 16,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 4493,
+   "s1": 4504,
+   "faltaAPartirDeM": 4.1,
+   "passada": 1,
+   "km": [
+    4.493,
+    4.504
+   ],
+   "m": 11,
+   "rua": "(secondary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 4531,
+   "s1": 4541,
+   "faltaAPartirDeM": 7.1,
+   "passada": 1,
+   "km": [
+    4.531,
+    4.541
+   ],
+   "m": 10,
+   "rua": "Rua Jacob Lyra",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 4567,
+   "s1": 4578,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    4.567,
+    4.578
+   ],
+   "m": 11,
+   "rua": "Rua Jacob Lyra",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 4587,
+   "s1": 4599,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    4.587,
+    4.599
+   ],
+   "m": 12,
+   "rua": "Rua Jacob Lyra",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 4612,
+   "s1": 4623,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    4.612,
+    4.623
+   ],
+   "m": 11,
+   "rua": "Rua Jacob Lyra",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 4633,
+   "s1": 4643,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    4.633,
+    4.643
+   ],
+   "m": 10,
+   "rua": "Rua Jacob Lyra",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 5218,
+   "s1": 5228,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    5.218,
+    5.228
+   ],
+   "m": 10,
+   "rua": "Rua Jacob Lyra",
+   "larguraRealM": 9,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 5338,
+   "s1": 5348,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    5.338,
+    5.348
+   ],
+   "m": 10,
+   "rua": "Rua Jacob Lyra",
+   "larguraRealM": 9,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 5498,
+   "s1": 5509,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    5.498,
+    5.509
+   ],
+   "m": 11,
+   "rua": "Rua Jacob Lyra",
+   "larguraRealM": 9,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 5523,
+   "s1": 5550,
+   "faltaAPartirDeM": 4.1,
+   "passada": 1,
+   "km": [
+    5.523,
+    5.55
+   ],
+   "m": 27,
+   "rua": "Rua Jacob Lyra",
+   "larguraRealM": 9,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 5553,
+   "s1": 5567,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    5.553,
+    5.567
+   ],
+   "m": 14,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 5583,
+   "s1": 5598,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    5.583,
+    5.598
+   ],
+   "m": 15,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 5697,
+   "s1": 5724,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    5.697,
+    5.724
+   ],
+   "m": 27,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 5771,
+   "s1": 5786,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    5.771,
+    5.786
+   ],
+   "m": 15,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 5902,
+   "s1": 5918,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    5.902,
+    5.918
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 5967,
+   "s1": 5983,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    5.967,
+    5.983
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 6007,
+   "s1": 6021,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    6.007,
+    6.021
+   ],
+   "m": 14,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 6049,
+   "s1": 6064,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    6.049,
+    6.064
+   ],
+   "m": 15,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 6064,
+   "s1": 6089,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    6.064,
+    6.089
+   ],
+   "m": 25,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 6118,
+   "s1": 6133,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    6.118,
+    6.133
+   ],
+   "m": 15,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 6191,
+   "s1": 6206,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    6.191,
+    6.206
+   ],
+   "m": 15,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 6228,
+   "s1": 6251,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    6.228,
+    6.251
+   ],
+   "m": 23,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 6295,
+   "s1": 6313,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    6.295,
+    6.313
+   ],
+   "m": 18,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 6320,
+   "s1": 6334,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    6.32,
+    6.334
+   ],
+   "m": 14,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 6384,
+   "s1": 6398,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    6.384,
+    6.398
+   ],
+   "m": 14,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 6447,
+   "s1": 6463,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    6.447,
+    6.463
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 6513,
+   "s1": 6529,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    6.513,
+    6.529
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 6577,
+   "s1": 6593,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    6.577,
+    6.593
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 6642,
+   "s1": 6658,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    6.642,
+    6.658
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 6707,
+   "s1": 6723,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    6.707,
+    6.723
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 6772,
+   "s1": 6788,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    6.772,
+    6.788
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 6921,
+   "s1": 6936,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    6.921,
+    6.936
+   ],
+   "m": 15,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 6984,
+   "s1": 7000,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    6.984,
+    7
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 7048,
+   "s1": 7064,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    7.048,
+    7.064
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 7114,
+   "s1": 7130,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    7.114,
+    7.13
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 7170,
+   "s1": 7187,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    7.17,
+    7.187
+   ],
+   "m": 17,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 7222,
+   "s1": 7239,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    7.222,
+    7.239
+   ],
+   "m": 17,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 7280,
+   "s1": 7295,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    7.28,
+    7.295
+   ],
+   "m": 15,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 7336,
+   "s1": 7352,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    7.336,
+    7.352
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 7391,
+   "s1": 7406,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    7.391,
+    7.406
+   ],
+   "m": 15,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 7442,
+   "s1": 7466,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    7.442,
+    7.466
+   ],
+   "m": 24,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 7497,
+   "s1": 7510,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    7.497,
+    7.51
+   ],
+   "m": 13,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 7593,
+   "s1": 7603,
+   "faltaAPartirDeM": 7.1,
+   "passada": 1,
+   "km": [
+    7.593,
+    7.603
+   ],
+   "m": 10,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 7614,
+   "s1": 7634,
+   "faltaAPartirDeM": 4.1,
+   "passada": 1,
+   "km": [
+    7.614,
+    7.634
+   ],
+   "m": 20,
+   "rua": "Elevado Agostinho de Mello Gonçalves",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 7790,
+   "s1": 7800,
+   "faltaAPartirDeM": 4.1,
+   "passada": 1,
+   "km": [
+    7.79,
+    7.8
+   ],
+   "m": 10,
+   "rua": "Elevado Agostinho de Mello Gonçalves",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 7859,
+   "s1": 7878,
+   "faltaAPartirDeM": 5.1,
+   "passada": 1,
+   "km": [
+    7.859,
+    7.878
+   ],
+   "m": 19,
+   "rua": "Elevado Agostinho de Mello Gonçalves",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 7879,
+   "s1": 7889,
+   "faltaAPartirDeM": 6.6,
+   "passada": 1,
+   "km": [
+    7.879,
+    7.889
+   ],
+   "m": 10,
+   "rua": "Elevado Agostinho de Mello Gonçalves",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 7927,
+   "s1": 7962,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    7.927,
+    7.962
+   ],
+   "m": 35,
+   "rua": "Elevado Agostinho de Mello Gonçalves",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 8027,
+   "s1": 8042,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    8.027,
+    8.042
+   ],
+   "m": 15,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 8141,
+   "s1": 8157,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    8.141,
+    8.157
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 8207,
+   "s1": 8222,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    8.207,
+    8.222
+   ],
+   "m": 15,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 8274,
+   "s1": 8289,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    8.274,
+    8.289
+   ],
+   "m": 15,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 8336,
+   "s1": 8350,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    8.336,
+    8.35
+   ],
+   "m": 14,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 8396,
+   "s1": 8410,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    8.396,
+    8.41
+   ],
+   "m": 14,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 8459,
+   "s1": 8473,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    8.459,
+    8.473
+   ],
+   "m": 14,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 8519,
+   "s1": 8534,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    8.519,
+    8.534
+   ],
+   "m": 15,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 8581,
+   "s1": 8596,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    8.581,
+    8.596
+   ],
+   "m": 15,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 8648,
+   "s1": 8663,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    8.648,
+    8.663
+   ],
+   "m": 15,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 8774,
+   "s1": 8790,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    8.774,
+    8.79
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 8832,
+   "s1": 8848,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    8.832,
+    8.848
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 8892,
+   "s1": 8908,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    8.892,
+    8.908
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 8953,
+   "s1": 8969,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    8.953,
+    8.969
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 8976,
+   "s1": 8994,
+   "faltaAPartirDeM": 4.6,
+   "passada": 1,
+   "km": [
+    8.976,
+    8.994
+   ],
+   "m": 18,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 9083,
+   "s1": 9097,
+   "faltaAPartirDeM": 5.1,
+   "passada": 1,
+   "km": [
+    9.083,
+    9.097
+   ],
+   "m": 14,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 9134,
+   "s1": 9156,
+   "faltaAPartirDeM": 5.6,
+   "passada": 1,
+   "km": [
+    9.134,
+    9.156
+   ],
+   "m": 22,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 9160,
+   "s1": 9198,
+   "faltaAPartirDeM": 5.1,
+   "passada": 1,
+   "km": [
+    9.16,
+    9.198
+   ],
+   "m": 38,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 9200,
+   "s1": 9210,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    9.2,
+    9.21
+   ],
+   "m": 10,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 9232,
+   "s1": 9242,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    9.232,
+    9.242
+   ],
+   "m": 10,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 9253,
+   "s1": 9264,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    9.253,
+    9.264
+   ],
+   "m": 11,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 9278,
+   "s1": 9289,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    9.278,
+    9.289
+   ],
+   "m": 11,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 9345,
+   "s1": 9361,
+   "faltaAPartirDeM": 5.1,
+   "passada": 1,
+   "km": [
+    9.345,
+    9.361
+   ],
+   "m": 16,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 9619,
+   "s1": 9632,
+   "faltaAPartirDeM": 6.1,
+   "passada": 1,
+   "km": [
+    9.619,
+    9.632
+   ],
+   "m": 13,
+   "rua": "(cycleway sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 9631,
+   "s1": 9642,
+   "faltaAPartirDeM": 4.1,
+   "passada": 1,
+   "km": [
+    9.631,
+    9.642
+   ],
+   "m": 11,
+   "rua": "Alça Nilson Cardoso de Carvalho",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 9704,
+   "s1": 9714,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    9.704,
+    9.714
+   ],
+   "m": 10,
+   "rua": "Alça Nilson Cardoso de Carvalho",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 9743,
+   "s1": 9757,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    9.743,
+    9.757
+   ],
+   "m": 14,
+   "rua": "Alça Nilson Cardoso de Carvalho",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 9885,
+   "s1": 9898,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    9.885,
+    9.898
+   ],
+   "m": 13,
+   "rua": "Alça Nilson Cardoso de Carvalho",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": -1,
+   "s0": 9899,
+   "s1": 9909,
+   "faltaAPartirDeM": 7.6,
+   "passada": 1,
+   "km": [
+    9.899,
+    9.909
+   ],
+   "m": 10,
+   "rua": "Alça Nilson Cardoso de Carvalho",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 0,
+   "s1": 5,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    0,
+    0.005
+   ],
+   "m": 5,
+   "rua": "(service sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 17,
+   "s1": 27,
+   "faltaAPartirDeM": 7.4,
+   "passada": 1,
+   "km": [
+    0.017,
+    0.027
+   ],
+   "m": 10,
+   "rua": "(service sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 38,
+   "s1": 52,
+   "faltaAPartirDeM": 7.4,
+   "passada": 1,
+   "km": [
+    0.038,
+    0.052
+   ],
+   "m": 14,
+   "rua": "(service sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 89,
+   "s1": 108,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    0.089,
+    0.108
+   ],
+   "m": 19,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 191,
+   "s1": 208,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    0.191,
+    0.208
+   ],
+   "m": 17,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 552,
+   "s1": 573,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    0.552,
+    0.573
+   ],
+   "m": 21,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 633,
+   "s1": 657,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    0.633,
+    0.657
+   ],
+   "m": 24,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 664,
+   "s1": 684,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    0.664,
+    0.684
+   ],
+   "m": 20,
+   "rua": "(secondary_link sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 1113,
+   "s1": 1129,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    1.113,
+    1.129
+   ],
+   "m": 16,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 1409,
+   "s1": 1432,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    1.409,
+    1.432
+   ],
+   "m": 23,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 1462,
+   "s1": 1475,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    1.462,
+    1.475
+   ],
+   "m": 13,
+   "rua": "Estrada General Motors",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 1566,
+   "s1": 1579,
+   "faltaAPartirDeM": 6.4,
+   "passada": 1,
+   "km": [
+    1.566,
+    1.579
+   ],
+   "m": 13,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 1900,
+   "s1": 1920,
+   "faltaAPartirDeM": 4.9,
+   "passada": 1,
+   "km": [
+    1.9,
+    1.92
+   ],
+   "m": 20,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 1920,
+   "s1": 1930,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    1.92,
+    1.93
+   ],
+   "m": 10,
+   "rua": "(secondary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 1986,
+   "s1": 1999,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    1.986,
+    1.999
+   ],
+   "m": 13,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 2877,
+   "s1": 2920,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    2.877,
+    2.92
+   ],
+   "m": 43,
+   "rua": "(tertiary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 2948,
+   "s1": 2964,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    2.948,
+    2.964
+   ],
+   "m": 16,
+   "rua": "Rua Jaraguá",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 3009,
+   "s1": 3031,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    3.009,
+    3.031
+   ],
+   "m": 22,
+   "rua": "(residential sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 3050,
+   "s1": 3066,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    3.05,
+    3.066
+   ],
+   "m": 16,
+   "rua": "Rua Jabaquara",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 3103,
+   "s1": 3120,
+   "faltaAPartirDeM": 6.9,
+   "passada": 1,
+   "km": [
+    3.103,
+    3.12
+   ],
+   "m": 17,
+   "rua": "Rua Jabaquara",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 3159,
+   "s1": 3176,
+   "faltaAPartirDeM": 6.4,
+   "passada": 1,
+   "km": [
+    3.159,
+    3.176
+   ],
+   "m": 17,
+   "rua": "Rua Jabaquara",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 3327,
+   "s1": 3342,
+   "faltaAPartirDeM": 6.4,
+   "passada": 1,
+   "km": [
+    3.327,
+    3.342
+   ],
+   "m": 15,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 3391,
+   "s1": 3406,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    3.391,
+    3.406
+   ],
+   "m": 15,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 3456,
+   "s1": 3472,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    3.456,
+    3.472
+   ],
+   "m": 16,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 3494,
+   "s1": 3509,
+   "faltaAPartirDeM": 4.9,
+   "passada": 1,
+   "km": [
+    3.494,
+    3.509
+   ],
+   "m": 15,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 3516,
+   "s1": 3544,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    3.516,
+    3.544
+   ],
+   "m": 28,
+   "rua": "(tertiary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 3595,
+   "s1": 3613,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    3.595,
+    3.613
+   ],
+   "m": 18,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 3884,
+   "s1": 3898,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    3.884,
+    3.898
+   ],
+   "m": 14,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 3924,
+   "s1": 3939,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    3.924,
+    3.939
+   ],
+   "m": 15,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 4043,
+   "s1": 4054,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    4.043,
+    4.054
+   ],
+   "m": 11,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 4283,
+   "s1": 4300,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    4.283,
+    4.3
+   ],
+   "m": 17,
+   "rua": "Rua Martinho Lutero",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 4469,
+   "s1": 4479,
+   "faltaAPartirDeM": 6.4,
+   "passada": 1,
+   "km": [
+    4.469,
+    4.479
+   ],
+   "m": 10,
+   "rua": "(tertiary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 4503,
+   "s1": 4553,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    4.503,
+    4.553
+   ],
+   "m": 50,
+   "rua": "(secondary sem nome)",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 4565,
+   "s1": 4578,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    4.565,
+    4.578
+   ],
+   "m": 13,
+   "rua": "Rua Jacob Lyra",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 5033,
+   "s1": 5050,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    5.033,
+    5.05
+   ],
+   "m": 17,
+   "rua": "Rua Jacob Lyra",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 5132,
+   "s1": 5150,
+   "faltaAPartirDeM": 4.9,
+   "passada": 1,
+   "km": [
+    5.132,
+    5.15
+   ],
+   "m": 18,
+   "rua": "Rua Jacob Lyra",
+   "larguraRealM": 9,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 5209,
+   "s1": 5228,
+   "faltaAPartirDeM": 4.9,
+   "passada": 1,
+   "km": [
+    5.209,
+    5.228
+   ],
+   "m": 19,
+   "rua": "Rua Jacob Lyra",
+   "larguraRealM": 9,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 5284,
+   "s1": 5302,
+   "faltaAPartirDeM": 4.9,
+   "passada": 1,
+   "km": [
+    5.284,
+    5.302
+   ],
+   "m": 18,
+   "rua": "Rua Jacob Lyra",
+   "larguraRealM": 9,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 5330,
+   "s1": 5348,
+   "faltaAPartirDeM": 4.9,
+   "passada": 1,
+   "km": [
+    5.33,
+    5.348
+   ],
+   "m": 18,
+   "rua": "Rua Jacob Lyra",
+   "larguraRealM": 9,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 5523,
+   "s1": 5539,
+   "faltaAPartirDeM": 4.9,
+   "passada": 1,
+   "km": [
+    5.523,
+    5.539
+   ],
+   "m": 16,
+   "rua": "Rua Jacob Lyra",
+   "larguraRealM": 9,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 5685,
+   "s1": 5714,
+   "faltaAPartirDeM": 4.9,
+   "passada": 1,
+   "km": [
+    5.685,
+    5.714
+   ],
+   "m": 29,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 6064,
+   "s1": 6082,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    6.064,
+    6.082
+   ],
+   "m": 18,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 6229,
+   "s1": 6251,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    6.229,
+    6.251
+   ],
+   "m": 22,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 6289,
+   "s1": 6313,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    6.289,
+    6.313
+   ],
+   "m": 24,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 7452,
+   "s1": 7483,
+   "faltaAPartirDeM": 4.9,
+   "passada": 1,
+   "km": [
+    7.452,
+    7.483
+   ],
+   "m": 31,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 7592,
+   "s1": 7609,
+   "faltaAPartirDeM": 5.4,
+   "passada": 1,
+   "km": [
+    7.592,
+    7.609
+   ],
+   "m": 17,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 7859,
+   "s1": 7889,
+   "faltaAPartirDeM": 5.4,
+   "passada": 1,
+   "km": [
+    7.859,
+    7.889
+   ],
+   "m": 30,
+   "rua": "Elevado Agostinho de Mello Gonçalves",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 7940,
+   "s1": 7962,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    7.94,
+    7.962
+   ],
+   "m": 22,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 8976,
+   "s1": 9004,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    8.976,
+    9.004
+   ],
+   "m": 28,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 8.5,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 9120,
+   "s1": 9155,
+   "faltaAPartirDeM": 4.9,
+   "passada": 1,
+   "km": [
+    9.12,
+    9.155
+   ],
+   "m": 35,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 9159,
+   "s1": 9179,
+   "faltaAPartirDeM": 5.4,
+   "passada": 1,
+   "km": [
+    9.159,
+    9.179
+   ],
+   "m": 20,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 9541,
+   "s1": 9551,
+   "faltaAPartirDeM": 7.4,
+   "passada": 1,
+   "km": [
+    9.541,
+    9.551
+   ],
+   "m": 10,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 9605,
+   "s1": 9619,
+   "faltaAPartirDeM": 5.9,
+   "passada": 1,
+   "km": [
+    9.605,
+    9.619
+   ],
+   "m": 14,
+   "rua": "Avenida Engenheiro Fábio Roberto Barnabé",
+   "larguraRealM": 9.9,
+   "fonteLargura": "OSM lanes",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  },
+  {
+   "tipo": "calcada",
+   "lado": 1,
+   "s0": 9624,
+   "s1": 9642,
+   "faltaAPartirDeM": 4.4,
+   "passada": 1,
+   "km": [
+    9.624,
+    9.642
+   ],
+   "m": 18,
+   "rua": "Alça Nilson Cardoso de Carvalho",
+   "larguraRealM": 8.5,
+   "fonteLargura": "padrão da categoria",
+   "motivo": "calçada real mais estreita que a faixa até a penalidade (7,6 m)"
+  }
+ ],
+ "cones": [
+  {
+   "s": 655,
+   "km": 0.64,
+   "pts": [
+    [
+     -470.74788810778625,
+     -369.3321990860026
+    ],
+    [
+     -470.74752582849237,
+     -368.4734645658127
+    ],
+    [
+     -470.66491608340846,
+     -365.1426742756786
+    ],
+    [
+     -470.5838842463062,
+     -361.73104030394666
+    ],
+    [
+     -470.8278343010875,
+     -358.56250631054223
+    ],
+    [
+     -471.3360857687153,
+     -355.63733592897654
+    ]
+   ]
+  }
+ ]
+}
