@@ -81,6 +81,27 @@ Personagens sempre anônimos (nada de rosto de pessoa real) e sem marcas.
   calçada dobrada no 10K de Indaiatuba (km 3,19). Por causa do "fora do asfalto", `--falhar` ainda sai com código 1.
   O medidor precisa do host `ssfsxdmzbubvygctdjgf.supabase.co` liberado na rede (ambiente de nuvem "mapmove-jogo").
 
+- **Correção concluída em 25/11/2026** (ramo `claude/sharp-hamilton-08y1qi`, ainda sem push): `--falhar` sai com
+  código 0. Medidor nas 5 distâncias: 0 m² de rua sobre rua e de calçada sobre rua, corredor sempre no asfalto,
+  viadutos só na ponte, nenhum triângulo virado. Mudanças (gerais, sem remendo por km):
+  - `src/faixas.js`: amostras a cada 1 m onde o corredor sai da rua de outro trecho para a do próprio trecho ou onde
+    um pedaço desenhado entra num trecho repetido (a beira reta entre amostras de 4 m deixava o eixo descoberto);
+    retorno fechado (virada > 50° numa amostra) vira **leque** (ponta arredondada por fora, eixo por dentro — antes
+    sobrava um fiapo de rua); beira da rua encolhida só o necessário para respeitar o meio do caminho (antes sobrava
+    uma tira de grama de ~0,75 m entre ida e volta lado a lado, vista no 21K km 1,29–1,31 depois do retorno da
+    Av. Dr. Artur Bernardes: não era canteiro, era grama entre as duas ruas com as linhas azuis de cada lado).
+  - `src/pista.js`: **30 m de rua atrás da largada sempre inteiros** (o pelotão espera até ~20 m atrás); num circuito
+    a chegada é que encosta nela (antes, em Sorocaba, a rua sumia e o pelotão ficava na grama). Folga entre duas
+    ruas lado a lado 0,1 m (calçada/grama continuam com 0,3 m). Ponto colado que o alisamento afastou mais de 3 m da
+    passagem anterior (esquina cortada na 2ª volta, 42K km 21,78) volta a ser desenhado.
+  - Medidor: nova linha "área do pelotão atrás da largada sem asfalto" (antes: 45 pontos no 21K e 143 no 42K).
+  - No 21K km 1,3 o GPS da ida e da volta fica na mesma pista (oeste) da avenida; a outra pista fica a ~11 m do mesmo
+    lado físico nos dois sentidos — ida e volta colam numa rua só, como a prova real com retorno em cones.
+  - Sobra (sem efeito visível): grama escondida sob a rua 2,5 m² (21K) e 2,0 m² (42K) de Sorocaba; 0,3 m² de calçada
+    dobrada no 10K de Indaiatuba km 3,19. Linha fina de grama (~0,1–0,25 m) entre ida e volta lado a lado.
+  - Conferido jogando (Playwright): largada com asfalto atrás do tapete, retornos 21K km 19,3 e 42K km 39,1 sem
+    buraco, ponte com a câmera normal ok. Não conferida a câmera afastada na ponte.
+
 ## Próximos passos sugeridos
 
 - **Encaixar o percurso nas ruas reais do OpenStreetMap (map matching, ex.: OSRM ou Valhalla)** em vez de desenhar

@@ -5,7 +5,8 @@
 //
 // uso: node scripts/checar-sobreposicao.mjs [slug ...] [--cache pasta] [--falhar]
 //   sem slug: Sorocaba (21K e 42K) e Indaiatuba. --cache guarda/lê o percurso baixado (JSON por slug).
-//   --falhar: sai com código 1 se houver rua sobre rua (fora de cruzamentos) ou o caminho do corredor sair do asfalto.
+//   --falhar: sai com código 1 se houver rua sobre rua (fora de cruzamentos), o caminho do corredor sair do asfalto ou
+//   faltar asfalto onde o pelotão espera atrás da largada.
 //   --mapa 21K:9.4[:...]: grava uma imagem PPM de 120 m em volta de cada km (PX=0.5 para 240 m) na pasta do --cache.
 //   DEPURAR=9.4: lista as células sobrepostas perto desse km; VIRADOS=1: lista os triângulos virados.
 // Também mede o caminho do corredor: passo máximo entre pontos (salto) e trechos fora do asfalto desenhado.
@@ -13,8 +14,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PistaReal } from '../src/pista.js';
-import { amostrasDoPercurso, planoFita, faixasAvenida, faixasComuns, amostrasAvenida } from '../src/faixas.js';
+import { PistaReal, direita } from '../src/pista.js';
+import { posicaoEstendida, amostrasDoPercurso, planoFita, faixasAvenida, faixasComuns, amostrasAvenida } from '../src/faixas.js';
 import { prepararOSM, pistasDuplas, viadutosDoPercurso } from '../src/osm.js';
 
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -151,7 +152,16 @@ function analisar(pista, osm) {
     }
     if (!ok) foraDaRua.push(pista.s[i]);
   }
-  return { cats, amostras, faixas, viadutos, foraDaRua, virados };
+  // 5) largada: o pelotão espera até ~20 m atrás do tapete, em toda a largura da rua (src/pelotao.js) — tem asfalto?
+  const largadaSemRua = [];
+  for (let s = -22; s <= 0; s += 1) for (let d = -3.4; d <= 3.41; d += 0.85) {
+    const p = posicaoEstendida(pista, s), [rx, rz] = direita(p.ang);
+    const ix = Math.floor((p.x + rx * d) / CEL), iz = Math.floor((p.z + rz * d) / CEL);
+    let ok = false;
+    for (let a = -1; a <= 1 && !ok; a++) for (let b = -1; b <= 1 && !ok; b++) if (ruas.get(chave(ix + a, iz + b))) ok = true;
+    if (!ok) largadaSemRua.push(s);
+  }
+  return { cats, amostras, faixas, viadutos, foraDaRua, virados, largadaSemRua };
 }
 
 // imagem de 120 m x 120 m em volta do km: rua do trecho do km em cinza escuro, ruas de outros trechos em azul,
@@ -245,7 +255,7 @@ for (const slug of slugs) {
     const t0 = Date.now();
     const pista = new PistaReal(d.percurso, { exagero: RELEVO[slug] ?? 1.6 });
     const osm = dadosOsm ? prepararOSM(dadosOsm, pista.paraLocal) : null;
-    const { cats, faixas, viadutos, foraDaRua, virados } = analisar(pista, osm);
+    const { cats, faixas, viadutos, foraDaRua, virados, largadaSemRua } = analisar(pista, osm);
     if (mapa && mapa.split(':')[0].toUpperCase() === d.rotulo.toUpperCase()) {
       for (const km of mapa.split(':').slice(1)) {
         const arq = path.join(cache || '.', `mapa-${slug.split('-').slice(0, 3).join('-')}-${d.rotulo.toUpperCase()}-${km}.ppm`);
@@ -261,6 +271,9 @@ for (const slug of slugs) {
     const fr = foraDaRua.length ? ` (km ${[...new Set(foraDaRua.map((v) => (v / 1000).toFixed(2)))].slice(0, 12).join(', ')})` : '';
     console.log(`  caminho do corredor fora do asfalto desenhado    ${String(foraDaRua.length * 5).padStart(5)} m${fr}`);
     if (foraDaRua.length) erro = true;
+    const lg = largadaSemRua.length ? ` (s ${[...new Set(largadaSemRua)].slice(0, 8).join(', ')} m)` : '';
+    console.log(`  área do pelotão atrás da largada sem asfalto    ${String(largadaSemRua.length).padStart(5)} pontos${lg}`);
+    if (largadaSemRua.length) erro = true;
     console.log(`  rua/calçada dobrada (triângulo virado = buraco)  ${virados.toFixed(1).padStart(8)} m²`);
     if (res.rua.area > 0) erro = true;
   }

@@ -210,6 +210,9 @@ export function colarVoltas(x, z, s, { raio = 12, alcance = 30, minDs = 100, ram
     }
     if (!algum) break;
   }
+  // ponto colado que o alisamento tirou de cima da passagem anterior (esquina fechada que a segunda passagem corta):
+  // longe da rua já desenhada, volta a ser desenhado (a rua dele encosta na da passagem anterior, sem cobri-la)
+  for (let i = 0; i < n; i++) if (dup[i] && alvo[i] && Math.hypot(x[i] - alvo[i].qx, z[i] - alvo[i].qz) > 3) dup[i] = 0;
   // último ponto (pedaço curto no fim) segue a direção do penúltimo trecho
   if (n > 2 && mexido(n - 1)) {
     const k = (s[n - 1] - s[n - 2]) / Math.max(1e-6, s[n - 2] - s[n - 3]);
@@ -257,7 +260,8 @@ function unir(lista) {
 //   desenhado ANTES (que tem a preferência): numa ida e volta que se aproxima, a rua de depois "encosta" na de antes;
 // - lim: calçada, grama e avenida vão no máximo até o meio do vão entre a beira desta rua e a da outra.
 const SEM = 1e6;
-export function folgaEm(seg, x, z, s, px, pz, ang, sRef, { alcance = 40, meiaRua = 4, todosAntes = false, folga = 0.3, elev = null, elevRef = 0 } = {}) {
+export const ATRAS_LARGADA = 30; // metros de rua atrás da largada sempre desenhados (pelotão vai até ~20 m)
+export function folgaEm(seg, x, z, s, px, pz, ang, sRef, { alcance = 40, meiaRua = 4, todosAntes = false, folga = 0.3, folgaRua = 0.1, elev = null, elevRef = 0, semAtras = false } = {}) {
   const [rx, rz] = direita(ang), [fx, fz] = frente(ang);
   const C = seg.C, cx = Math.floor(px / C), cz = Math.floor(pz / C), viz = Math.ceil((alcance + meiaRua) / C);
   const ant = [], todos = [], marca = seg.marca, vez = ++seg.vez;
@@ -279,10 +283,19 @@ export function folgaEm(seg, x, z, s, px, pz, ang, sRef, { alcance = 40, meiaRua
     if (!todosAntes && Math.min(s[j], s[j + 1]) >= sRef) continue;
     // o trecho de antes pode ter a rua encolhida por um terceiro ainda mais antigo: vale o que ele desenha de fato
     const b0 = seg.ruaE ? -Math.min(seg.ruaE[j], seg.ruaE[j + 1]) : -meiaRua, b1 = seg.ruaD ? Math.min(seg.ruaD[j], seg.ruaD[j + 1]) : meiaRua;
-    if (b0 <= -meiaRua + 1e-3 && b1 >= meiaRua - 1e-3) { ant.push(ivf); continue; }
+    if (b0 <= -meiaRua + 1e-3 && b1 >= meiaRua - 1e-3) { ant.push([iv[0] - folgaRua, iv[1] + folgaRua]); continue; }
     if (b1 - b0 < 0.05) continue;
     const ivr = intervaloRua(px, pz, rx, rz, x[j], z[j], x[j + 1], z[j + 1], meiaRua, false, false, b0, b1);
-    if (ivr) ant.push([ivr[0] - folga, ivr[1] + folga]);
+    if (ivr) ant.push([ivr[0] - folgaRua, ivr[1] + folgaRua]);
+  }
+  // rua atrás da largada, onde o pelotão espera (seg.atras): tem a preferência sobre qualquer trecho do percurso que
+  // passe ali (num circuito, a chegada) — ninguém fica em pé na grama na largada
+  if (seg.atras && !semAtras && sRef >= 60 && !(elev && elevRef > 2.5)) {
+    const { ax, az, bx, bz } = seg.atras, l = Math.hypot(bx - ax, bz - az);
+    if (l > 1e-6 && Math.abs((bx - ax) * fx + (bz - az) * fz) / l >= 0.35) {
+      const iv = intervaloRua(px, pz, rx, rz, ax, az, bx, bz, meiaRua, false, false);
+      if (iv && iv[1] >= -alcance && iv[0] <= alcance) { const ivf = [iv[0] - folga, iv[1] + folga]; todos.push(ivf); ant.push(ivf); }
+    }
   }
   // rua deste ponto: o maior pedaço livre de [-meiaRua, meiaRua] (de preferência o que contém o eixo)
   let lo = -meiaRua, hi = meiaRua;
@@ -328,6 +341,11 @@ export function gradeDesenhada(x, z, dup, C = 10) {
 // para cada ponto: folga de cada lado (folgaEm) e o raio da curva com sinal (+ = curva para a direita)
 export function folgaLateral(x, z, s, dup, alcance = 40, elev = null) {
   const n = x.length, seg = gradeDesenhada(x, z, dup);
+  // rua reta atrás da largada (as amostras do desenho começam 60 m antes; o pelotão fica nos últimos ~20 m)
+  if (n > 1) {
+    const l = Math.hypot(x[1] - x[0], z[1] - z[0]) || 1, fx = (x[1] - x[0]) / l, fz = (z[1] - z[0]) / l;
+    seg.atras = { ax: x[0] - fx * ATRAS_LARGADA, az: z[0] - fz * ATRAS_LARGADA, bx: x[0], bz: z[0] };
+  }
   const campos = ['ruaD', 'ruaE', 'limD', 'limE'];
   const out = Object.fromEntries(campos.map((c) => [c, new Float32Array(n).fill(4)]));
   // calculado em ordem: cada ponto já conhece a rua que os trechos de antes desenham de fato
@@ -491,6 +509,11 @@ export class PistaReal {
 
   // limites num ponto fora do percurso (rua antes da largada / depois da chegada): cede a vez a todos os trechos
   lateralEm(px, pz, ang, sRef) {
+    // atrás da largada, onde o pelotão espera: desenhada sempre, com a rua inteira (os outros trechos é que cedem)
+    if (sRef < 0 && sRef >= -ATRAS_LARGADA) {
+      const f = folgaEm(this.seg, this.x, this.z, this.s, px, pz, ang, sRef, { elev: this.elev, semAtras: true });
+      return { dup: false, fora: true, ...limitesLaterais({ ...f, ruaD: 4, ruaE: 4 }, 1e6) };
+    }
     const f = folgaEm(this.seg, this.x, this.z, this.s, px, pz, ang, sRef, { todosAntes: true, elev: this.elev });
     const l = limitesLaterais(f, 1e6);
     // outro trecho do percurso ali perto (num circuito, a chegada passa atrás da largada): não desenha

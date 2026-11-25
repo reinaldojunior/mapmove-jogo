@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { colarVoltas, folgaLateral, PistaReal } from '../src/pista.js';
-import { limitarLateral, planoFita } from '../src/faixas.js';
+import { colarVoltas, folgaLateral, PistaReal, ATRAS_LARGADA } from '../src/pista.js';
+import { limitarLateral, planoFita, amostrasDoPercurso } from '../src/faixas.js';
 import { viadutosDoPercurso } from '../src/osm.js';
 
 // percurso em metros: lista de [x, z] com um ponto a cada 5 m
@@ -86,4 +86,36 @@ test('viaduto: trecho em cima de ponte que cruza outro trecho sobe, o terreno n�
   // rampa suave (no máximo ~12%) e começando só onde não há outro trecho ao lado
   for (let i = 1; i < p.s.length; i++) assert.ok(Math.abs(p.y[i] - p.y[i - 1]) / 5 < 0.12);
   assert.ok(p.rampas[0].topo0 - p.rampas[0].s0 > 60, 'rampa de subida comprida');
+});
+
+// percurso em lat/lng a partir de cantos em metros (x leste, z sul)
+function emLatLng(cantos) {
+  const lat0 = -23.1, lng0 = -47.2, mLat = 1 / 110540, mLng = 1 / (111320 * Math.cos(lat0 * Math.PI / 180));
+  return cantos.map(([x, z]) => [lat0 - z * mLat, lng0 + x * mLng, 500]);
+}
+
+test('largada: a rua atrás do tapete (onde o pelotão espera) fica inteira mesmo com a chegada passando ao lado', () => {
+  // circuito: a chegada sobe por x=6, colada na rua atrás da largada (x=0, z de 0 a 30)
+  const p = new PistaReal(emLatLng([[0, 0], [0, -500], [200, -500], [200, 300], [6, 300], [6, 5]]), { exagero: 0 });
+  const am = amostrasDoPercurso(p);
+  const atras = am.filter((a) => a.s >= -ATRAS_LARGADA + 2 && a.s < 0);
+  assert.ok(atras.length >= 6);
+  for (const a of atras) assert.ok(!a.lat.dup && a.lat.ruaD >= 3.99 && a.lat.ruaE >= 3.99, `s=${a.s}: ${JSON.stringify(a.lat)}`);
+  // a chegada é que cede: perto da largada a rua dela encosta na de trás da largada
+  const chegada = am.find((a) => a.s > p.total - 15 && a.s < p.total - 5 && !a.lat.dup);
+  assert.ok(chegada && Math.min(chegada.lat.ruaD, chegada.lat.ruaE) < 3, `chegada: ${JSON.stringify(chegada?.lat)}`);
+});
+
+test('retorno fechado: a ponta vira leque, com a rua inteira do lado de fora (sem fiapo nem buraco)', () => {
+  // vai 400 m para o norte e volta 14 m ao lado: dois retornos de 90° seguidos, cada um mais fechado que o raio da rua
+  const p = new PistaReal(emLatLng([[0, 0], [0, -400], [14, -400], [14, 0]]), { exagero: 0 });
+  const am = amostrasDoPercurso(p);
+  const leque = am.filter((a) => a.leque);
+  assert.ok(leque.length >= 3, 'há amostras em leque nas esquinas do retorno');
+  const { xz } = planoFita(am, -4, 4);
+  // no leque o lado de fora tem a rua inteira (4 m) e o de dentro fica no eixo
+  for (const a of leque) {
+    const i = am.indexOf(a), lados = [Math.hypot(xz[i * 4] - a.x, xz[i * 4 + 1] - a.z), Math.hypot(xz[i * 4 + 2] - a.x, xz[i * 4 + 3] - a.z)];
+    assert.ok(Math.max(...lados) > 3.9 && Math.min(...lados) < 0.01, `s=${a.s}: ${lados}`);
+  }
 });
