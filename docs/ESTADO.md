@@ -115,7 +115,20 @@ Aprovado em 25/11/2026 (alternativa C). **Etapa 1 feita** (fundação, sem mudar
 (`scripts/percurso/exportar-grafo.py` → `dados/grafos/`), banco de testes (`scripts/percurso/sinteticos.mjs`,
 `dados/percursos/`, `test/percursos.test.js`), investigação de elevação (`scripts/percurso/relevo.py` →
 `dados/relevo/`) e protótipo da conferência visual (`scripts/percurso/conferir.py`). Documentação em
-`docs/percursos/` (ARQUITETURA, NIVEIS-E-ELEVACAO, CONFERENCIA). Etapa 2 (map matching) só depois de aprovação.
+`docs/percursos/` (ARQUITETURA, NIVEIS-E-ELEVACAO, CONFERENCIA).
+
+**Etapa 2 feita** (map matching offline, ainda sem mudar o jogo; aguardando aprovação para a etapa 3): relatório em
+`docs/percursos/etapa2/RELATORIO.md` com as imagens antes × depois em `docs/percursos/etapa2/img/`.
+
+- Matching: `scripts/percurso/matching.mjs` (HMM/Viterbi sobre o grafo OSM, fallback sem ligação inventada).
+- Rodar: `node scripts/percurso/casar.mjs <slug>` → `dados/casados/`;
+  `python3 scripts/percurso/elevacao.py <slug> <cache>` → `dados/elevacao/` (GPS, terreno e altura de ponte separados);
+  `scripts/percurso/relatorio-imagens.sh` gera as imagens.
+- Resultado:
+  - Sorocaba 21K 21,189 km (99,7% casado) e 42K 41,592 km (99,3%). Fallback só na ligação Alameda CIESP → alça da
+    ponte Dom José, que falta no OSM.
+  - Indaiatuba 100% casado.
+  - A altitude do GPS do 21K de Indaiatuba é incoerente (erro de 18 m); está marcada e **não foi corrigida**.
 
 ## Próximos passos sugeridos
 

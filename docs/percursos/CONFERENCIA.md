@@ -15,7 +15,13 @@ python3 scripts/percurso/conferir.py dados/percursos/9-maratona-sorocaba-novembr
 
 Foi com ele que apareceu a causa da bagunça na largada do 42K (duas pistas de mão única separadas por canteiro).
 
-## Ferramenta completa (a partir da etapa 2) — página interna, fora do jogo
+## Etapa 2
+
+`conferir.py` ganhou o traçado ajustado colorido pela ordem da corrida, setas de sentido com km, o fallback em vermelho
+tracejado, o modo `antes` (traçado do jogo hoje) e o perfil com as três séries de `dados/elevacao`. A visão do percurso
+inteiro sai com `km = -1`. As imagens do relatório da etapa 2 saem de `scripts/percurso/relatorio-imagens.sh`.
+
+## Ferramenta completa (planejada) — página interna, fora do jogo
 
 Uma página HTML estática (Vite, rota separada, não publicada para jogadores) que lê os arquivos de `dados/`:
 

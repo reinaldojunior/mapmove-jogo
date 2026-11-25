@@ -3,24 +3,75 @@
   "9-maratona-sorocaba-novembro-azul-2026-11-21": {
     "21K": {
       "circuito": true,
-      "ponte": { "nome": "Ponte Dom José Melhado Campos", "passagens": 1, "kmAprox": [19.69, 19.84], "passaPorCimaDoProprioPercurso": true },
-      "retornosAprox": ["km 1,28 (Av. Doutor Artur Bernardes)", "km 19,3"],
-      "kmOficial": 21.1, "kmGpsHoje": 20.93
+      "ponte": {
+        "nome": "Ponte Dom José Melhado Campos",
+        "passagens": 1,
+        "kmAprox": [
+          19.69,
+          19.84
+        ],
+        "passaPorCimaDoProprioPercurso": true
+      },
+      "retornosAprox": [
+        "km 1,32 (troca de pista na Av. Doutor Artur Bernardes)",
+        "km 19,53 (retorno na Alameda CIESP)"
+      ],
+      "kmOficial": 21.1,
+      "kmGpsHoje": 20.93,
+      "_etapa2": "Conferido nas imagens (docs/percursos/etapa2): ligação Alameda CIESP → alça da ponte falta no OSM → fallback km 19,76–19,84."
     },
     "42K": {
-      "voltas": 2, "mesmoCircuitoQue": "21K",
-      "avenidaKm2_6": { "passagens": 4, "kmAprox": [2.5, 14.5, 23.1, 35.0], "sentidos": "alternados (ida e volta na mesma avenida)" },
-      "ponte": { "nome": "Ponte Dom José Melhado Campos", "passagens": 2 },
-      "largadaDentroDoRetorno": { "passagensPerto": 4, "kmAprox": [0.0, 1.2, 21.0, 22.1] },
-      "kmOficial": 42.2, "kmGpsHoje": 40.62, "kmRefinoHoje": 41.22,
+      "voltas": 2,
+      "mesmoCircuitoQue": "21K",
+      "avenidaKm2_6": {
+        "passagens": 4,
+        "kmAprox": [
+          2.5,
+          14.5,
+          23.1,
+          35.0
+        ],
+        "sentidos": "alternados (ida e volta na mesma avenida)",
+        "_etapa2": "A Av. Dom Aguirre é pista dupla no OSM: as 4 passagens viram 2 por pista (uma por volta), sempre no sentido permitido."
+      },
+      "ponte": {
+        "nome": "Ponte Dom José Melhado Campos",
+        "passagens": 2
+      },
+      "largadaDentroDoRetorno": {
+        "passagensPerto": 4,
+        "kmAprox": [
+          0.0,
+          1.2,
+          21.0,
+          22.1
+        ],
+        "_etapa2": "Ida pela pista de mão única da Av. Dr. Artur Bernardes e volta pela outra, nas 2 voltas (km 0,75 e 21,88)."
+      },
+      "kmOficial": 42.2,
+      "kmGpsHoje": 40.62,
+      "kmRefinoHoje": 41.22,
       "gpsEspacadoM": 77
     }
   },
   "1-meia-maratona-de-indaiatuba-2026-12-13": {
     "_nota": "GPS do Portal colado nas ruas do OSM (mediana 0,1 m): o traçado foi desenhado sobre o mapa. Bom caso de controle: o matching não pode piorar o que já está certo.",
-    "6K": { "kmOficial": 6, "kmGpsHoje": 6.12 },
-    "10K": { "kmOficial": 10, "kmGpsHoje": 9.94, "retornoAprox": "km 3,19" },
-    "21K": { "kmOficial": 21.097, "kmGpsHoje": 20.84 },
-    "CAMINHADA 5K": { "semPercurso": true }
+    "6K": {
+      "kmOficial": 6,
+      "kmGpsHoje": 6.12
+    },
+    "10K": {
+      "kmOficial": 10,
+      "kmGpsHoje": 9.94,
+      "retornoAprox": "nenhum: o km 3,19 é a esquina Rua Jabaquara → Rua Martinho Lutero (conferido na etapa 2)"
+    },
+    "21K": {
+      "kmOficial": 21.097,
+      "kmGpsHoje": 20.84,
+      "altitudeGps": "incoerente com o terreno (erro médio 18 m); identificado na etapa 2, sem correção"
+    },
+    "CAMINHADA 5K": {
+      "semPercurso": true
+    }
   }
 }
