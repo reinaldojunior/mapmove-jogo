@@ -374,7 +374,12 @@ export function limitesLaterais(f, raio) {
 }
 
 export class PistaReal {
-  constructor(pontosLatLng, { passo = 5, exagero = 1.6 } = {}) {
+  // janela: quanto projetar() procura atrás/à frente da dica quando quem chama não diz (padrão 40/80 m). O percurso
+  // ajustado ao OSM (modo de teste, src/percursoAjustado.js) usa uma janela curta: lá ida e volta de um retorno
+  // ficam a poucos metros e o corredor não pode "pular" a ponta do retorno pela projeção.
+  constructor(pontosLatLng, { passo = 5, exagero = 1.6, janela = null } = {}) {
+    this.janelaAtras = janela?.atras ?? 40;
+    this.janelaFrente = janela?.frente ?? 80;
     const validos = pontosLatLng.filter((p) => Array.isArray(p) && p.length >= 2);
     this.paraLocal = conversorLocal(validos[0][0], validos[0][1]);
     let pts = projetarLatLng(validos);
@@ -534,7 +539,7 @@ export class PistaReal {
   }
 
   // ponto da pista mais próximo de (px, pz), procurando perto de sDica para não "pular" para outro trecho
-  projetar(px, pz, sDica = 0, atras = 40, frenteM = 80) {
+  projetar(px, pz, sDica = 0, atras = this.janelaAtras, frenteM = this.janelaFrente) {
     const i0 = this.indice(Math.max(0, sDica - atras)), i1 = Math.min(this.s.length - 2, this.indice(sDica + frenteM) + 1);
     let melhor = null;
     for (let i = i0; i <= i1; i++) {

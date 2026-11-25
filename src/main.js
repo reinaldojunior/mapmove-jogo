@@ -21,6 +21,7 @@ import { criarCeu } from './ceu.js';
 import * as CL from './clima.js';
 import { CEUS } from './ceus.js';
 import { refinarDistancias } from './refino.js';
+import { modoPercurso, aplicarPercursoAjustado, sufixo, JANELA as JANELA_AJUSTADO } from './percursoAjustado.js';
 import * as PL from './pelotao.js';
 import * as MD from './medalhas.js';
 import { gerarCartao } from './cartao.js';
@@ -42,6 +43,8 @@ const PROVAS = [
   // a rua ficava em barrancos e com placas flutuando). A subida/descida continua valendo no jogo e no HUD.
   { slug: '9-maratona-sorocaba-novembro-azul-2026-11-21', cidade: 'Sorocaba', relevo: 0, nome: 'Desafio 42K – Bora correr em Sorocaba', curto: 'Desafio 42K' }
 ];
+// percurso ajustado ao OSM (etapa 3, modo de teste): ?percurso=ajustado liga, ?percurso=gps desliga (src/percursoAjustado.js)
+const MODO_PERCURSO = modoPercurso();
 let PROVA_SLUG = (() => { try { const s = localStorage.getItem('mapmove-prova'); if (PROVAS.some((p) => p.slug === s)) return s; } catch { /* sem storage */ } return PROVAS[0].slug; })();
 const NOME_NO_JOGO = Object.fromEntries(PROVAS.map((p) => [p.slug, p.nome]));
 
@@ -1103,7 +1106,7 @@ function atualizarCenario(sCorredor) {
 // ─── OBSTÁCULOS E ITENS (EM COORDENADAS DA PISTA: s AO LONGO, d PARA OS LADOS) ─
 
 let entidades = [];
-if (import.meta.env.DEV) window.__dbg = { passo: (dt) => passo(dt), curva: (s) => curvaEm(s), ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString()]); } }; // só no modo de desenvolvimento, para testes
+if (import.meta.env.DEV) window.__dbg = { pista: () => pista, prova: () => prova, passo: (dt) => passo(dt), curva: (s) => curvaEm(s), ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString()]); } }; // só no modo de desenvolvimento, para testes
 let postos = [];
 let travessas = [];
 
@@ -1585,7 +1588,7 @@ function definirTravessas(lista) {
 }
 
 async function carregarTravessas(distancia, pistaAlvo) {
-  const chave = `mapmove-travessas-v1-${PROVA_SLUG}-${distancia.rotulo}`;
+  const chave = `mapmove-travessas-v1-${PROVA_SLUG}-${distancia.rotulo}${sufixo(distancia)}`; // posições s dependem da pista
   let lista = lerRecorde(chave);
   if (!lista) {
     const vias = await buscarVias(distancia.percurso);
@@ -2450,8 +2453,9 @@ function prepararPercurso(escolha) {
   limparEntidades();
   limparPlacas();
   if (escolha.tipo === 'prova') {
-    pista = new PistaReal(escolha.distancia.percurso, { exagero: PROVAS.find((p) => p.slug === PROVA_SLUG)?.relevo ?? 1.6 });
-    prova = { nome: dadosProva.nome, rotulo: escolha.distancia.rotulo, total: pista.total };
+    pista = new PistaReal(escolha.distancia.percurso, { exagero: PROVAS.find((p) => p.slug === PROVA_SLUG)?.relevo ?? 1.6,
+      janela: escolha.distancia.ajustado ? JANELA_AJUSTADO : null }); // percurso ajustado (teste): projeção com janela curta
+    prova = { nome: dadosProva.nome, rotulo: escolha.distancia.rotulo, total: pista.total, ajustado: !!escolha.distancia.ajustado };
   } else {
     pista = new PistaReta();
     prova = null;
@@ -2971,7 +2975,7 @@ function desenharFantasma(dt) {
 $('#btnDesafiar').addEventListener('click', async () => {
   const s = estado;
   if (!usuario) { aviso('Entre com o Google (tela inicial) para desafiar seus amigos', 'alerta', 2600); return; }
-  if (!s.gravacao || !prova) return;
+  if (!s.gravacao || !prova || prova.ajustado) return; // percurso ajustado (teste) não grava fantasma
   const b = $('#btnDesafiar'); b.disabled = true;
   try {
     s.fantasmaSalvo ||= await Conta.salvarFantasma(usuario, { prova: PROVA_SLUG, rotulo: prova.rotulo, tempo: s.tempoReal, passo: s.gravacao.passo, amostras: s.gravacao.amostras });
@@ -3029,7 +3033,7 @@ function terminar(titulo, concluiu = false) {
   mot.hidden = !linhasMot.length;
   mot.innerHTML = linhasMot.map((t) => `<span>${t}</span>`).join('');
   if (s.gravacao && concluiu) s.gravacao.amostras.push(pista.total);
-  $('#btnDesafiar').hidden = !(prova && concluiu && s.gravacao);
+  $('#btnDesafiar').hidden = !(prova && concluiu && s.gravacao) || !!prova?.ajustado; // modo de teste: sem desafio fantasma
   s.fantasmaSalvo = null;
   $('#fimPlacar').innerHTML = [
     cel('Distância', `${R.formatarKm(dist)} km`), cel('Tempo', R.formatarTempo(s.tempoReal)),
@@ -3040,7 +3044,7 @@ function terminar(titulo, concluiu = false) {
   ].join('');
   let rec = '';
   if (prova) {
-    const chave = `mapmove-recorde-${PROVA_SLUG}-${prova.rotulo}`;
+    const chave = `mapmove-recorde-${PROVA_SLUG}-${prova.rotulo}${prova.ajustado ? '-ajustado' : ''}`;
     const anterior = lerRecorde(chave);
     if (concluiu && (!anterior || s.tempoReal < anterior)) { salvarRecorde(chave, s.tempoReal); rec = '🏅 Novo recorde neste percurso!'; }
     else if (anterior) rec = `Seu recorde no ${prova.rotulo}: ${R.formatarTempo(anterior)}`;
@@ -3063,7 +3067,7 @@ function terminar(titulo, concluiu = false) {
   };
   mostrarEvolucao(dist, concluiu);
   // corrida vale para o ranking de pontos (só com conta Google)
-  if (usuario && pontos > 0 && dist > 50) {
+  if (usuario && pontos > 0 && dist > 50 && !prova?.ajustado) { // modo de teste do percurso ajustado fica fora do ranking
     Conta.registrarCorridaNuvem(usuario, { modo: prova ? prova.rotulo : 'treino', pontos, km: dist / 1000, tempo: s.tempoReal, concluiu })
       .catch((e) => console.warn('ranking', e));
   }
@@ -3539,7 +3543,9 @@ async function carregarProva() {
     const brutas = (c?.corrida_distancias || []).filter((d) => Array.isArray(d.percurso) && d.percurso.length > 10).sort((a, b) => a.km - b.km).map((d) => ({ ...d, rotulo: d.rotulo.toUpperCase() }));
     // GPS espaçado (ex.: 42K = 2 voltas do 21K com metade dos pontos) é encaixado na distância mais detalhada da
     // mesma prova: voltas caem no mesmo lugar e as curvas não são cortadas (src/refino.js; nada muda no Portal)
-    const dist = refinarDistancias(brutas);
+    const refinadas = refinarDistancias(brutas);
+    // modo de teste: troca o percurso pelo ajustado às ruas do OSM onde houver (as brutas do Portal não mudam)
+    const dist = MODO_PERCURSO === 'ajustado' ? await aplicarPercursoAjustado(PROVA_SLUG, refinadas) : refinadas;
     if (!dist.length) throw new Error('sem percurso');
     const marcadores = {};
     for (const [rot, v] of Object.entries(c.percurso_3d?.por || {})) marcadores[rot.toUpperCase()] = v.pontos || [];
@@ -3547,7 +3553,8 @@ async function carregarProva() {
     dadosProva = { nome, distancias: dist, marcadores };
     $('#provaNome').textContent = nome;
     $('#jogarProva').textContent = `${nome} · ${PROVAS.find((p) => p.slug === PROVA_SLUG)?.cidade}`;
-    $('#provaInfo').textContent = `${c.cidade} · percurso e altimetria reais`;
+    $('#provaInfo').textContent = `${c.cidade} · percurso e altimetria reais`
+      + (dist.some((d) => d.ajustado) ? ' · percurso ajustado (teste: recordes à parte, fora do ranking)' : '');
     box.innerHTML = '';
     // distância selecionada: a última usada nesta prova (só neste aparelho) ou a mais longa
     let lembrada = null;
@@ -3556,7 +3563,7 @@ async function carregarProva() {
     for (const d of dist) {
       const b = document.createElement('button');
       b.dataset.rotulo = d.rotulo;
-      const rec = lerRecorde(`mapmove-recorde-${PROVA_SLUG}-${d.rotulo}`);
+      const rec = lerRecorde(`mapmove-recorde-${PROVA_SLUG}-${d.rotulo}${sufixo(d)}`);
       const recValido = typeof rec === 'number' && rec > 0; // selo só com recorde de verdade nesta distância
       b.innerHTML = `${recValido ? `<span class="rec"><svg><use href="#i-estrela"/></svg>${R.formatarTempo(rec)}</span>` : ''}<span class="km">${d.rotulo}</span><span class="sobe"><svg><use href="#i-montanha"/></svg>${d.subida_m ?? '?'} m</span>`;
       b.addEventListener('click', () => selecionarDistancia(d));

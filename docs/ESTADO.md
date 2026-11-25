@@ -130,6 +130,18 @@ Aprovado em 25/11/2026 (alternativa C). **Etapa 1 feita** (fundação, sem mudar
   - Indaiatuba 100% casado.
   - A altitude do GPS do 21K de Indaiatuba é incoerente (erro de 18 m); está marcada e **não foi corrigida**.
 
+**Etapa 3 feita** (percurso lógico ajustado na corrida, **modo de teste desligado por padrão**; aguardando aprovação
+para a etapa 4, o novo desenho das ruas): relatório em `docs/percursos/etapa3/RELATORIO.md`.
+
+- Ligar: `?percurso=ajustado` (lembrado no aparelho). Desligar: `?percurso=gps`.
+- Sem o arquivo `public/percursos/<slug>.json`, a distância fica com o percurso de antes.
+- No modo de teste os recordes ficam à parte, a corrida não vai para o ranking e não grava fantasma.
+- Regerar depois de mudar o GPS no Portal: atualizar `dados/percursos/`, depois `casar.mjs`, depois `elevacao.py`,
+  depois `exportar-jogo.mjs`.
+- Comparar: `node scripts/percurso/comparar-pistas.mjs`.
+- O GPS do 42K de Sorocaba mudou no Portal em 25/11/2026 (528 → 590 pontos): no jogo de hoje ele tem 41,52 km e, na
+  simulação, recua e salta no retorno da volta 2. No ajustado tem 41,87 km, sem recuo.
+
 ## Próximos passos sugeridos
 
 - **Encaixar o percurso nas ruas reais do OpenStreetMap (map matching, ex.: OSRM ou Valhalla)** em vez de desenhar

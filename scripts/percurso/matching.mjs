@@ -12,14 +12,16 @@
 
 const P = {
   raio: 30, maxCand: 8, sigma: 6, beta: 8, direcao: 3, contramao: 1, pe: 1.5, servico: 0.4,
-  saltoM: 25, retorno: 40, semCasamento: 14, semCasamentoComRua: 20, entraSai: 4, saltoMax: 2, bordaGap: 8, desvioMax: 60, desvioRel: 0.6, semConexao: 30, pontaRetornoRad: (35 * Math.PI) / 180,
+  saltoM: 25, retorno: 40, semCasamento: 14, semCasamentoComRua: 20, entraSai: 4, saltoMax: 2, bordaGap: 8, desvioMax: 60, desvioRel: 0.6, semConexao: 30, retornoGps: 8, pontaRetornoRad: (35 * Math.PI) / 180,
 };
 
 export function casar(grafo, gpsOriginal, opcoes = {}) {
   const o = { ...P, ...opcoes };
   // saltos de GPS (ponto isolado fora da linha entre os vizinhos): saem ANTES do casamento — senão um salto perto de
   // outra via (ex.: um viaduto) puxaria o percurso para ela. Os índices continuam sendo os do GPS original.
-  const todos = gpsOriginal.map(([lat, lon]) => grafo.projecao.paraXY(lat, lon)), saltos = new Set();
+  const todos = gpsOriginal.map(([lat, lon]) => grafo.projecao.paraXY(lat, lon)), saltos = new Set(), pontas = new Set();
+  const passos = todos.slice(1).map((q, i) => Math.hypot(q.x - todos[i].x, q.y - todos[i].y)).sort((x, y) => x - y);
+  const espaco = passos[Math.floor(passos.length / 2)] || 20; // espaçamento mediano do GPS
   for (let i = 1; i < todos.length - 1; i++) {
     const a = todos[i - 1], b = todos[i + 1], p = todos[i], vx = b.x - a.x, vy = b.y - a.y, l2 = vx * vx + vy * vy || 1;
     const t = Math.max(0, Math.min(1, ((p.x - a.x) * vx + (p.y - a.y) * vy) / l2));
@@ -30,8 +32,21 @@ export function casar(grafo, gpsOriginal, opcoes = {}) {
     // ela continua o rumo de chegada e o ponto seguinte continua o rumo de volta. Salto sai de lado.
     const rumo = (u, v) => Math.atan2(v.y - u.y, v.x - u.x);
     const dif = (h1, h2) => { let d = Math.abs(h1 - h2); return d > Math.PI ? 2 * Math.PI - d : d; };
-    const pontaDeRetorno = i >= 2 && i < todos.length - 2
-      && dif(rumo(todos[i - 2], a), rumo(a, p)) < o.pontaRetornoRad && dif(rumo(p, b), rumo(b, todos[i + 2])) < o.pontaRetornoRad;
+    // Também é ponta de retorno quando o ponto está numa rua do mapa, o percurso dá meia-volta nele e a perna de ida
+    // ou a de volta corre AO LONGO de uma rua (ex.: retorno logo depois de uma esquina, 42K de Sorocaba na Alameda
+    // CIESP, com o GPS a cada ~70 m cortando a esquina na ida). Salto cai longe da rua ou corta quarteirão.
+    const aoLongo = (u, v) => [0.25, 0.5, 0.75].every((f) => {
+      const x = u.x + (v.x - u.x) * f, y = u.y + (v.y - u.y) * f, L = Math.hypot(v.x - u.x, v.y - u.y) || 1;
+      return grafo.proximas(x, y, 12).some((c) => Math.abs((c.dir[0] * (v.x - u.x) + c.dir[1] * (v.y - u.y)) / L) > 0.9);
+    });
+    // … e no ritmo da corrida: com um ponto só na ponta, ida + volta cabem em ~2 intervalos do GPS (±20% de ritmo);
+    // um salto soma bem mais que isso
+    const meiaVoltaNaRua = dif(rumo(a, p), rumo(p, b)) > (120 * Math.PI) / 180 && ida + volta <= 2.4 * espaco
+      && grafo.proximas(p.x, p.y, 12).length > 0
+      && (aoLongo(a, p) || aoLongo(p, b));
+    if (meiaVoltaNaRua) pontas.add(i);
+    const pontaDeRetorno = meiaVoltaNaRua || (i >= 2 && i < todos.length - 2
+      && dif(rumo(todos[i - 2], a), rumo(a, p)) < o.pontaRetornoRad && dif(rumo(p, b), rumo(b, todos[i + 2])) < o.pontaRetornoRad);
     if (fora > o.saltoM && ida + volta > corda * 2.2 && Math.min(ida, volta) > o.saltoM && !pontaDeRetorno) saltos.add(i);
   }
   const indice = gpsOriginal.map((_, i) => i).filter((i) => !saltos.has(i));
@@ -44,6 +59,10 @@ export function casar(grafo, gpsOriginal, opcoes = {}) {
     return l > 8 ? [(b.x - a.x) / l, (b.y - a.y) / l] : null;
   });
   const reta = (i) => Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  // o próprio GPS dá meia-volta no ponto, em cima de uma rua e com a ida ou a volta ao longo dela (`pontas`, acima):
+  // ali um retorno tem evidência e custa pouco (sem isso, com GPS espaçado, passar 2 pontos "sem casamento" saía mais
+  // barato que fazer o retorno). Salto de GPS também vira ~180°, mas cai longe da rua ou corta quarteirão.
+  const meiaVolta = indice.map((i) => pontas.has(i));
 
   // ── candidatos e custo de emissão ──
   const estados = pts.map((p, i) => {
@@ -124,7 +143,11 @@ export function casar(grafo, gpsOriginal, opcoes = {}) {
           else {
             const d = ref.i === i - 1 ? dgc : Math.hypot(pts[i].x - pts[ref.i].x, pts[i].y - pts[ref.i].y);
             tr = Infinity;
+            let evidencia = false; for (let q = ref.i; q <= i; q++) evidencia ||= meiaVolta[q];
             for (const op of rede(ref.e, t, Math.max(300, d * 3 + 150))) {
+              // (só em rua de mão dupla: em pista de mão única a meia-volta seria na contramão; na avenida de pistas
+              // separadas o retorno é pela passagem do canteiro, como o GPS denso do 21K de Sorocaba mostra)
+              if (op.ret && evidencia && t.a.mao === 'dupla' && ref.e.a.mao === 'dupla') op.ret = o.retornoGps;
               // caminho pelo grafo muito maior que o do GPS = a ligação que a corrida usou não está no mapa:
               // não inventa desvio (o trecho vira "sem casamento" e vai para o método alternativo)
               if (op.d - d > Math.max(o.desvioMax, o.desvioRel * d)) continue;

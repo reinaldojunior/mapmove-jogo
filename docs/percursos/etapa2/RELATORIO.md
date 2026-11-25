@@ -1,5 +1,13 @@
 # Etapa 2 — map matching offline: relatório
 
+> **Atualização (etapa 3).** O Portal trocou o GPS do 42K de Sorocaba (528 → 590 pontos) e o matching ganhou duas
+> regras para retornos com GPS espaçado.
+> - 42K: ajustado 41,944 km, 99,2% casado; retornos da largada e da Alameda CIESP nas duas voltas; os 2 trechos de
+>   fallback continuam.
+> - As imagens `s42-*` já são do GPS novo.
+> - As outras distâncias não mudaram.
+> - Ver `docs/percursos/etapa3/RELATORIO.md`.
+
 25/11/2026. Ramo `claude/sharp-hamilton-08y1qi`. **O jogo não foi alterado**: nada em `src/`, `public/` ou `index.html`.
 As pistas atuais continuam as mesmas. Tudo desta etapa fica em `scripts/percurso/`, `dados/` e `docs/percursos/`, e
 um teste confere que nenhum arquivo do jogo lê esses dados.
