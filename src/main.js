@@ -2554,6 +2554,22 @@ function desenharMinimapa() {
 }
 
 let hudTimer = 0;
+// cartão do jogador no HUD: foto da conta (ou o personagem), primeiro nome, nível e barra de XP
+function preencherJogadorHud() {
+  const d = usuario ? Conta.dadosDoUsuario(usuario) : null, st = P.situacao(formaAtual().xp);
+  const av = $('#hudAvatar');
+  av.textContent = '';
+  if (d?.foto) {
+    const img = document.createElement('img');
+    img.src = d.foto; img.alt = ''; img.referrerPolicy = 'no-referrer';
+    img.onerror = () => { av.textContent = (PERSONAGENS[perfil.personagem] || PERSONAGENS.portal).emoji; };
+    av.append(img);
+  } else av.textContent = (PERSONAGENS[perfil.personagem] || PERSONAGENS.portal).emoji;
+  $('#hudNome').textContent = d ? d.nome.split(' ')[0] : 'Você';
+  $('#hudNivel').textContent = st.rotulo;
+  $('#hudXp').style.width = `${Math.round(st.progresso * 100)}%`;
+}
+
 function atualizarHud() {
   {
     const el = $('#hudFantasma'), on = estado.desafioAtivo && (estado.modo === 'jogando' || estado.modo === 'fim');
@@ -2712,6 +2728,7 @@ function iniciar(escolha, clima) {
   tocarMusica(true);
   if (escolha) ultimaEscolha = escolha;
   reiniciar();
+  preencherJogadorHud();
   estado.clima = clima || CL.sortearClima();
   aplicarClima(estado.clima);
   prepararPelotao();
@@ -3021,7 +3038,7 @@ function acao(tipo) {
 }
 
 const controles = criarControles({ area: palco, onAcao: acao });
-for (const [id, tipo] of [['#btnGel', 'gel'], ['#btnIso', 'iso'], ['#btnAgua', 'agua'], ['#btnCamera', 'camera']]) {
+for (const [id, tipo] of [['#btnGel', 'gel'], ['#btnIso', 'iso'], ['#btnAgua', 'agua'], ['#btnCamera', 'camera'], ['#btnPular', 'pular']]) {
   $(id).addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); acao(tipo); });
 }
 

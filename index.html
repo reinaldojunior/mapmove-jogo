@@ -15,29 +15,37 @@
 <body>
   <main id="palco">
     <div id="hud" hidden>
-      <div class="hud-esq">
-        <div class="pilula"><span class="ico">📍</span><b id="hudKm">0,00</b><small id="hudKmTotal">km</small></div>
-        <div class="pilula"><span class="ico">⏱️</span><b id="hudTempo">0:00</b></div>
-        <div class="pilula"><span class="ico">🏃</span><b id="hudPace">--:--</b><small>/km</small></div>
-        <div class="pilula agua"><span class="ico">💧</span><span class="barra"><i id="hudAgua"></i></span><b id="hudAguaTxt">100%</b></div>
-        <div class="pilula relogio" id="hudRelogio" hidden><span class="ico">⌚</span><b id="hudRelogioTxt"></b></div>
-        <div class="pilula energia"><span class="ico">🔋</span><span class="barra"><i id="hudEnergia"></i></span><b id="hudEnergiaTxt">100%</b></div>
-        <div class="pilula inclinacao" id="hudInc"><span class="ico">⛰️</span><b id="hudIncTxt">plano</b></div>
-        <div class="pilula clima" id="hudClima" hidden><b id="hudClimaTxt"></b></div>
-        <div class="pilula fantasma" id="hudFantasma" hidden><b id="hudFantasmaTxt"></b></div>
-        <div id="ponto" hidden><span class="ico"></span><span class="txt"><small>Ponto turístico</small><b></b></span></div>
-      </div>
-      <div class="hud-dir">
-        <div class="linha">
+      <div class="hud-topo">
+        <div class="hud-jogador">
+          <span class="avatar" id="hudAvatar">🏃</span>
+          <span class="txt"><b id="hudNome">Você</b><small id="hudNivel">Iniciante 1</small><span class="xp"><i id="hudXp"></i></span></span>
+        </div>
+        <div class="hud-botoes">
           <button id="btnMusica" class="pilula botao" aria-label="Ligar ou desligar o som">🔊</button>
           <button id="btnCamera" class="pilula botao" aria-label="Trocar câmera">🎥</button>
           <button id="btnPausa" class="pilula botao" aria-label="Pausar ou sair">❚❚</button>
         </div>
-        <div class="linha">
-          <div class="pilula pontos"><span class="ico">⭐</span><b id="hudPontos">0</b></div>
-          <div class="pilula" id="hudPenal"><span class="ico">⚠️</span><b id="hudPenalTxt">0/3</b></div>
+      </div>
+      <div class="hud-recursos">
+        <div class="pilula recurso agua"><span class="ico">💧</span><span class="barra"><i id="hudAgua"></i></span><b id="hudAguaTxt">100%</b></div>
+        <div class="pilula recurso energia"><span class="ico">🔋</span><span class="barra"><i id="hudEnergia"></i></span><b id="hudEnergiaTxt">100%</b></div>
+        <div class="pilula recurso pontos"><span class="ico">⭐</span><b id="hudPontos">0</b></div>
+      </div>
+      <div class="hud-esq">
+        <div class="pilula grande"><span class="ico">📍</span><b id="hudKm">0,00</b><small id="hudKmTotal">km</small></div>
+        <div class="pilula grande" id="hudPos" hidden><span class="ico">🏆</span><b id="hudPosTxt"></b></div>
+        <div class="pilula fantasma" id="hudFantasma" hidden><b id="hudFantasmaTxt"></b></div>
+        <div class="hud-info">
+          <div class="pilula mini"><span class="ico">🏃</span><b id="hudPace">--:--</b><small>/km</small></div>
+          <div class="pilula mini inclinacao" id="hudInc"><span class="ico">⛰️</span><b id="hudIncTxt">plano</b></div>
+          <div class="pilula mini clima" id="hudClima" hidden><b id="hudClimaTxt"></b></div>
+          <div class="pilula mini relogio" id="hudRelogio" hidden><span class="ico">⌚</span><b id="hudRelogioTxt"></b></div>
         </div>
-        <div class="linha"><div class="pilula" id="hudPos" hidden><span class="ico">🏅</span><b id="hudPosTxt"></b></div></div>
+        <div id="ponto" hidden><span class="ico"></span><span class="txt"><small>Ponto turístico</small><b></b></span></div>
+      </div>
+      <div class="hud-dir">
+        <div class="pilula grande"><span class="ico">⏱️</span><b id="hudTempo">0:00</b></div>
+        <div class="pilula grande" id="hudPenal"><span class="ico">⚠️</span><b id="hudPenalTxt">0/3</b></div>
         <div id="mapa" hidden>
           <canvas id="minimapa" width="192" height="192" aria-label="Mapa do percurso"></canvas>
           <canvas id="perfil" width="192" height="56" aria-label="Altimetria"></canvas>
@@ -60,9 +68,12 @@
       <button id="btnAgua" class="botao-jogo gota" aria-label="Pegar água no tempo certo" hidden>
         <span class="anel"></span><span class="ico">💧</span>
       </button>
+      <button id="btnPular" class="botao-jogo pular" aria-label="Pular">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 24 24 11l14 13M10 37l14-13 14 13" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
       <div class="dica-gestos" id="dicaGestos">
         <span>⬅️ toque ou arraste ➡️ para virar</span>
-        <span>⬆️ deslize para pular · ⬇️ para ir mais devagar</span>
+        <span>⬆️ deslize ou toque no botão para pular · ⬇️ mais devagar</span>
       </div>
     </div>
 
