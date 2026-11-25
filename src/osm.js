@@ -245,10 +245,26 @@ export function duplaEm(duplas, s) {
 // viadutos do percurso: trecho que vai por cima de uma ponte/viaduto do mapa E passa por cima de outro trecho do
 // próprio percurso (cruzamento em ângulo, não ida e volta). Esse trecho é desenhado elevado (pista.elevar) em vez de
 // cruzar a outra rua no chão. Devolve [{ s0, s1, sob: [s do trecho de baixo, ...] }] (s0..s1 = extensão da ponte).
-export function viadutosDoPercurso(osm, pista) {
+//
+// mesmaPassagem (só no percurso ajustado, modo de teste): ignora como "trecho de baixo" o que corre AO LONGO do próprio
+// caminho perto da ponte (±60 m) — é a mesma passagem numa outra volta. No percurso ajustado as voltas caem
+// exatamente no mesmo lugar e a esquina da volta 2, logo depois de uma ponte baixa, passava a < 4 m da volta 1 em
+// ângulo e virava um viaduto falso (42K de Sorocaba, Rua Ubirajara). Uma rua que cruza por baixo de verdade só
+// encosta no caminho num ponto; os pontos 10 m antes e depois dela ficam longe. Sem a opção, nada muda.
+export function viadutosDoPercurso(osm, pista, { mesmaPassagem = false } = {}) {
   const pontes = osm?.pontes || [];
   if (!pontes.length) return [];
   const { x, z, s } = pista, n = s.length;
+  const pertoDoCaminho = (px, pz, sRef) => {
+    for (let k = 0; k < n - 1; k++) {
+      if (Math.abs(s[k] - sRef) > 60) continue;
+      const dx = x[k + 1] - x[k], dz = z[k + 1] - z[k], l2 = dx * dx + dz * dz || 1;
+      const t = Math.max(0, Math.min(1, ((px - x[k]) * dx + (pz - z[k]) * dz) / l2));
+      if (Math.hypot(px - x[k] - dx * t, pz - z[k] - dz * t) < 4) return true;
+    }
+    return false;
+  };
+  const passo = n > 1 ? (s[n - 1] - s[0]) / (n - 1) : 5, viz = Math.max(1, Math.round(10 / passo));
   const dirEm = (i) => { const a = Math.max(0, i - 1), b = Math.min(n - 1, i + 1); const dx = x[b] - x[a], dz = z[b] - z[a], l = Math.hypot(dx, dz) || 1; return [dx / l, dz / l]; };
   // amostras do percurso em cima de uma ponte (a menos de 8 m do eixo dela e andando junto)
   const naPonte = new Int16Array(n).fill(-1);
@@ -278,6 +294,7 @@ export function viadutosDoPercurso(osm, pista) {
       const t = Math.max(0, Math.min(1, ((x[i] - x[j]) * dx + (z[i] - z[j]) * dz) / l2));
       if (Math.hypot(x[i] - x[j] - dx * t, z[i] - z[j] - dz * t) > 4) continue;
       if (Math.abs(fx * dx + fz * dz) / Math.sqrt(l2) > 0.7) continue; // andando junto: não é viaduto
+      if (mesmaPassagem && j - viz >= 0 && j + viz < n && pertoDoCaminho(x[j - viz], z[j - viz], s[i]) && pertoDoCaminho(x[j + viz], z[j + viz], s[i])) continue;
       sob.push(s[j] + (s[j + 1] - s[j]) * t);
     }
     if (!sob.length) continue;

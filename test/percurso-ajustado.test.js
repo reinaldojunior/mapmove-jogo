@@ -110,3 +110,22 @@ for (const { slug, nome, relevo } of PROVAS) {
     });
   }
 }
+
+test('viaduto falso da Rua Ubirajara corrigido só no modo de teste (mesmaPassagem); produção e sistema antigo iguais', async () => {
+  const { prepararOSM, viadutosDoPercurso } = await import('../src/osm.js');
+  const osmJ = ler(`../public/osm/${SORO}.json`);
+  const v = (perc, op) => { const p = new PistaReal(perc, { exagero: 0, janela: JANELA }); return viadutosDoPercurso(prepararOSM(osmJ, p.paraLocal), p, op).map((t) => [Math.round(t.s0), Math.round(t.s1)]); };
+  const a42 = arquivo.distancias['42K'].percurso;
+  // sem a opção (comportamento de sempre): 4 viadutos, 2 deles falsos na Rua Ubirajara (km 16 e 37)
+  assert.equal(v(a42).length, 4);
+  // com a opção: só a Ponte Dom José, nas duas voltas
+  const corr = v(a42, { mesmaPassagem: true });
+  assert.equal(corr.length, 2); assert.ok(corr.every(([s0]) => s0 > 19000 && (s0 < 21000 || s0 > 40000)));
+  // 21K ajustado e as pistas de hoje (GPS + refino): nada muda com ou sem a opção
+  assert.deepEqual(v(arquivo.distancias['21K'].percurso, { mesmaPassagem: true }), v(arquivo.distancias['21K'].percurso));
+  for (const d of refinarDistancias(ler(`../dados/percursos/${SORO}.json`).distancias.map((x) => ({ rotulo: x.rotulo, km: x.kmOficial, percurso: x.percurso })))) {
+    assert.deepEqual(v(d.percurso, { mesmaPassagem: true }), v(d.percurso), d.rotulo);
+  }
+  // o jogo só passa a opção quando a distância está no percurso ajustado
+  assert.match(fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8'), /viadutosDoPercurso\(osm, pistaAlvo, \{ mesmaPassagem: !!distancia\.ajustado \}\)/);
+});

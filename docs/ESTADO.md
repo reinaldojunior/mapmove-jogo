@@ -142,6 +142,17 @@ para a etapa 4, o novo desenho das ruas): relatório em `docs/percursos/etapa3/R
 - O GPS do 42K de Sorocaba mudou no Portal em 25/11/2026 (528 → 590 pontos): no jogo de hoje ele tem 41,52 km e, na
   simulação, recua e salta no retorno da volta 2. No ajustado tem 41,87 km, sem recuo.
 
+**Etapa 4 (novo desenho das ruas a partir do OSM), em andamento, uma sub-etapa por aprovação:**
+
+- **4a aprovada:** imagens em `docs/percursos/etapa4/`.
+- **4b feita, aguardando avaliação:** ruas do percurso e avenidas duplas no jogo, só com `?ruas=osm` junto com
+  `?percurso=ajustado`. Relatório em `docs/percursos/etapa4/ETAPA-4B.md`.
+  - Geometria em `src/ruasOSM.js`; dados em `public/ruas/`, gerados por
+    `node scripts/percurso/exportar-ruas-jogo.mjs`.
+  - `?fps=1` mostra quadros por segundo (para testar no celular).
+- **Correção do viaduto falso da Rua Ubirajara:** `viadutosDoPercurso(..., { mesmaPassagem })` em `src/osm.js`, só no
+  percurso ajustado.
+
 ## Próximos passos sugeridos
 
 - **Encaixar o percurso nas ruas reais do OpenStreetMap (map matching, ex.: OSRM ou Valhalla)** em vez de desenhar

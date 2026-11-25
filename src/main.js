@@ -21,7 +21,8 @@ import { criarCeu } from './ceu.js';
 import * as CL from './clima.js';
 import { CEUS } from './ceus.js';
 import { refinarDistancias } from './refino.js';
-import { modoPercurso, aplicarPercursoAjustado, sufixo, JANELA as JANELA_AJUSTADO } from './percursoAjustado.js';
+import { modoPercurso, aplicarPercursoAjustado, sufixo, JANELA as JANELA_AJUSTADO, modoRuas, aplicarRuasOSM } from './percursoAjustado.js';
+import { montarRuas } from './ruasOSM.js';
 import * as PL from './pelotao.js';
 import * as MD from './medalhas.js';
 import { gerarCartao } from './cartao.js';
@@ -45,6 +46,9 @@ const PROVAS = [
 ];
 // percurso ajustado ao OSM (etapa 3, modo de teste): ?percurso=ajustado liga, ?percurso=gps desliga (src/percursoAjustado.js)
 const MODO_PERCURSO = modoPercurso();
+// desenho das ruas a partir do mapa (etapa 4, modo de teste): ?ruas=osm liga, ?ruas=atual desliga; só com o percurso
+// ajustado. Sem isso, o desenho é o de sempre.
+const MODO_RUAS = modoRuas();
 let PROVA_SLUG = (() => { try { const s = localStorage.getItem('mapmove-prova'); if (PROVAS.some((p) => p.slug === s)) return s; } catch { /* sem storage */ } return PROVAS[0].slug; })();
 const NOME_NO_JOGO = Object.fromEntries(PROVAS.map((p) => [p.slug, p.nome]));
 
@@ -1002,12 +1006,19 @@ function construirVisual() {
   const MATS = { rua: matRua, calcada: matCalcada, grama: matGrama };
   visual.userData.amostras = amostras;
   visual.userData.grama = [];
-  for (const [d0, d1, tipo, opts] of faixasComuns(false)) {
-    if (tipo === 'rua') { ruaComBorda(amostras, visual, opts); continue; }
-    const f = fita(amostras, d0, d1, MATS[tipo], opts);
-    if (tipo === 'grama') { f.renderOrder = -1; visual.userData.grama.push(f); }
-    visual.add(f);
-  }
+  const desenharFita = (amo) => {
+    for (const [d0, d1, tipo, opts] of faixasComuns(false)) {
+      if (tipo === 'rua') { ruaComBorda(amo, visual, opts); continue; }
+      const f = fita(amo, d0, d1, MATS[tipo], opts);
+      if (tipo === 'grama') { f.renderOrder = -1; visual.userData.grama.push(f); }
+      visual.add(f);
+    }
+  };
+  if (prova?.ruasOSM) {
+    // ruas do mapa (etapa 4b, ?ruas=osm): a fita de sempre só nas zonas da ponte e do fallback
+    for (const [a, b] of prova.ruasOSM.zonasFita) { const amo = amostras.filter((q) => q.s >= a && q.s <= b); if (amo.length > 1) desenharFita(amo); }
+    visual.add(malhasRuasOSM(prova.ruasOSM));
+  } else desenharFita(amostras);
   construirViadutos(amostras);
   let minY = 0, cx = 0, cz = 0;
   for (const a of amostras) { minY = Math.min(minY, a.y); cx += a.x; cz += a.z; }
@@ -1019,6 +1030,40 @@ function construirVisual() {
   // morros ao fundo (Pão de Açúcar e Corcovado) só no treino
   fundo.visible = !Number.isFinite(pista.total);
   scene.add(visual);
+}
+
+// ─── RUAS DO MAPA (etapa 4b, só com ?ruas=osm e o percurso ajustado) ─────────
+// triângulos de src/ruasOSM.js (montarRuas) em duas malhas: asfalto (ruas do mapa e remendos D1) e calçada. Textura
+// presa ao chão (u, v = x, z) para os pedaços que se sobrepõem ficarem iguais. O asfalto fica 1 cm acima da calçada.
+// asfalto liso (sem o tracejado da textura da fita: a pintura das ruas do mapa vem na etapa 4e)
+const texAsfaltoLiso = textura(512, 512, (g, w, h) => {
+  g.fillStyle = '#4a4e55'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 6; i++) manchaAsfalto(g, w, h);
+  for (let i = 0; i < 4000; i++) { const c = 55 + Math.random() * 50; g.fillStyle = `rgba(${c},${c},${c + 6},0.5)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+});
+const matRuaOSM = new THREE.MeshStandardMaterial({ map: texAsfaltoLiso, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
+const matCalcadaOSM = new THREE.MeshStandardMaterial({ map: texCalcada, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
+function malhasRuasOSM(dados) {
+  const grupo = new THREE.Group();
+  const porMat = [[['asfalto', 'alargamento'], matRuaOSM, 0.01, 8], [['calcada', 'alargamentoCalcada'], matCalcadaOSM, 0, 4]];
+  const tris = montarRuas(pista, dados);
+  for (const [tipos, material, dy, rep] of porMat) {
+    const lista = tris.filter((q) => tipos.includes(q.tipo));
+    const pos = new Float32Array(lista.length * 9), uv = new Float32Array(lista.length * 6);
+    lista.forEach((q, i) => {
+      let [a, b, c] = q.t, [ya, yb, yc] = q.y;
+      // face para cima (normal +y): senão o triângulo some com o corte de faces de trás
+      if ((b[1] - a[1]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[1] - a[1]) < 0) { [b, c] = [c, b]; [yb, yc] = [yc, yb]; }
+      [[a, ya], [b, yb], [c, yc]].forEach(([p, y], k) => { pos.set([p[0], y + dy, p[1]], i * 9 + k * 3); uv.set([p[0] / rep, p[1] / rep], i * 6 + k * 2); });
+    });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, material); m.receiveShadow = true; m.name = 'ruasOSM';
+    grupo.add(m);
+  }
+  return grupo;
 }
 
 // ─── VIADUTO / PONTE (estrutura em src/viaduto.js) ───────────────────────────
@@ -1106,7 +1151,7 @@ function atualizarCenario(sCorredor) {
 // ─── OBSTÁCULOS E ITENS (EM COORDENADAS DA PISTA: s AO LONGO, d PARA OS LADOS) ─
 
 let entidades = [];
-if (import.meta.env.DEV) window.__dbg = { pista: () => pista, prova: () => prova, passo: (dt) => passo(dt), curva: (s) => curvaEm(s), ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString()]); } }; // só no modo de desenvolvimento, para testes
+if (import.meta.env.DEV) window.__dbg = { pista: () => pista, prova: () => prova, renderer: () => renderer, passo: (dt) => passo(dt), curva: (s) => curvaEm(s), ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString()]); } }; // só no modo de desenvolvimento, para testes
 let postos = [];
 let travessas = [];
 
@@ -1847,6 +1892,7 @@ const matGuia = new THREE.MeshStandardMaterial({ color: 0xc9c6bd, roughness: 0.9
 const matCalcadaLisa = new THREE.MeshStandardMaterial({ color: 0xcfcac0, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -3 });
 function construirAvenidas() {
   if (visual.userData.avenidas) visual.remove(visual.userData.avenidas);
+  if (prova?.ruasOSM) return; // ruas do mapa (teste): as duas pistas da avenida já vêm do OpenStreetMap
   const grupo = new THREE.Group();
   visual.userData.avenidas = grupo;
   visual.add(grupo);
@@ -2232,7 +2278,8 @@ async function carregarOSM(distancia, pistaAlvo) {
   if (!dados) return carregarTravessas(distancia, pistaAlvo);
   osm = prepararOSM(dados, pistaAlvo.paraLocal);
   // viaduto: o trecho que passa por cima de outro trecho do percurso sobe (rampas suaves); o resto fica no chão
-  const viadutos = viadutosDoPercurso(osm, pistaAlvo);
+  // percurso ajustado (modo de teste): sem o viaduto falso de duas voltas sobrepostas (ver viadutosDoPercurso)
+  const viadutos = viadutosDoPercurso(osm, pistaAlvo, { mesmaPassagem: !!distancia.ajustado });
   if (viadutos.length) {
     pistaAlvo.elevar(viadutos, { altura: 7 });
     construirVisual();
@@ -2455,7 +2502,10 @@ function prepararPercurso(escolha) {
   if (escolha.tipo === 'prova') {
     pista = new PistaReal(escolha.distancia.percurso, { exagero: PROVAS.find((p) => p.slug === PROVA_SLUG)?.relevo ?? 1.6,
       janela: escolha.distancia.ajustado ? JANELA_AJUSTADO : null }); // percurso ajustado (teste): projeção com janela curta
-    prova = { nome: dadosProva.nome, rotulo: escolha.distancia.rotulo, total: pista.total, ajustado: !!escolha.distancia.ajustado };
+    const ruas = escolha.distancia.ruas;
+    prova = { nome: dadosProva.nome, rotulo: escolha.distancia.rotulo, total: pista.total, ajustado: !!escolha.distancia.ajustado,
+      // desenho das ruas do mapa (teste): só se o arquivo foi feito para esta mesma pista
+      ruasOSM: ruas && Math.abs(ruas.pistaTotal - pista.total) < 0.5 ? ruas : null };
   } else {
     pista = new PistaReta();
     prova = null;
@@ -3486,10 +3536,26 @@ function medirDesempenho(dtReal) {
   if (fps < 40) { aplicarQualidade(nivel + 1); aviso(`Gráficos ajustados (${NIVEIS[nivel].nome}) para o seu celular`, '', 1600); }
 }
 
+// medidor de quadros por segundo para testes no celular (só com ?fps=1; não muda nada no jogo):
+// média do último segundo, pior quadro, qualidade gráfica e triângulos desenhados
+const mostradorFps = new URLSearchParams(location.search).get('fps') === '1' ? (() => {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:99;font:12px monospace;color:#fff;background:rgba(0,0,0,.6);padding:3px 6px;border-radius:4px;pointer-events:none';
+  document.body.appendChild(el);
+  return { el, n: 0, soma: 0, pior: 0 };
+})() : null;
+function atualizarMostradorFps(dtReal) {
+  const m = mostradorFps; m.n++; m.soma += dtReal; m.pior = Math.max(m.pior, dtReal);
+  if (m.soma < 1) return;
+  m.el.textContent = `${(m.n / m.soma).toFixed(0)} fps · pior ${(m.pior * 1000).toFixed(0)} ms · ${NIVEIS[nivel].nome} · ${(renderer.info.render.triangles / 1000).toFixed(0)}k tri${prova?.ruasOSM ? ' · ruas OSM' : ''}`;
+  m.n = 0; m.soma = 0; m.pior = 0;
+}
+
 function loop() {
   const dtReal = relogio.getDelta();
   const dt = Math.min(0.05, dtReal);
   medirDesempenho(dtReal);
+  if (mostradorFps) atualizarMostradorFps(dtReal);
   if (estado.modo === 'contagem') passoContagem(dt);
   if (estado.modo === 'jogando') passo(dt);
   if (estado.modo === 'jogando' || estado.modo === 'contagem') desenharMinimapa(); // gira junto: a cada quadro
@@ -3545,7 +3611,8 @@ async function carregarProva() {
     // mesma prova: voltas caem no mesmo lugar e as curvas não são cortadas (src/refino.js; nada muda no Portal)
     const refinadas = refinarDistancias(brutas);
     // modo de teste: troca o percurso pelo ajustado às ruas do OSM onde houver (as brutas do Portal não mudam)
-    const dist = MODO_PERCURSO === 'ajustado' ? await aplicarPercursoAjustado(PROVA_SLUG, refinadas) : refinadas;
+    let dist = MODO_PERCURSO === 'ajustado' ? await aplicarPercursoAjustado(PROVA_SLUG, refinadas) : refinadas;
+    if (MODO_PERCURSO === 'ajustado' && MODO_RUAS === 'osm') dist = await aplicarRuasOSM(PROVA_SLUG, dist);
     if (!dist.length) throw new Error('sem percurso');
     const marcadores = {};
     for (const [rot, v] of Object.entries(c.percurso_3d?.por || {})) marcadores[rot.toUpperCase()] = v.pontos || [];
@@ -3554,7 +3621,8 @@ async function carregarProva() {
     $('#provaNome').textContent = nome;
     $('#jogarProva').textContent = `${nome} · ${PROVAS.find((p) => p.slug === PROVA_SLUG)?.cidade}`;
     $('#provaInfo').textContent = `${c.cidade} · percurso e altimetria reais`
-      + (dist.some((d) => d.ajustado) ? ' · percurso ajustado (teste: recordes à parte, fora do ranking)' : '');
+      + (dist.some((d) => d.ajustado) ? ' · percurso ajustado (teste: recordes à parte, fora do ranking)' : '')
+      + (dist.some((d) => d.ruas) ? ' · ruas do mapa (teste)' : '');
     box.innerHTML = '';
     // distância selecionada: a última usada nesta prova (só neste aparelho) ou a mais longa
     let lembrada = null;

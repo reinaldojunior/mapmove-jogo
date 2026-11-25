@@ -56,3 +56,34 @@ export const JANELA = { atras: 15, frente: 15 };
 
 // sufixo das chaves locais (recorde, travessas) da distância
 export const sufixo = (d) => (d?.ajustado ? SUFIXO : '');
+
+// ─── desenho das ruas do mapa (etapa 4, modo de teste) ───────────────────────
+// ?ruas=osm liga (lembrado no aparelho), ?ruas=atual desliga. Só vale junto com o percurso ajustado. Sem arquivo
+// public/ruas/<slug>.json válido para a distância, o desenho fica o de sempre.
+export const CHAVE_RUAS = 'mapmove-ruas';
+export function modoRuas(busca = globalThis.location?.search || '', armazenamento = globalThis.localStorage) {
+  const pedido = new URLSearchParams(busca).get('ruas');
+  if (pedido === 'osm' || pedido === 'atual') {
+    try { armazenamento?.setItem(CHAVE_RUAS, pedido); } catch { /* sem storage */ }
+    return pedido;
+  }
+  try { return armazenamento?.getItem(CHAVE_RUAS) === 'osm' ? 'osm' : 'atual'; } catch { return 'atual'; }
+}
+
+// anexa `ruas` às distâncias com percurso ajustado, se o arquivo for da mesma versão do percurso e da mesma origem
+export async function aplicarRuasOSM(slug, distancias, buscar = globalThis.fetch) {
+  if (!distancias.some((d) => d.ajustado)) return distancias;
+  let dados;
+  try {
+    const r = await buscar(`/ruas/${slug}.json`);
+    if (!r.ok) return distancias;
+    dados = await r.json();
+  } catch { return distancias; }
+  return distancias.map((d) => {
+    const r = dados?.distancias?.[d.rotulo];
+    const p0 = d.percurso?.[0];
+    if (!d.ajustado || !r || dados.percurso !== d.ajustado.versao || !p0 || Math.abs(p0[0] - r.origem[0]) > 1e-7 || Math.abs(p0[1] - r.origem[1]) > 1e-7) return d;
+    if (!Array.isArray(r.ramos) || !r.ramos.length || !Number.isFinite(r.pistaTotal)) return d;
+    return { ...d, ruas: r };
+  });
+}
