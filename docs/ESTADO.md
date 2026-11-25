@@ -109,6 +109,14 @@ Personagens sempre anônimos (nada de rosto de pessoa real) e sem marcas.
   - Conferido jogando (Playwright): largada com asfalto atrás do tapete, retornos 21K km 19,3 e 42K km 39,1 sem
     buraco, ponte com a câmera normal ok. Não conferida a câmera afastada na ponte.
 
+## Projeto de percursos (arquitetura híbrida GPS + grafo OSM)
+
+Aprovado em 25/11/2026 (alternativa C). **Etapa 1 feita** (fundação, sem mudar o jogo): grafo OSM exportado
+(`scripts/percurso/exportar-grafo.py` → `dados/grafos/`), banco de testes (`scripts/percurso/sinteticos.mjs`,
+`dados/percursos/`, `test/percursos.test.js`), investigação de elevação (`scripts/percurso/relevo.py` →
+`dados/relevo/`) e protótipo da conferência visual (`scripts/percurso/conferir.py`). Documentação em
+`docs/percursos/` (ARQUITETURA, NIVEIS-E-ELEVACAO, CONFERENCIA). Etapa 2 (map matching) só depois de aprovação.
+
 ## Próximos passos sugeridos
 
 - **Encaixar o percurso nas ruas reais do OpenStreetMap (map matching, ex.: OSRM ou Valhalla)** em vez de desenhar

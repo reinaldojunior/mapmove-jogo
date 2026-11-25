@@ -1,0 +1,26 @@
+{
+  "_sobre": "O que o map matching (etapa 2) terá que responder nos percursos reais. Levantado na etapa 1 a partir do GPS, do grafo OSM e das conferências feitas no jogo; os valores marcados 'aprox' devem ser conferidos na ferramenta visual antes de virar teste fixo.",
+  "9-maratona-sorocaba-novembro-azul-2026-11-21": {
+    "21K": {
+      "circuito": true,
+      "ponte": { "nome": "Ponte Dom José Melhado Campos", "passagens": 1, "kmAprox": [19.69, 19.84], "passaPorCimaDoProprioPercurso": true },
+      "retornosAprox": ["km 1,28 (Av. Doutor Artur Bernardes)", "km 19,3"],
+      "kmOficial": 21.1, "kmGpsHoje": 20.93
+    },
+    "42K": {
+      "voltas": 2, "mesmoCircuitoQue": "21K",
+      "avenidaKm2_6": { "passagens": 4, "kmAprox": [2.5, 14.5, 23.1, 35.0], "sentidos": "alternados (ida e volta na mesma avenida)" },
+      "ponte": { "nome": "Ponte Dom José Melhado Campos", "passagens": 2 },
+      "largadaDentroDoRetorno": { "passagensPerto": 4, "kmAprox": [0.0, 1.2, 21.0, 22.1] },
+      "kmOficial": 42.2, "kmGpsHoje": 40.62, "kmRefinoHoje": 41.22,
+      "gpsEspacadoM": 77
+    }
+  },
+  "1-meia-maratona-de-indaiatuba-2026-12-13": {
+    "_nota": "GPS do Portal colado nas ruas do OSM (mediana 0,1 m): o traçado foi desenhado sobre o mapa. Bom caso de controle: o matching não pode piorar o que já está certo.",
+    "6K": { "kmOficial": 6, "kmGpsHoje": 6.12 },
+    "10K": { "kmOficial": 10, "kmGpsHoje": 9.94, "retornoAprox": "km 3,19" },
+    "21K": { "kmOficial": 21.097, "kmGpsHoje": 20.84 },
+    "CAMINHADA 5K": { "semPercurso": true }
+  }
+}
