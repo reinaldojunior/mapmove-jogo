@@ -53,7 +53,7 @@ test('consumíveis vão para o bolso na largada, até o limite', () => {
   assert.equal(p.consumiveis.gel, 6);
   const r = L.usarConsumiveis(p, { gelMax: 5, prova: true });
   assert.equal(r.geis, 5);
-  assert.equal(r.perfil.consumiveis.gel, 1);
+  assert.equal(r.perfil.consumiveis.gel, 6); // continuam na mochila até serem usados
   assert.equal(r.isotonicos, 1); // fica na mochila até tomar
   const t = L.tomarIsotonico(r.perfil);
   assert.equal(t.ok, true);
@@ -67,4 +67,17 @@ test('conquistas da prova: medalha da distância e camiseta finisher, uma vez', 
   assert.deepEqual(L.conquistasDaProva(r.perfil, '10K').novas, []);
   assert.equal(L.estadoItem(r.perfil, 'medalha-10k'), 'conquistado');
   assert.equal(L.comprar(iniciante(1000), 'medalha-6k').erro, 'bloqueado');
+});
+
+test('gel comprado só sai da mochila quando é usado; sem gel, não gasta', () => {
+  let p = L.comprar(iniciante(200), 'kit-geis').perfil;
+  assert.equal(p.consumiveis.gel, 3);
+  const largada = L.usarConsumiveis(p, { gelMax: 5 });
+  assert.equal(largada.perfil.consumiveis.gel, 3); // largou e não usou: nada some
+  let g = L.gastarGel(largada.perfil);
+  assert.equal(g.ok, true);
+  assert.equal(g.perfil.consumiveis.gel, 2);
+  g = L.gastarGel(L.gastarGel(g.perfil).perfil);
+  assert.equal(g.perfil.consumiveis.gel, 0);
+  assert.equal(L.gastarGel(g.perfil).ok, false);
 });

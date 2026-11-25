@@ -2465,7 +2465,7 @@ function reiniciar() {
   const p = emEst(0);
   Object.assign(estado, {
     t: 0, tempoReal: 0, x: p.x, z: p.z, ang: p.ang, camAng: p.ang, s: 0, sMax: 0, d: 0, v: 0, y: 0, vy: 0,
-    agachado: 0, geis: 0, gelAtivo: 0, giroPend: 0, parado: 0, voltar: false, fase: 0, agua: 100, pontos: 0,
+    agachado: 0, geis: 0, geisComprados: 0, gelAtivo: 0, giroPend: 0, parado: 0, voltar: false, fase: 0, agua: 100, pontos: 0,
     energia: 100, energiaAvisada: false, passoIdx: 0, tropecos: 0, coposPegos: 0, paceBase: paceDoPerfil(),
     fatorTenis: 1, gelMax: R.GEL_MAX, relogio: false, isotonicos: 0, saltoAnim: 0, saltandoCarro: false, freio: 0,
     penal: 0, proximoSpawn: 70, proximoPosto: 1000, proximoKm: 1000, proximaTravessa: 140, tremor: 0, kmAvisado: 0
@@ -2514,7 +2514,8 @@ function desenharMinimapa() {
   const total = pista.total, s = Math.min(Math.max(estado.s, 0), total);
   const p = emEst(s), f = emEst(s + 12), b = emEst(s - 12);
   const dir = Math.atan2(f.x - b.x, f.z - b.z), cs = Math.cos(dir), sn = Math.sin(dir);
-  const loc = (q) => { const dx = q.x - p.x, dz = q.z - p.z; return [dx * cs - dz * sn, -(dx * sn + dz * cs)]; };
+  // frente da corrida para cima; a direita do corredor no 3D (vetor (-fz, fx) no plano x,z) fica à direita no mapa
+  const loc = (q) => { const dx = q.x - p.x, dz = q.z - p.z; return [dz * sn - dx * cs, -(dx * sn + dz * cs)]; };
   let alcance = 60;
   for (let d = 20; d <= 320 && s + d <= total + 30; d += 20) { const [x, y] = loc(emEst(s + d)); alcance = Math.max(alcance, Math.hypot(x, y)); }
   const alvo = Math.min(Math.max(118 / alcance, 0.18), 0.9); // px por metro
@@ -2763,7 +2764,8 @@ function aplicarEquipamento() {
   const ef = L.efeitos(perfil);
   const r = L.usarConsumiveis(perfil, { gelMax: R.GEL_MAX + ef.gelMax });
   perfil = r.perfil; salvarPerfil();
-  Object.assign(estado, { fatorTenis: ef.velocidade, gelMax: R.GEL_MAX + ef.gelMax, relogio: ef.distanciaAgua, geis: r.geis, isotonicos: r.isotonicos });
+  // geis = total no bolso; geisComprados = quantos deles vieram da mochila (os demais são da pista e somem no fim)
+  Object.assign(estado, { fatorTenis: ef.velocidade, gelMax: R.GEL_MAX + ef.gelMax, relogio: ef.distanciaAgua, geis: r.geis, geisComprados: r.geis, isotonicos: r.isotonicos });
   const extras = [r.geis ? `⚡ ${r.geis} ${r.geis > 1 ? 'géis' : 'gel'} no bolso` : '', r.isotonicos ? `🥤 ${r.isotonicos} ${r.isotonicos > 1 ? 'isotônicos' : 'isotônico'}` : '', ef.velocidade > 1 ? '👟 placa de carbono +3%' : ''].filter(Boolean);
   if (extras.length) setTimeout(() => aviso(extras.join(' · '), 'km', 2200), 5300);
 }
@@ -3076,6 +3078,13 @@ function beber() {
 function usarGel() {
   const s = estado;
   if (!s.geis || s.gelAtivo > 0) return;
+  // gasta primeiro o gel pego na pista (ele sumiria no fim); o comprado só sai da mochila quando é usado
+  const daPista = s.geis - (s.geisComprados || 0);
+  if (daPista <= 0 && s.geisComprados > 0) {
+    const r = L.gastarGel(perfil);
+    if (r.ok) { perfil = r.perfil; salvarPerfil(); }
+    s.geisComprados--;
+  }
   s.geis--;
   s.gelAtivo = R.GEL_DURACAO;
   s.energia = R.reporEnergia(s.energia, R.ENERGIA_GEL);

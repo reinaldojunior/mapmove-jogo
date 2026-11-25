@@ -96,12 +96,18 @@ export function efeitos(perfil) {
   return e;
 }
 
-// na largada: os géis comprados vão para o bolso (até o limite); os isotônicos ficam na mochila até serem tomados
+// na largada: os géis comprados vão para o bolso (até o limite), mas continuam na mochila até serem usados — gel
+// comprado e não usado nunca some (nem se a corrida for abandonada). Os isotônicos também ficam até serem tomados.
 export function usarConsumiveis(perfil, { gelMax }) {
-  const p = base(perfil), c = { ...p.consumiveis };
-  const geis = Math.min(gelMax, c.gel || 0);
-  c.gel = (c.gel || 0) - geis;
-  return { perfil: { ...p, consumiveis: c }, geis, isotonicos: c.isotonico || 0 };
+  const p = base(perfil), c = p.consumiveis;
+  return { perfil: p, geis: Math.min(gelMax, c.gel || 0), isotonicos: c.isotonico || 0 };
+}
+
+// usou na corrida um gel comprado (os pegos na pista não passam por aqui)
+export function gastarGel(perfil) {
+  const p = base(perfil), n = p.consumiveis.gel || 0;
+  if (n <= 0) return { perfil: p, ok: false };
+  return { perfil: { ...p, consumiveis: { ...p.consumiveis, gel: n - 1 } }, ok: true };
 }
 
 // tomou um isotônico durante a corrida (em prova ou treino)
