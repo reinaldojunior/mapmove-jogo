@@ -931,3 +931,93 @@ kbd {
   .inicio .jogar { height: 64px; }
   .inicio .jogar .lin { font-size: 38px; }
 }
+
+/* ─── ESCOLHA DA PROVA (identidade Mapmove Run) ─────────────────────────────────────────────────────────────────
+   Cabeçalho com voltar 3D e título na fonte do logo; cidades num seletor segmentado (ativa em ouro, como o JOGAR);
+   cartão 3D com o traçado real (GPS) e a altimetria da distância escolhida; distâncias como botões 3D (a escolhida
+   ganha aro ouro e sobe); botão ouro CORRER. Fundo: a cena do menu escurecida. Em tela baixa o mapa encolhe. */
+.tela.inicio[data-painel="provas"] { padding-left: 16px; padding-right: 16px; }
+.tela.inicio[data-painel="provas"]::before { background: linear-gradient(180deg, rgba(6, 20, 64, 0.35) 0%, rgba(6, 20, 64, 0.15) 30%, rgba(6, 20, 64, 0.55) 70%, rgba(6, 20, 64, 0.9) 100%); }
+.tela.inicio[data-painel="provas"] #btnPainelVoltar { display: none; }
+.inicio .painel.painel-provas { width: min(440px, 100%); min-height: 100%; display: none; grid-template-rows: auto auto auto auto auto auto 1fr; gap: 0; align-content: start; text-align: left; }
+.inicio[data-painel="provas"] .painel.painel-provas { display: grid; }
+.prova-topo { position: relative; display: flex; align-items: center; justify-content: center; min-height: 44px; margin-top: 6px; }
+.prova-voltar { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 12px; }
+.prova-voltar:active { transform: translateY(calc(-50% + 2px)); }
+.prova-voltar svg { width: 22px; height: 22px; }
+.painel-provas h2 { margin: 0; font-family: 'Barlow Condensed', 'Baloo 2', sans-serif; font-style: italic; font-weight: 900; font-size: clamp(26px, 7.7cqw, 30px); letter-spacing: 1px; line-height: 1; text-shadow: 0 3px 0 #0f2a78; }
+
+/* cidades */
+.painel-provas .provas-abas { display: grid; gap: 8px; margin: 14px 0 0; }
+.seg-cidades { display: flex; gap: 4px; height: 46px; padding: 4px; border-radius: 16px; background: rgba(6, 20, 64, 0.6); border: 1.5px solid rgba(255, 255, 255, 0.25); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35); }
+.seg-cidades button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 12px; background: none; color: #fff; font: inherit; font-weight: 800; font-size: 15px; cursor: pointer; text-shadow: 0 1.5px 0 rgba(0, 0, 0, 0.28); --pino-miolo: #1e6bff; }
+.seg-cidades button svg { width: 16px; height: 16px; color: #fff; }
+.seg-cidades button.ativa { color: #0b1d4a; text-shadow: none; background: linear-gradient(180deg, #ffd54a 0%, #ffbf1f 55%, #f2a400 100%); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.55), 0 3px 0 #b97a00; --pino-miolo: #ffd21f; }
+.seg-cidades button.ativa svg { color: #0b1d4a; }
+.painel-provas .provas-abas .linha-abas { display: flex; gap: 6px; flex-wrap: wrap; }
+.painel-provas .provas-abas .linha-abas button { padding: 4px 12px; border-radius: 999px; border: 1.5px solid rgba(255, 255, 255, 0.35); background: rgba(6, 20, 64, 0.55); color: #fff; font: inherit; font-weight: 800; font-size: 13px; }
+.painel-provas .provas-abas .linha-abas button.ativa { background: #fff; color: #0b1d4a; }
+
+/* cartão da prova */
+.cartao-prova { margin-top: 16px; padding: 10px; border-radius: 22px; }
+.mapa-prova { position: relative; height: clamp(120px, 23vh, 178px); border-radius: 15px; overflow: hidden; border: 1.5px solid rgba(0, 0, 0, 0.35); box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.45);
+  background: radial-gradient(circle at 70% 20%, rgba(80, 140, 255, 0.25), rgba(0, 0, 0, 0) 60%), repeating-linear-gradient(28deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 26px), repeating-linear-gradient(-62deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 34px), linear-gradient(180deg, #0c2a6e, #081c4e); }
+.mapa-prova canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.mapa-prova .selo-real { position: absolute; left: 8px; top: 8px; display: flex; align-items: center; gap: 4px; padding: 1px 9px 1px 6px; border-radius: 999px; font-size: 11px; font-weight: 800; background: rgba(6, 20, 64, 0.8); border: 1.5px solid rgba(255, 255, 255, 0.3); }
+.mapa-prova .selo-real svg { width: 13px; height: 13px; }
+.mapa-prova .legenda { position: absolute; right: 8px; bottom: 6px; display: flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 800; opacity: 0.85; }
+.mapa-prova .legenda i { display: inline-block; width: 9px; height: 9px; }
+.mapa-prova .legenda .bola { border-radius: 50%; background: #2fc15a; border: 1.5px solid #fff; }
+.mapa-prova .legenda .xadrez { margin-left: 6px; background: conic-gradient(#061440 25%, #fff 0 50%, #061440 0 75%, #fff 0) 0 0 / 4.5px 4.5px; border: 1px solid #fff; }
+.painel-provas .cartao-prova h3 { margin: 10px 4px 0; font-family: 'Barlow Condensed', 'Baloo 2', sans-serif; font-style: italic; font-weight: 900; font-size: clamp(24px, 7.6cqw, 30px); line-height: 0.95; letter-spacing: 0.5px; text-transform: uppercase; text-shadow: 0 2px 0 #0f2a78; }
+.painel-provas .prova-sub { margin: 4px 4px 0; font-size: 12.5px; font-weight: 700; opacity: 0.9; }
+.alti-prova { position: relative; height: clamp(38px, 6vh, 50px); margin: 8px 2px 0; border-radius: 10px; background: rgba(6, 20, 64, 0.45); overflow: hidden; }
+.alti-prova canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.alti-prova b { position: absolute; right: 8px; top: 3px; font-size: 11px; font-weight: 800; opacity: 0.92; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+.painel-provas .prova-dica { display: flex; align-items: center; gap: 6px; margin: 8px 4px 2px; font-size: 11.5px; font-weight: 700; opacity: 0.8; }
+.painel-provas .prova-dica svg { width: 14px; height: 14px; flex: none; }
+
+/* distâncias */
+.painel-provas .rot-dist { margin: clamp(14px, 3vh, 26px) 4px 0; font-size: 13px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.9; }
+.painel-provas .distancias { display: flex; gap: 10px; margin-top: 14px; }
+.painel-provas .distancias button {
+  position: relative; flex: 1; height: clamp(78px, 12vh, 100px); padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border: 2px solid var(--mm-noite); border-radius: 18px; color: #fff; font: inherit; cursor: pointer;
+  background: linear-gradient(180deg, #5594ff 0%, #2160e0 55%, #1747b8 100%);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.55), inset 0 -2px 0 rgba(0, 0, 0, 0.2), 0 3px 0 var(--mm-noite), 0 5px 10px rgba(0, 0, 0, 0.25);
+  transition: transform 0.12s; -webkit-tap-highlight-color: transparent; }
+.painel-provas .distancias button .km { font-family: 'Barlow Condensed', 'Baloo 2', sans-serif; font-style: italic; font-weight: 900; font-size: clamp(32px, 10cqw, 40px); line-height: 0.9; letter-spacing: 0.5px; text-shadow: 0 3px 0 #0f2a78; }
+.painel-provas .distancias button .sobe { display: flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 800; opacity: 0.92; }
+.painel-provas .distancias button .sobe svg { width: 14px; height: 14px; }
+.painel-provas .distancias button .rec { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); white-space: nowrap; display: flex; align-items: center; gap: 3px; padding: 0 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; line-height: 17px; color: #3a1d00; background: linear-gradient(180deg, #ffe066, #ffb800); border: 1.5px solid var(--mm-noite); }
+.painel-provas .distancias button .rec svg { width: 11px; height: 11px; }
+/* a escolhida: aro ouro, sobe um pouco e fica mais clara */
+.painel-provas .distancias button.sel { transform: translateY(-4px); background: linear-gradient(180deg, #6ea8ff 0%, #2f6ff0 55%, #1a4fc6 100%);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.6), 0 0 0 3px var(--mm-amarelo), 0 0 0 5px var(--mm-noite), 0 7px 0 var(--mm-noite), 0 12px 18px rgba(0, 0, 0, 0.3); }
+.painel-provas .distancias button:active { transform: translateY(1px); }
+
+/* CORRER: o mesmo ouro do JOGAR */
+.painel-provas .correr { align-self: end; justify-self: stretch; display: flex; align-items: center; justify-content: center; height: 64px; margin: 22px 8px 6px; padding: 0; border: 0; border-radius: 20px; color: #0b1d4a; font: inherit; cursor: pointer;
+  background: linear-gradient(180deg, #ffd54a 0%, #ffbf1f 55%, #f2a400 100%); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.55), 0 5px 0 #b97a00, 0 12px 22px rgba(0, 0, 0, 0.35); -webkit-tap-highlight-color: transparent; }
+.painel-provas .correr[hidden] { display: none; }
+.painel-provas .correr .lin { display: flex; align-items: center; gap: 10px; font-family: 'Barlow Condensed', 'Baloo 2', sans-serif; font-style: italic; font-weight: 900; font-size: 36px; letter-spacing: 2px; line-height: 0.9; }
+.painel-provas .correr .lin svg { width: 26px; height: 26px; }
+.painel-provas .correr:active { transform: translateY(4px); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.55), 0 1px 0 #b97a00; }
+.painel-provas .distancias button .rec svg { filter: brightness(0.25); }
+/* escolha da prova em tela baixa: mapa e botões menores, sem a dica; tudo cabe sem rolar */
+@media (max-height: 700px) {
+  .prova-topo { margin-top: 0; min-height: 40px; }
+  .painel-provas .provas-abas { margin-top: 8px; }
+  .seg-cidades { height: 40px; }
+  .cartao-prova { margin-top: 10px; padding: 8px; }
+  .mapa-prova { height: 104px; }
+  .painel-provas .cartao-prova h3 { margin-top: 7px; font-size: 22px; }
+  .alti-prova { height: 34px; margin-top: 6px; }
+  .painel-provas .prova-dica { display: none; }
+  .painel-provas .rot-dist { margin-top: 10px; }
+  .painel-provas .distancias { margin-top: 12px; }
+  .painel-provas .distancias button { height: 68px; }
+  .painel-provas .distancias button .km { font-size: 30px; }
+  .painel-provas .correr { height: 56px; margin-top: 14px; }
+  .painel-provas .correr .lin { font-size: 32px; }
+}

@@ -3435,8 +3435,9 @@ function mostrarAbasProvas() {
   cidadeEscolhida ||= atual.cidade;
   const cidades = [...new Set(PROVAS.map((p) => p.cidade))];
   const daCidade = PROVAS.filter((p) => p.cidade === cidadeEscolhida);
-  box.innerHTML = `<small>📍 Cidade</small><div class="linha-abas">${cidades.map((c) => `<button data-cidade="${c}" class="${c === cidadeEscolhida ? 'ativa' : ''}">${c}</button>`).join('')}</div>
-    <small>🏁 Provas</small><div class="linha-abas">${daCidade.map((p) => `<button data-slug="${p.slug}" class="${p.slug === PROVA_SLUG ? 'ativa' : ''}">${p.curto}</button>`).join('')}</div>`;
+  // cidades num seletor segmentado; a fila de provas só aparece quando a cidade tem mais de uma
+  box.innerHTML = `<div class="seg-cidades">${cidades.map((c) => `<button data-cidade="${c}" class="${c === cidadeEscolhida ? 'ativa' : ''}"><svg><use href="#i-pino-simples"/></svg>${c}</button>`).join('')}</div>
+    ${daCidade.length > 1 ? `<div class="linha-abas">${daCidade.map((p) => `<button data-slug="${p.slug}" class="${p.slug === PROVA_SLUG ? 'ativa' : ''}">${p.curto}</button>`).join('')}</div>` : ''}`;
   for (const b of box.querySelectorAll('button[data-cidade]')) b.addEventListener('click', () => {
     if (b.dataset.cidade === cidadeEscolhida) return;
     cidadeEscolhida = b.dataset.cidade;
@@ -3454,6 +3455,7 @@ function trocarProva(slug) {
     dadosProva = null;
     $('#provaInfo').textContent = 'Carregando o percurso…';
     $('#provaDistancias').innerHTML = '';
+    limparPreviaProva();
     carregarProva();
   }
 }
@@ -3471,21 +3473,94 @@ async function carregarProva() {
     for (const [rot, v] of Object.entries(c.percurso_3d?.por || {})) marcadores[rot.toUpperCase()] = v.pontos || [];
     const nome = NOME_NO_JOGO[PROVA_SLUG] || c.nome;
     dadosProva = { nome, distancias: dist, marcadores };
-    $('#provaNome').textContent = `🏅 ${nome}`;
+    $('#provaNome').textContent = nome;
     $('#jogarProva').textContent = `${nome} · ${PROVAS.find((p) => p.slug === PROVA_SLUG)?.cidade}`;
-    $('#provaInfo').textContent = `Percurso e altimetria reais de ${c.cidade}. 1 km leva 1 minuto a 6:00/km.`;
+    $('#provaInfo').textContent = `${c.cidade} · percurso e altimetria reais`;
     box.innerHTML = '';
+    // distância selecionada: a última usada nesta prova (só neste aparelho) ou a mais longa
+    let lembrada = null;
+    try { lembrada = localStorage.getItem(`mapmove-dist-${PROVA_SLUG}`); } catch { /* sem storage */ }
+    const inicial = dist.find((d) => d.rotulo === lembrada) || dist[dist.length - 1];
     for (const d of dist) {
       const b = document.createElement('button');
+      b.dataset.rotulo = d.rotulo;
       const rec = lerRecorde(`mapmove-recorde-${PROVA_SLUG}-${d.rotulo}`);
-      b.innerHTML = `${d.rotulo}<small>↗ ${d.subida_m ?? '?'} m${rec ? ` · 🏅 ${R.formatarTempo(rec)}` : ''}</small>`;
-      b.addEventListener('click', () => abrirClima({ tipo: 'prova', distancia: d }));
+      const recValido = typeof rec === 'number' && rec > 0; // selo só com recorde de verdade nesta distância
+      b.innerHTML = `${recValido ? `<span class="rec"><svg><use href="#i-estrela"/></svg>${R.formatarTempo(rec)}</span>` : ''}<span class="km">${d.rotulo}</span><span class="sobe"><svg><use href="#i-montanha"/></svg>${d.subida_m ?? '?'} m</span>`;
+      b.addEventListener('click', () => selecionarDistancia(d));
       box.appendChild(b);
     }
+    selecionarDistancia(inicial);
   } catch {
     $('#provaInfo').textContent = 'Não foi possível carregar o percurso agora. Tente de novo mais tarde.';
   }
 }
+
+// ─── PRÉVIA DA PROVA: traçado real (GPS) e altimetria da distância escolhida ───
+let distSelecionada = null;
+function selecionarDistancia(d) {
+  distSelecionada = d;
+  try { localStorage.setItem(`mapmove-dist-${PROVA_SLUG}`, d.rotulo); } catch { /* sem storage */ }
+  for (const b of $('#provaDistancias').children) b.classList.toggle('sel', b.dataset.rotulo === d.rotulo);
+  desenharMapaProva(dadosProva.distancias, d);
+  desenharAltiProva(d);
+  $('#provaAltiRot').textContent = `Altimetria · ${d.rotulo} · ↗ ${d.subida_m ?? '?'} m`;
+  $('#correrTxt').textContent = `CORRER ${d.rotulo}`;
+  $('#btnCorrer').hidden = false;
+}
+function limparPreviaProva() {
+  distSelecionada = null;
+  for (const id of ['#provaMapa', '#provaAlti']) { const c = $(id); c.getContext('2d').clearRect(0, 0, c.width, c.height); }
+  $('#provaAltiRot').textContent = '';
+  $('#btnCorrer').hidden = true;
+}
+// mapa: projeção simples (lon encolhida pelo cosseno da latitude), todas as distâncias no mesmo enquadramento;
+// as outras em traço claro, a escolhida em branco com brilho azul, largada (verde) e chegada (xadrez)
+function desenharMapaProva(todas, sel) {
+  const cv = $('#provaMapa'), g = cv.getContext('2d'), W = cv.width, H = cv.height, pad = 30, padV = 52; // em cima o selo, embaixo a legenda
+  g.clearRect(0, 0, W, H);
+  const pts = todas.flatMap((d) => d.percurso);
+  const lat0 = pts.reduce((a, p) => a + p[0], 0) / pts.length, k = Math.cos((lat0 * Math.PI) / 180);
+  const xs = pts.map((p) => p[1] * k), ys = pts.map((p) => -p[0]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const esc = Math.min((W - 2 * pad) / (maxX - minX || 1), (H - 2 * padV) / (maxY - minY || 1));
+  const ox = (W - (maxX - minX) * esc) / 2, oy = (H - (maxY - minY) * esc) / 2;
+  const pr = (p) => [(p[1] * k - minX) * esc + ox, (-p[0] - minY) * esc + oy];
+  const linha = (d) => { g.beginPath(); d.percurso.forEach((p, i) => { const [x, y] = pr(p); i ? g.lineTo(x, y) : g.moveTo(x, y); }); };
+  g.lineJoin = g.lineCap = 'round';
+  for (const d of todas) if (d !== sel) { linha(d); g.strokeStyle = 'rgba(255,255,255,0.2)'; g.lineWidth = 5; g.stroke(); }
+  linha(sel); g.strokeStyle = 'rgba(79,180,255,0.55)'; g.lineWidth = 16; g.filter = 'blur(5px)'; g.stroke(); g.filter = 'none';
+  linha(sel); g.strokeStyle = '#fff'; g.lineWidth = 6; g.stroke();
+  const [ix, iy] = pr(sel.percurso[0]), [fx, fy] = pr(sel.percurso[sel.percurso.length - 1]);
+  const xadrez = (x, y) => {
+    g.fillStyle = '#fff'; g.fillRect(x - 15, y - 15, 30, 30);
+    g.fillStyle = '#061440'; for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) if ((a + b) % 2 === 0) g.fillRect(x - 15 + a * 7.5, y - 15 + b * 7.5, 7.5, 7.5);
+    g.strokeStyle = '#061440'; g.lineWidth = 3; g.strokeRect(x - 15, y - 15, 30, 30);
+  };
+  // circuito (largada e chegada no mesmo lugar): a bandeira fica ao lado da bolinha
+  const junto = Math.hypot(fx - ix, fy - iy) < 30;
+  xadrez(junto ? ix + 30 : fx, junto ? iy - 18 : fy);
+  g.beginPath(); g.arc(ix, iy, 13, 0, Math.PI * 2); g.fillStyle = '#2fc15a'; g.fill(); g.lineWidth = 5; g.strokeStyle = '#fff'; g.stroke();
+}
+// altimetria da distância escolhida: área com degradê azul e linha clara
+function desenharAltiProva(d) {
+  const cv = $('#provaAlti'), g = cv.getContext('2d'), W = cv.width, H = cv.height;
+  g.clearRect(0, 0, W, H);
+  const alts = d.percurso.map((p) => p[2]).filter(Number.isFinite);
+  if (alts.length < 2) return;
+  const n = 90, vals = Array.from({ length: n }, (_, i) => alts[Math.floor((i / (n - 1)) * (alts.length - 1))]);
+  const mn = Math.min(...vals), mx = Math.max(...vals), amp = Math.max(mx - mn, 8); // trecho plano não vira serrote
+  const topo = 30, y = (v) => H - 6 - ((v - mn) / amp) * (H - topo - 6);
+  g.beginPath(); g.moveTo(0, H);
+  vals.forEach((v, i) => g.lineTo((i / (n - 1)) * W, y(v)));
+  g.lineTo(W, H); g.closePath();
+  const gr = g.createLinearGradient(0, topo, 0, H); gr.addColorStop(0, 'rgba(79,180,255,0.85)'); gr.addColorStop(1, 'rgba(30,107,255,0.15)');
+  g.fillStyle = gr; g.fill();
+  g.beginPath(); vals.forEach((v, i) => { const x = (i / (n - 1)) * W; i ? g.lineTo(x, y(v)) : g.moveTo(x, y(v)); });
+  g.strokeStyle = '#bfe4ff'; g.lineWidth = 4; g.lineJoin = 'round'; g.stroke();
+}
+$('#btnCorrer').addEventListener('click', () => { if (distSelecionada) abrirClima({ tipo: 'prova', distancia: distSelecionada }); });
+$('#btnProvasVoltar').addEventListener('click', () => abrirPainel(null));
 
 // ─── PERFIL DO CORREDOR (salvo no aparelho; conta e ranking vêm depois) ────────
 const CHAVE_PERFIL = 'mapmove-perfil-v1';
