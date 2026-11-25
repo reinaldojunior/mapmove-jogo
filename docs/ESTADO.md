@@ -3,7 +3,7 @@
 Resumo para quem continuar o projeto (pessoa ou Claude em outra conta/sessão). Leia também o `CLAUDE.md`
 (regras de personagens 3D e de jogo) e o `docs/ideias.md` (ideias guardadas).
 
-Atualizado em 24/11/2026.
+Atualizado em 25/11/2026.
 
 ## O que é
 
@@ -74,6 +74,12 @@ Personagens sempre anônimos (nada de rosto de pessoa real) e sem marcas.
   folgas de ~1 m no canto interno de alguns cruzamentos (21K km 1,85; 42K km 8,6, 20,6 e 21,8), retornos fechados
   a conferir jogando (21K km 19,3; 42K km 39,1), câmera afastada atravessando o tabuleiro da ponte.
   Para publicar: conferir, juntar o ramo na `main` e dar push.
+- **Conferência em 25/11/2026** (sessão Claude, ramo `claude/sharp-hamilton-08y1qi` = `main` + `correcao-pista-sorocaba`,
+  sem conflito): 71 testes passam, build ok. Medidor: **0 m² de rua sobre rua e de calçada sobre rua** nas 5 distâncias;
+  viadutos da ponte só onde esperado; sobram só as pendências já conhecidas — corredor fora do asfalto em 5 m no 21K
+  (km 1,85) e 15 m no 42K (km 8,61, 20,56, 21,78), 2,5–2,8 m² de grama escondida sob a rua em Sorocaba e 0,3 m² de
+  calçada dobrada no 10K de Indaiatuba (km 3,19). Por causa do "fora do asfalto", `--falhar` ainda sai com código 1.
+  O medidor precisa do host `ssfsxdmzbubvygctdjgf.supabase.co` liberado na rede (ambiente de nuvem "mapmove-jogo").
 
 ## Próximos passos sugeridos
 
