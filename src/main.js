@@ -202,8 +202,7 @@ const texAsfalto = textura(512, 512, (g, w, h) => {
     g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
   }
   const px = (x) => ((x + 4) / 8) * w;
-  g.fillStyle = '#1e88ff';
-  for (const x of [-3.6, 3.6]) g.fillRect(px(x) - 7, 0, 14, h);
+  // (a linha azul da prova não fica mais na textura: é uma faixa própria por baixo do asfalto, ver BORDA_AZUL)
   g.fillStyle = 'rgba(255,255,255,0.85)';
   for (let y = 0; y < h; y += 256) g.fillRect(px(0) - 5, y + 30, 10, 140);
 });
@@ -217,8 +216,7 @@ function texAsfaltoFaixas(azul) {
     }
     for (let i = 0; i < 4000; i++) { const c = 55 + Math.random() * 50; g.fillStyle = `rgba(${c},${c},${c + 6},0.5)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
     const px = (x) => ((x + 4) / 8) * w;
-    if (azul) { g.fillStyle = '#1e88ff'; for (const x of [-3.6, 3.6]) g.fillRect(px(x) - 7, 0, 14, h); }
-    else { g.fillStyle = 'rgba(255,255,255,0.8)'; for (const x of [-3.8, 3.8]) g.fillRect(px(x) - 4, 0, 8, h); }
+    if (!azul) { g.fillStyle = 'rgba(255,255,255,0.8)'; for (const x of [-3.8, 3.8]) g.fillRect(px(x) - 4, 0, 8, h); }
     g.fillStyle = 'rgba(255,255,255,0.85)';
     for (const x of [-1.33, 1.33]) for (let y = 0; y < h; y += 256) g.fillRect(px(x) - 5, y + 30, 10, 140);
   });
@@ -921,7 +919,7 @@ const corInclinacao = (inc, out) => {
 
 // faixa (rua, calçada, grama...) entre os afastamentos d0..d1 ao longo das amostras; a planta (com os limites que
 // evitam invadir outro trecho do percurso) vem de planoFita em src/faixas.js, a mesma que o checador usa
-function fita(amostras, d0, d1, material, { vCada = 8, dy = 0, inclinacao = false, semLimite = false } = {}) {
+function fita(amostras, d0, d1, material, { vCada = 8, dy = 0, inclinacao = false, semLimite = false, uDe = null } = {}) {
   const n = amostras.length;
   const { xz, u, ativo } = planoFita(amostras, d0, d1, { semLimite });
   const pos = new Float32Array(n * 2 * 3), uv = new Float32Array(n * 2 * 2), cor = inclinacao ? new Float32Array(n * 2 * 3) : null;
@@ -932,7 +930,9 @@ function fita(amostras, d0, d1, material, { vCada = 8, dy = 0, inclinacao = fals
     for (let k = 0; k < 2; k++) {
       const j = i * 2 + k;
       pos[j * 3] = xz[i * 4 + k * 2]; pos[j * 3 + 1] = a.y + dy; pos[j * 3 + 2] = xz[i * 4 + k * 2 + 1];
-      uv[j * 2] = u[j]; uv[j * 2 + 1] = a.s / vCada;
+      // uDe = [a, b]: a textura vai de a até b (rua desenhada em partes continua com o tracejado no lugar)
+      uv[j * 2] = uDe && typeof d0 === 'number' && typeof d1 === 'number' ? (d0 + u[j] * (d1 - d0) - uDe[0]) / (uDe[1] - uDe[0]) : u[j];
+      uv[j * 2 + 1] = a.s / vCada;
       if (cor) { cor[j * 3] = c.r; cor[j * 3 + 1] = c.g; cor[j * 3 + 2] = c.b; }
     }
   }
@@ -952,6 +952,16 @@ function fita(amostras, d0, d1, material, { vCada = 8, dy = 0, inclinacao = fals
 // nos zigue-zagues a grama de um trecho cobre a rua de outro: rua e calçada sempre por cima
 // o polygonOffset com fator alto cobria a parte de baixo dos carros e do corredor (pareciam afundados no asfalto)
 const matRua = new THREE.MeshStandardMaterial({ map: texAsfalto, roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
+// linha azul da prova: faixa própria logo por baixo do asfalto (polygonOffset menor que o da rua). A rua é desenhada
+// em partes que deixam livre a faixa da borda; onde a rua de outra passagem do percurso passa por cima (retornos,
+// largada dentro de um retorno, ida e volta encostadas), o asfalto dela cobre a linha e não sobra "borda no meio da rua"
+const BORDA_AZUL = [3.48, 3.72];
+const matBordaAzul = new THREE.MeshStandardMaterial({ color: 0x1e88ff, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -3 });
+function ruaComBorda(amostras, grupo, opts) {
+  const [b0, b1] = BORDA_AZUL, M = R.MEIA_RUA, o = { ...opts, uDe: [-M, M] };
+  const partes = [[-b0, b0, matRua, o], [b1, M, matRua, o], [-M, -b1, matRua, o], [b0, b1, matBordaAzul, {}], [-b1, -b0, matBordaAzul, {}]];
+  for (const [d0, d1, m, op] of partes) grupo.add(fita(amostras, d0, d1, m, op));
+}
 const matCalcada = new THREE.MeshStandardMaterial({ map: texCalcada, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
 const matGrama = new THREE.MeshStandardMaterial({ map: texGrama, roughness: 1, depthWrite: false });
 const texChao = texGramado.clone(); texChao.repeat.set(9000 / 9, 9000 / 9);
@@ -990,6 +1000,7 @@ function construirVisual() {
   visual.userData.amostras = amostras;
   visual.userData.grama = [];
   for (const [d0, d1, tipo, opts] of faixasComuns(false)) {
+    if (tipo === 'rua') { ruaComBorda(amostras, visual, opts); continue; }
     const f = fita(amostras, d0, d1, MATS[tipo], opts);
     if (tipo === 'grama') { f.renderOrder = -1; visual.userData.grama.push(f); }
     visual.add(f);
@@ -1842,7 +1853,14 @@ function construirAvenidas() {
   const ocupado = new Map();
   for (const t of duplas) for (const sub of amostrasAvenida(t, amostras)) {
     const { lista, okMeio } = faixasAvenida(t, sub, pista, ocupado);
-    for (const [f0, f1, tipo, opts] of lista) grupo.add(fita(sub, f0, f1, MATS[tipo], opts));
+    for (const [f0, f1, tipo, opts] of lista) {
+      if (tipo === 'ruaFaixas') { // mesma fresta da borda azul da rua comum
+        const [b0, b1] = BORDA_AZUL, M = R.MEIA_RUA, o = { ...opts, uDe: [-M, M] };
+        for (const [d0, d1] of [[-b0, b0], [b1, M], [-M, -b1]]) grupo.add(fita(sub, d0, d1, matRuaFaixas, o));
+        continue;
+      }
+      grupo.add(fita(sub, f0, f1, MATS[tipo], opts));
+    }
     const L = t.lado, M = R.MEIA_RUA, OUTRA = 4.2;
     // postes de luz no meio do canteiro, a cada ~40 m
     const modelo = PROPS.poste?.modelo;
