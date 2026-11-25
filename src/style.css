@@ -740,106 +740,99 @@ kbd {
   .inicio .creditos { font-size: 9px; }
 }
 
-/* ─── HUD compacto estilo jogo mobile: duas linhas finas no alto (jogador, distância, tempo, pausa/ajustes;
-   colocação à esquerda, energia/água e minimapa à direita), detalhes em pílulas pequenas translúcidas, centro livre ─── */
+/* ─── HUD limpo: o nível/XP é a peça principal (canto superior esquerdo, cresce durante a corrida);
+   distância, tempo e colocação numa barra só; energia e água pequenas à direita; o resto em texto miúdo sem caixa ─── */
 :root {
-  --hud-fundo: linear-gradient(180deg, rgba(24, 56, 128, 0.88), rgba(10, 28, 74, 0.88));
+  --hud-fundo: linear-gradient(180deg, rgba(24, 56, 128, 0.86), rgba(10, 28, 74, 0.86));
   --hud-borda: rgba(255, 255, 255, 0.3);
-  --hud-sombra: 0 2px 0 rgba(4, 14, 40, 0.5), 0 4px 10px rgba(0, 0, 0, 0.22);
-  --hud-topo: max(6px, env(safe-area-inset-top));
+  --hud-sombra: 0 2px 0 rgba(4, 14, 40, 0.45), 0 4px 10px rgba(0, 0, 0, 0.2);
+  --hud-topo: max(8px, env(safe-area-inset-top));
+  --botao-hud: 36px;
+  --botao-jogo: 68px;
 }
 #hud { display: block; padding: 0; inset: 0; }
-#hud .pilula {
-  background: var(--hud-fundo);
-  border: 1.5px solid var(--hud-borda);
-  box-shadow: var(--hud-sombra);
-  backdrop-filter: none;
-  font-weight: 800;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
-}
+#hud .pilula { background: var(--hud-fundo); border: 1.5px solid var(--hud-borda); box-shadow: var(--hud-sombra); backdrop-filter: none; font-weight: 800; }
+#hud b, #hud small, #hud em { text-shadow: 0 1px 1px rgba(0, 0, 0, 0.45); }
 
-/* linha 1 */
-.hud-l1 {
-  position: absolute; top: var(--hud-topo); left: 6px; right: 6px;
-  display: flex; align-items: center; gap: 5px;
-  z-index: 3;
-}
+/* linha 1: nível e XP em destaque + pausa e ajustes */
+.hud-l1 { position: absolute; top: var(--hud-topo); left: 8px; right: 8px; z-index: 3; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .hud-jogador {
-  flex: none;
-  display: flex; align-items: center;
-  padding: 2px 9px 2px 2px;
+  display: flex; align-items: center; gap: 8px;
+  width: min(62%, 250px);
+  padding: 4px 12px 4px 4px;
   border-radius: 999px;
   background: var(--hud-fundo);
-  border: 1.5px solid var(--hud-borda);
+  border: 2px solid rgba(255, 210, 31, 0.75);
   box-shadow: var(--hud-sombra);
 }
 .hud-jogador .avatar {
   flex: none; display: grid; place-items: center;
-  width: 32px; height: 32px; margin-right: 5px;
+  width: 46px; height: 46px;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #7fd0ff, #1e88ff 70%);
-  border: 2px solid #fff;
-  font-size: 18px; line-height: 1; overflow: hidden;
+  border: 2.5px solid #fff;
+  font-size: 26px; line-height: 1; overflow: hidden;
 }
 .hud-jogador .avatar img { width: 100%; height: 100%; object-fit: cover; }
-.hud-jogador .txt { display: flex; flex-direction: column; min-width: 0; line-height: 1; }
-.hud-jogador b { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hud-jogador small { font-size: 10px; font-weight: 800; color: var(--amarelo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hud-jogador .xp { display: block; width: 100%; min-width: 46px; height: 3px; margin-top: 2px; border-radius: 999px; background: rgba(0, 0, 0, 0.4); overflow: hidden; }
-.hud-jogador .xp i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #ffe066, #ffb800); }
-#hud .pilula.chip { flex: none; height: 28px; padding: 0 8px 0 6px; gap: 3px; font-size: 13.5px; }
-#hud .pilula.chip .ico { font-size: 13px; }
-#hud .pilula.chip small { font-size: 10px; opacity: 0.75; }
-#hud .pilula.distancia { flex: 0 1 auto; min-width: 0; overflow: hidden; }
-.hud-botoes { position: relative; margin-left: auto; display: flex; gap: 4px; }
+.hud-jogador .txt { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; line-height: 1; }
+.hud-jogador .linha-nivel { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.hud-jogador .linha-nivel b { font-size: 15px; color: var(--amarelo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-jogador .linha-nivel em { font-style: normal; font-weight: 800; font-size: 12px; color: #9dffb0; white-space: nowrap; }
+.hud-jogador .xp { position: relative; display: block; height: 9px; border-radius: 999px; background: rgba(0, 0, 0, 0.45); overflow: hidden; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5); }
+.hud-jogador .xp i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: inherit; background: linear-gradient(180deg, #ffe680, #ffb800); }
+.hud-jogador .xp i.ganho { background: linear-gradient(180deg, #b8ff9e, #34c759); transition: width 0.4s; }
+.hud-jogador small { font-size: 11px; font-weight: 700; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud-jogador.subiu { animation: subiuNivel 1.2s ease-in-out 3; }
+@keyframes subiuNivel { 50% { box-shadow: 0 0 0 4px var(--amarelo), var(--hud-sombra); } }
+.hud-botoes { position: relative; flex: none; display: flex; gap: 6px; }
 #hud .hud-botoes .pilula.botao {
   display: grid; place-items: center;
-  width: 30px; height: 30px; padding: 0;
-  border-radius: 10px;
-  font-size: 13px;
+  width: var(--botao-hud); height: var(--botao-hud); padding: 0;
+  border-radius: 50%;
+  font-size: 15px;
   background: linear-gradient(180deg, #2f6fe0, #1747a8);
+  border: 2px solid rgba(255, 255, 255, 0.85);
   pointer-events: auto;
 }
-.menu-config {
-  position: absolute; top: 36px; right: 0;
-  display: flex; gap: 4px; padding: 4px;
-  border-radius: 12px;
-  background: rgba(10, 28, 74, 0.8);
-  pointer-events: auto;
-}
+.menu-config { position: absolute; top: calc(var(--botao-hud) + 6px); right: 0; display: flex; gap: 6px; padding: 5px; border-radius: 999px; background: rgba(10, 28, 74, 0.85); pointer-events: auto; }
 .menu-config[hidden] { display: none; }
 
-/* coluna da esquerda: colocação e detalhes pequenos */
-#hud .hud-esq, #hud .hud-dir {
-  position: absolute; top: calc(var(--hud-topo) + 42px);
-  display: flex; flex-direction: column; gap: 4px;
+/* esquerda: barra única com distância, tempo e colocação; detalhes em texto miúdo */
+#hud .hud-esq, #hud .hud-dir { position: absolute; top: calc(var(--hud-topo) + 62px); display: flex; flex-direction: column; gap: 5px; }
+#hud .hud-esq { left: 8px; align-items: flex-start; }
+#hud .hud-dir { right: 8px; align-items: flex-end; top: calc(var(--hud-topo) + 46px); }
+.barra-info {
+  display: flex; align-items: center;
+  height: 30px; padding: 0 4px;
+  border-radius: 999px;
+  background: var(--hud-fundo);
+  border: 1.5px solid var(--hud-borda);
+  box-shadow: var(--hud-sombra);
+  white-space: nowrap;
 }
-#hud .hud-esq { left: 6px; align-items: flex-start; }
-#hud .hud-dir { right: 6px; align-items: flex-end; }
-.hud-info { display: flex; flex-wrap: wrap; gap: 3px; max-width: 210px; }
-#hud .pilula.mini {
-  font-size: 10.5px; padding: 0 6px 0 4px; gap: 2px; height: 18px;
-  border-width: 1px; box-shadow: none;
-  background: rgba(10, 28, 74, 0.5);
-}
-#hud .pilula.mini .ico { font-size: 10px; }
-#hud .pilula.mini small { font-size: 9px; }
-#hud .pilula.mini.penal.marcou { background: linear-gradient(180deg, #e0442f, #a8231a); }
-#hud .pilula.inclinacao.sobe { background: rgba(200, 70, 30, 0.75); }
-#hud .pilula.inclinacao.desce { background: rgba(20, 110, 210, 0.7); }
-#hud .pilula.fantasma { background: linear-gradient(180deg, #8a6ad8, #5c3fae); }
-#hud #ponto { max-width: 170px; padding: 4px 9px 4px 6px; }
+.barra-info .seg { display: flex; align-items: baseline; gap: 3px; padding: 0 8px; font-size: 14px; }
+.barra-info .seg + .seg { border-left: 1px solid rgba(255, 255, 255, 0.22); }
+.barra-info .seg[hidden] { display: none; }
+.barra-info .ico { font-size: 12px; }
+.barra-info small { font-size: 10px; font-weight: 700; opacity: 0.7; }
+.linha-detalhe { display: flex; flex-wrap: wrap; gap: 2px 10px; padding-left: 6px; max-width: 230px; font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.92); }
+.linha-detalhe b { font-weight: 800; }
+.linha-detalhe span { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7); }
+.linha-detalhe .inclinacao.sobe b { color: #ffb38a; }
+.linha-detalhe .inclinacao.desce b { color: #9fd8ff; }
+.linha-detalhe [hidden] { display: none; }
+#hud .alerta-penal { display: none; height: 24px; padding: 0 9px 0 6px; gap: 3px; font-size: 13px; background: linear-gradient(180deg, #e0442f, #a8231a); }
+#hud .alerta-penal.marcou { display: flex; }
+#hud .pilula.fantasma { height: 24px; font-size: 12px; padding: 0 9px; background: linear-gradient(180deg, #8a6ad8, #5c3fae); }
+#hud #ponto { max-width: 180px; padding: 4px 9px 4px 6px; }
 #hud #ponto .ico { font-size: 18px; }
 #hud #ponto b { font-size: 13px; }
 
-/* coluna da direita: energia e água compactas, minimapa pequeno */
-.hud-recursos { display: flex; gap: 4px; }
-#hud .pilula.recurso { height: 30px; padding: 0 7px 0 3px; gap: 4px; border-radius: 12px; }
-#hud .pilula.recurso .ico { font-size: 16px; line-height: 1; }
-#hud .recurso.energia .ico { filter: drop-shadow(0 1px 0 #8a5a00); }
-#hud .recurso .dado { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; line-height: 1; }
-#hud .recurso b { font-size: 12px; min-width: 0; text-align: left; }
-#hud .recurso .barra { width: 38px; height: 4px; background: rgba(0, 0, 0, 0.4); }
+/* direita: energia e água do mesmo tamanho, e o minimapa pequeno embaixo */
+#hud .pilula.recurso { width: 86px; height: 26px; padding: 0 7px 0 4px; gap: 4px; border-radius: 999px; }
+#hud .pilula.recurso .ico { font-size: 14px; }
+#hud .recurso b { font-size: 12px; min-width: 3.3ch; }
+#hud .recurso .barra { flex: 1; width: auto; height: 5px; background: rgba(0, 0, 0, 0.4); }
 #hud .recurso.energia .barra i { background: linear-gradient(90deg, #8ee84f, #34c759); }
 #hud .recurso.agua .barra i { background: linear-gradient(90deg, #6fd3ff, #1e88ff); }
 #hud .recurso.medio .barra i { background: linear-gradient(90deg, #ffe066, #ffb800); }
@@ -847,51 +840,34 @@ kbd {
 #hud .recurso.baixa b { color: #ffb4a8; }
 #hud .pilula.recurso.baixa { animation: alertaRecurso 1s ease-in-out infinite; }
 @keyframes alertaRecurso { 50% { box-shadow: 0 0 0 2px #ff4b3b, var(--hud-sombra); } }
-@media (prefers-reduced-motion: reduce) { #hud .pilula.recurso.baixa { animation: none; box-shadow: 0 0 0 2px #ff4b3b; } }
-#hud #mapa { padding: 3px; gap: 2px; background: rgba(8, 22, 56, 0.55); border: 1.5px solid var(--hud-borda); border-radius: 12px; }
-#palco #hud #minimapa { width: 66px; height: 66px; }
-#palco #hud #perfil { width: 66px; height: 16px; }
+@media (prefers-reduced-motion: reduce) { #hud .pilula.recurso.baixa { animation: none; box-shadow: 0 0 0 2px #ff4b3b; } .hud-jogador.subiu { animation: none; } }
+#hud #mapa { padding: 3px; gap: 2px; background: rgba(8, 22, 56, 0.5); border: 1.5px solid var(--hud-borda); border-radius: 12px; }
+#palco #hud #minimapa { width: 78px; height: 78px; }
+#palco #hud #perfil { width: 78px; height: 18px; }
 
-/* botões embaixo: gel discreto (círculo escuro, raio amarelo) e pulo grande */
-.gel {
-  width: 64px; height: 64px;
-  background: radial-gradient(circle at 35% 30%, rgba(70, 86, 120, 0.75), rgba(20, 28, 48, 0.75));
-  border: 3px solid rgba(255, 255, 255, 0.8);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-.gel .ico { font-size: 30px; margin-top: 0; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5)); }
-.gel b {
-  bottom: -4px; right: -4px;
-  display: grid; place-items: center;
-  min-width: 24px; height: 24px; padding: 0 4px;
-  border-radius: 999px;
-  background: #13306f; color: #fff;
-  border: 2px solid #fff;
-  font-size: 13px;
-}
-.gel #gelAnel { mask: radial-gradient(circle, transparent 33px, #000 34px); -webkit-mask: radial-gradient(circle, transparent 33px, #000 34px); }
-.pular {
-  right: 14px;
+/* botões de baixo do mesmo tamanho e da mesma família: gel (escuro, raio amarelo) e pulo (azul) */
+.gel, .pular {
   bottom: max(120px, calc(env(safe-area-inset-bottom) + 100px));
-  width: 74px; height: 74px;
-  color: #fff;
-  background: radial-gradient(circle at 35% 30%, #3f7be6, #13379a 70%);
+  width: var(--botao-jogo); height: var(--botao-jogo);
   border: 3px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 4px 0 #0b1f5c, 0 8px 18px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 0 rgba(4, 14, 40, 0.6), 0 8px 16px rgba(0, 0, 0, 0.28);
 }
-.pular svg { width: 38px; height: 38px; }
+.gel { left: 16px; background: radial-gradient(circle at 35% 30%, rgba(74, 90, 126, 0.85), rgba(18, 26, 46, 0.85)); }
+.gel .ico { font-size: 30px; margin-top: 0; }
+.gel b { bottom: -4px; right: -4px; display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 4px; border-radius: 999px; background: #13306f; color: #fff; border: 2px solid #fff; font-size: 13px; }
+.gel #gelAnel { mask: radial-gradient(circle, transparent 35px, #000 36px); -webkit-mask: radial-gradient(circle, transparent 35px, #000 36px); }
+.pular { right: 16px; color: #fff; background: radial-gradient(circle at 35% 30%, #3f7be6, #13379a 70%); }
+.pular svg { width: 34px; height: 34px; }
 .pular:active, .gel:active { transform: translateY(3px); }
-.iso { left: 16px; bottom: max(198px, calc(env(safe-area-inset-bottom) + 178px)); width: 52px; height: 52px; border: 2px solid #fff; }
+.iso { left: 22px; bottom: max(198px, calc(env(safe-area-inset-bottom) + 178px)); width: 56px; height: 56px; border: 3px solid rgba(255, 255, 255, 0.9); }
 
-/* celular estreito: o nome some (fica avatar e nível) e as pílulas encolhem */
-@media (max-width: 400px) { #hud .hud-l1 > .pilula.chip:not(.distancia) .ico { display: none; } }
-@media (max-width: 380px) {
-  .hud-jogador b { display: none; }
-  .hud-jogador .txt small { font-size: 9.5px; }
-  .hud-jogador .avatar { width: 28px; height: 28px; font-size: 16px; }
-  #hud .pilula.chip { font-size: 13px; padding: 0 7px 0 5px; }
-  #hud .hud-botoes .pilula.botao { width: 28px; height: 28px; }
-  #palco #hud #minimapa { width: 60px; height: 60px; }
-  #palco #hud #perfil { width: 60px; height: 14px; }
+@media (max-width: 370px) {
+  :root { --botao-hud: 32px; --botao-jogo: 62px; }
+  .hud-jogador .avatar { width: 40px; height: 40px; font-size: 22px; }
+  .barra-info .seg { padding: 0 6px; font-size: 13px; }
+  .barra-info .seg { padding: 0 5px; }
+  .barra-info small { font-size: 9px; }
+  #hud .pilula.recurso { width: 80px; }
+  #palco #hud #minimapa { width: 68px; height: 68px; }
+  #palco #hud #perfil { width: 68px; height: 16px; }
 }
-@media (max-width: 350px) { #hud .pilula.distancia small { display: none; } }

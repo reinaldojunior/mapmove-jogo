@@ -2578,8 +2578,25 @@ function preencherJogadorHud() {
     av.append(img);
   } else av.textContent = (PERSONAGENS[perfil.personagem] || PERSONAGENS.portal).emoji;
   $('#hudNome').textContent = d ? d.nome.split(' ')[0] : 'Você';
-  $('#hudNivel').textContent = st.rotulo;
-  $('#hudXp').style.width = `${Math.round(st.progresso * 100)}%`;
+  $('#hudJogador')?.classList.remove('subiu');
+  xpHud.base = formaAtual().xp; xpHud.degrau = st.indice; xpHud.ganho = -1;
+  atualizarXpHud(0);
+}
+
+// XP no HUD: a barra amarela é o que já tinha, a verde cresce com o que a corrida está rendendo (km corridos);
+// os bônus de prova, clima e missões entram no fim
+const xpHud = { base: 0, degrau: 0, ganho: -1 };
+function atualizarXpHud(metros) {
+  const ganho = Math.round((Math.max(0, metros) / 1000) * P.XP_POR_KM);
+  if (ganho === xpHud.ganho) return;
+  xpHud.ganho = ganho;
+  const inicio = P.situacao(xpHud.base), agora = P.situacao(xpHud.base + ganho);
+  $('#hudNivel').textContent = agora.rotulo;
+  // depois de subir de nível na corrida, o que tinha antes ficou no nível anterior: a barra é toda verde
+  $('#hudXp').style.width = agora.indice === inicio.indice ? `${Math.round(inicio.progresso * 100)}%` : '0%';
+  $('#hudXpCorrida').style.width = `${Math.round(agora.progresso * 100)}%`;
+  $('#hudXpGanho').textContent = `+${ganho} XP`;
+  if (agora.indice > xpHud.degrau) { xpHud.degrau = agora.indice; $('#hudJogador').classList.add('subiu'); aviso(`🎉 Subiu para ${agora.rotulo}!`, 'km', 2200); }
 }
 
 function atualizarHud() {
@@ -2608,6 +2625,7 @@ function atualizarHud() {
   const feito = prova ? Math.min(s.sMax, pista.total) : s.sMax;
   hud.km.textContent = feito < 1000 ? `${Math.floor(feito)} m` : `${R.formatarKm(feito)} km`;
   hud.kmTotal.textContent = prova ? `/${R.formatarKm(pista.total)} km` : '';
+  atualizarXpHud(feito);
   hud.tempo.textContent = R.formatarTempo(s.tempoReal);
   hud.pace.textContent = R.formatarPace(s.v);
   const inc = emEst(s.s).inclinacao;
@@ -2627,7 +2645,8 @@ function atualizarHud() {
   const pct = Math.round(inc * 100);
   hud.inc.classList.toggle('sobe', pct >= 1);
   hud.inc.classList.toggle('desce', pct <= -1);
-  hud.incTxt.textContent = pct >= 1 ? `subida ${pct}%` : pct <= -1 ? `descida ${-pct}%` : 'plano';
+  hud.incTxt.textContent = pct >= 1 ? `⛰️ subida ${pct}%` : pct <= -1 ? `⛰️ descida ${-pct}%` : '';
+  hud.inc.hidden = Math.abs(pct) < 1; // no plano não mostra nada
   hud.penal.textContent = `${s.penal}/${R.PENALIDADES_MAX}`;
   hud.penal.parentElement.classList.toggle('marcou', s.penal > 0);
   hud.gelQtd.textContent = s.geis;
