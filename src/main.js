@@ -3472,7 +3472,7 @@ async function carregarProva() {
     const nome = NOME_NO_JOGO[PROVA_SLUG] || c.nome;
     dadosProva = { nome, distancias: dist, marcadores };
     $('#provaNome').textContent = `🏅 ${nome}`;
-    $('#jogarProva').textContent = `${PROVAS.find((p) => p.slug === PROVA_SLUG)?.cidade} · ${nome}`;
+    $('#jogarProva').textContent = `${nome} · ${PROVAS.find((p) => p.slug === PROVA_SLUG)?.cidade}`;
     $('#provaInfo').textContent = `Percurso e altimetria reais de ${c.cidade}. 1 km leva 1 minuto a 6:00/km.`;
     box.innerHTML = '';
     for (const d of dist) {
@@ -3583,7 +3583,7 @@ function mostrarConta() {
   const d = logado ? Conta.dadosDoUsuario(usuario) : null;
   $('#chipNome').textContent = d ? d.nome.split(' ')[0] : 'Entrar';
   $('#chipFoto').hidden = !d?.foto;
-  $('#chipInicial').textContent = d ? (d.nome || '?')[0].toUpperCase() : '👤';
+  $('#chipInicial').style.display = d?.foto ? 'none' : ''; // sem foto: o boneco desenhado
   if (d?.foto) $('#chipFoto').src = d.foto;
 }
 async function entrouNaConta(u) {
@@ -3731,11 +3731,11 @@ function paceDoPerfil() { return P.situacao(formaAtual().xp).pace; }
 
 function mostrarPerfil() {
   const forma = formaAtual(), st = P.situacao(forma.xp);
-  $('#perfilNivel').textContent = st.rotulo;
   $('#chipNivel').textContent = st.rotulo;
-  $('#perfilPace').textContent = `${R.formatarPace(R.mps(st.pace))}/km`;
+  $('#perfilPace').textContent = R.formatarPace(R.mps(st.pace));
   $('#perfilBarra').style.width = `${Math.round(st.progresso * 100)}%`;
-  $('#perfilXP').textContent = st.completo ? 'Nível máximo!' : `${st.xpNoDegrau} / ${st.xpDoDegrau} XP · próximo: ${R.formatarPace(R.mps(st.proximo?.pace || st.pace))}/km`;
+  $('#perfilXP').textContent = st.completo ? 'Nível máximo!' : `${st.xpNoDegrau} / ${st.xpDoDegrau} XP`;
+  $('#perfilProximo').textContent = st.completo ? 'nível máximo' : `próximo nível ${R.formatarPace(R.mps(st.proximo?.pace || st.pace))}`;
   $('#perfilMoves').textContent = perfil.moves;
   const aviso = $('#perfilAviso');
   aviso.hidden = !(forma.dias > P.DIAS_SEM_PERDA - 1);
@@ -4060,7 +4060,6 @@ function mostrarHeroi() {
   vitrine.mostrar(PERSONAGENS[perfil.personagem] ? perfil.personagem : 'portal', { anim: 'correr', angulo: 0.75 });
   vitrine.ligar();
 }
-$('#btnTopoRanking').addEventListener('click', () => abrirRanking());
 $('#btnJogar').addEventListener('click', () => abrirPainel('provas'));
 $('#btnTileTreino').addEventListener('click', () => abrirPainel('treino'));
 $('#btnTileConta').addEventListener('click', () => abrirPainel('conta'));
@@ -4082,7 +4081,9 @@ function mostrarInicio() {
   const p = emEst(0);
   Object.assign(estado, { x: p.x, z: p.z, ang: p.ang, camAng: p.ang, s: 0, sMax: 0, d: 0, y: 0 });
   const rec = lerRecorde('mapmove-recorde');
-  $('#recordeTreino').textContent = rec ? `⭐ ${rec.toLocaleString('pt-BR')}` : 'Bata seu recorde';
+  // recorde do treino de reta num selo sobre o atalho (some enquanto não houver recorde)
+  $('#recordeTreino').hidden = !rec;
+  if (rec) $('#recordeTreino').innerHTML = `<svg><use href="#i-estrela"/></svg>${rec.toLocaleString('pt-BR')}`;
   hud.contagem.hidden = true;
   mostrar('telaInicio');
   mostrarHeroi();

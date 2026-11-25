@@ -10,7 +10,7 @@
     if (location.hostname === 'mapmove-jogo.vercel.app') location.replace('https://jogo.mapmove.com.br' + location.pathname + location.search + location.hash);
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Lilita+One&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Barlow+Condensed:ital,wght@1,900&family=Lilita+One&display=swap" rel="stylesheet">
 </head>
 <body>
   <main id="palco">
@@ -41,6 +41,7 @@
       <symbol id="c-vento" viewBox="0 0 24 24"><path d="M3 9h11a3 3 0 10-3-3M3 14h15a3 3 0 11-3 3M3 19h7" fill="none" stroke="#061440" stroke-width="4.2" stroke-linecap="round"/><path d="M3 9h11a3 3 0 10-3-3M3 14h15a3 3 0 11-3 3M3 19h7" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></symbol>
       <symbol id="c-frio" viewBox="0 0 24 24"><g stroke="#061440" stroke-width="4" stroke-linecap="round"><path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7"/></g><g stroke="#bfeaff" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7"/></g></symbol>
       <symbol id="i-pessoa" viewBox="0 0 48 48"><path d="M6 50c2-12 9-18 18-18s16 6 18 18z" fill="url(#gBranco)" stroke="#061440" stroke-width="2"/><circle cx="24" cy="18" r="9" fill="#f2c9a0" stroke="#061440" stroke-width="2"/><path d="M15 16c1-7 17-8 19 0-5-3-13-3-19 0z" fill="#3a2414"/></symbol>
+      <symbol id="i-moeda" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="url(#gAmarelo)" stroke="#061440" stroke-width="2"/><circle cx="16" cy="16" r="10" fill="none" stroke="#b36b00" stroke-width="1.5" opacity=".6"/><text x="16" y="21.5" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-style="italic" font-weight="900" font-size="15" fill="#8a4a00">M$</text></symbol>
       <symbol id="i-pausa" viewBox="0 0 20 20"><rect x="4" y="3" width="4" height="14" rx="1.5" fill="url(#gBranco)"/><rect x="12" y="3" width="4" height="14" rx="1.5" fill="url(#gBranco)"/></symbol>
       <symbol id="i-engrenagem" viewBox="0 0 24 24"><path fill="url(#gBranco)" fill-rule="evenodd" d="M10.3 2h3.4l.5 2.6 1.9.8 2.2-1.5 2.4 2.4-1.5 2.2.8 1.9 2.6.5v3.4l-2.6.5-.8 1.9 1.5 2.2-2.4 2.4-2.2-1.5-1.9.8-.5 2.6h-3.4l-.5-2.6-1.9-.8-2.2 1.5-2.4-2.4 1.5-2.2-.8-1.9L2 13.7v-3.4l2.6-.5.8-1.9-1.5-2.2 2.4-2.4 2.2 1.5 1.9-.8zM12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z"/></symbol>
       <symbol id="i-som" viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3z" fill="url(#gBranco)"/><path d="M15.5 8.5a5 5 0 010 7M18 6a8.5 8.5 0 010 12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></symbol>
@@ -136,35 +137,50 @@
 
     <section id="telaInicio" class="tela inicio">
       <div class="home" id="home">
+        <!-- luz e profundidade da cena: sol, névoa sobre a cidade, rua iluminada, base escura sob os atalhos -->
+        <div class="home-luz" aria-hidden="true"><i class="sol"></i><i class="nevoa"></i><i class="luz-rua"></i><i class="base"></i></div>
+
         <div class="home-topo">
-          <button class="chip-conta" id="btnContaChip"><span class="avatar"><img id="chipFoto" alt="" referrerpolicy="no-referrer" hidden><i id="chipInicial">?</i></span><span class="chip-txt"><b id="chipNome">Entrar</b><small id="chipNivel">Iniciante 1</small></span></button>
-          <span class="pilula-moves"><img src="/icones/moeda.webp" alt=""><b id="perfilMoves">0</b></span>
-          <button class="btn-redondo" id="btnTopoRanking" aria-label="Ranking"><img src="/icones/trofeu.webp" alt=""></button>
+          <button class="home-nivel painel-3d" id="btnContaChip" aria-label="Conta e nível">
+            <span class="avatar"><img id="chipFoto" alt="" referrerpolicy="no-referrer" hidden><svg class="pessoa" id="chipInicial"><use href="#i-pessoa"/></svg></span>
+            <span class="txt">
+              <span class="linha"><b id="chipNivel">Iniciante 1</b><em id="chipNome">Entrar</em></span>
+              <span class="xp"><i id="perfilBarra"></i></span>
+              <small id="perfilXP">0 / 100 XP</small>
+            </span>
+          </button>
+          <span class="home-moedas painel-3d"><svg class="moeda"><use href="#i-moeda"/></svg><b id="perfilMoves">0</b></span>
+          <button class="home-ajuda" id="btnTileAjuda" aria-label="Como jogar"><b>?</b></button>
         </div>
+
+        <div class="logo" aria-label="Mapmove Run">
+          <span class="l1">MAPMOVE</span><span class="l2">RUN</span>
+          <svg class="trajeto" viewBox="0 0 190 20" aria-hidden="true"><path d="M6 14c30-10 50 4 80-2s40-10 70-4" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 9"/><path d="M156 8c8-2 14-2 22 0" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/><path d="M180 1a6 6 0 00-6 6c0 4 6 11 6 11s6-7 6-11a6 6 0 00-6-6z" fill="#ff3b30" stroke="#fff" stroke-width="1.6"/></svg>
+          <small>Corra percursos reais</small>
+        </div>
+
         <div class="hero">
           <div class="home-palco" id="homePalco"></div>
-          <div class="logo" aria-label="Mapmove Run"><span class="l1">Mapmove</span><span class="l2">Run</span><small>Corra percursos reais</small></div>
-          <div class="cartao-nivel" id="cartaoPerfil">
-            <div class="perfil-topo"><b id="perfilNivel">Iniciante 1</b><span id="perfilPace">7:00/km</span></div>
-            <span class="barra xp"><i id="perfilBarra"></i></span>
-            <small id="perfilXP">0 / 100 XP</small>
+          <div class="home-ritmo" id="cartaoPerfil">
+            <span><b id="perfilPace">7:00</b> /km</span>
+            <small id="perfilProximo">próximo nível 6:48</small>
             <small class="perfil-aviso" id="perfilAviso" hidden></small>
           </div>
         </div>
-        <button class="jogar" id="btnJogar"><svg class="silhueta" viewBox="0 0 64 64" aria-hidden="true"><circle cx="40" cy="9" r="6"/><path d="M36 17l-12 5-6 11 4 2 5-8 6-2-5 14-10 10 3 4 13-11 3-6 6 8 1 14h5l-1-17-7-9 3-9 4 6 9 2 1-4-8-2-5-8c-2-2-5-3-9-1z"/></svg><span class="jogar-txt"><b>JOGAR <i>»</i></b><small id="jogarProva">Escolha a cidade e a prova</small></span></button>
-        <div class="tiles">
-          <button class="tile" id="btnTileTreino"><span class="ico"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="10" width="46" height="44" rx="7" fill="#fff"/><rect x="6" y="10" width="46" height="13" rx="7" fill="#ef3b3b"/><rect x="6" y="18" width="46" height="5" fill="#ef3b3b"/><rect x="15" y="5" width="5" height="11" rx="2.5" fill="#8a96a8"/><rect x="38" y="5" width="5" height="11" rx="2.5" fill="#8a96a8"/><g fill="#c9d3e0"><rect x="12" y="28" width="7" height="6" rx="1"/><rect x="22" y="28" width="7" height="6" rx="1"/><rect x="32" y="28" width="7" height="6" rx="1"/><rect x="12" y="37" width="7" height="6" rx="1"/><rect x="22" y="37" width="7" height="6" rx="1"/><rect x="12" y="46" width="7" height="5" rx="1"/></g><circle cx="46" cy="46" r="13" fill="#2fc15a" stroke="#fff" stroke-width="3"/><path d="M40 46l4.5 4.5L53 41" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>Treino do dia</b><small>Complete e evolua</small><i class="badge" id="tileTreinoBadge" hidden>grátis</i></button>
-          <button class="tile" id="btnTreino"><span class="ico"><img src="/icones/trofeu.webp" alt=""></span><b>Treino de reta</b><small class="recorde" id="recordeTreino">Bata seu recorde</small></button>
-          <button class="tile" id="btnPersonagem"><span class="ico"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M10 62c1-13 10-20 22-20s21 7 22 20z" fill="#1e5fe0"/><path d="M26 42l6 8 6-8" fill="#fff"/><rect x="27" y="34" width="10" height="9" rx="3" fill="#e9a77c"/><circle cx="32" cy="24" r="13" fill="#f2b88f"/><path d="M18 22c0-10 7-15 14-15s15 4 14 15c-3-4-7-6-10-5-4-3-12-2-18 5z" fill="#5a3418"/><circle cx="27" cy="25" r="1.8" fill="#2a1a10"/><circle cx="37" cy="25" r="1.8" fill="#2a1a10"/><path d="M27 31q5 4 10 0" stroke="#8a3d22" stroke-width="2" fill="none" stroke-linecap="round"/></svg></span><b>Personagem</b><small>Escolha seu atleta</small></button>
-          <button class="tile" id="btnLoja"><span class="ico"><img src="/icones/tenis-carbono.webp" alt=""></span><b>Loja</b><small>Itens e géis</small></button>
-          <button class="tile" id="btnRanking"><span class="ico"><svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="gOuro" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe680"/><stop offset="1" stop-color="#f0a800"/></linearGradient></defs><path d="M7 30c-3 8 0 18 7 22M57 30c3 8 0 18-7 22" stroke="#f5b400" stroke-width="3" fill="none" stroke-linecap="round"/><g fill="#f5b400"><ellipse cx="6" cy="38" rx="2.5" ry="4.5" transform="rotate(-20 6 38)"/><ellipse cx="8" cy="46" rx="2.5" ry="4.5" transform="rotate(-40 8 46)"/><ellipse cx="58" cy="38" rx="2.5" ry="4.5" transform="rotate(20 58 38)"/><ellipse cx="56" cy="46" rx="2.5" ry="4.5" transform="rotate(40 56 46)"/></g><rect x="24" y="18" width="16" height="38" rx="2" fill="url(#gOuro)"/><rect x="11" y="31" width="14" height="25" rx="2" fill="#e8edf4"/><rect x="39" y="37" width="14" height="19" rx="2" fill="#f0a35c"/><g font-family="Lilita One, Baloo 2, sans-serif" font-size="13" text-anchor="middle" fill="#1b2d55"><text x="32" y="35">1</text><text x="18" y="46">2</text><text x="46" y="50">3</text></g></svg></span><b>Ranking e amigos</b><small>Semana e 30 dias</small></button>
-          <button class="tile" id="btnTileConta"><span class="ico"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="9" width="40" height="50" rx="6" fill="#c88a4a"/><rect x="15" y="15" width="30" height="40" rx="3" fill="#fff"/><rect x="22" y="5" width="16" height="10" rx="3" fill="#8a96a8"/><g stroke="#2fc15a" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M19 25l3 3 5-5"/><path d="M19 37l3 3 5-5"/></g><g fill="#c9d3e0"><rect x="30" y="24" width="11" height="4" rx="2"/><rect x="30" y="36" width="11" height="4" rx="2"/><rect x="20" y="47" width="21" height="4" rx="2"/></g><circle cx="49" cy="49" r="11" fill="#1e5fe0" stroke="#fff" stroke-width="3"/><circle cx="49" cy="46" r="3.5" fill="#fff"/><path d="M42.5 55c1.5-4 11.5-4 13 0" fill="#fff"/></svg></span><b>Conta e Strava</b><small>Salve seu progresso</small></button>
-        </div>
-        <div class="faixa-desafio">
-          <img src="/icones/medalha-21k.webp" alt="">
-          <span>Conquiste novos <b>desafios!</b></span>
-          <button class="link-ajuda" id="btnTileAjuda"><i>?</i> Como jogar</button>
-        </div>
+
+        <button class="jogar" id="btnJogar">
+          <span class="lin">JOGAR <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5l7 7-7 7M12 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <small id="jogarProva">Escolha a cidade e a prova</small>
+        </button>
+
+        <nav class="atalhos">
+          <button class="atalho" id="btnTileTreino"><span class="c"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="6" y="10" width="46" height="44" rx="7" fill="#fff" stroke="#061440" stroke-width="2.5"/><rect x="6" y="10" width="46" height="13" rx="7" fill="#ef3b3b" stroke="#061440" stroke-width="2.5"/><g fill="#c9d3e0"><rect x="12" y="28" width="7" height="6" rx="1"/><rect x="22" y="28" width="7" height="6" rx="1"/><rect x="32" y="28" width="7" height="6" rx="1"/><rect x="12" y="37" width="7" height="6" rx="1"/></g><circle cx="46" cy="46" r="13" fill="#2fc15a" stroke="#fff" stroke-width="3"/><path d="M40 46l4.5 4.5L53 41" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="rot">Treino<br>do dia</span><i class="selo" id="tileTreinoBadge" hidden>grátis</i></button>
+          <button class="atalho" id="btnTreino"><span class="c"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M10 50h44" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 8"/><path d="M14 40h30" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M40 26l12 14-12 14" fill="none" stroke="url(#gAmarelo)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 28h20" stroke="#9fd0ff" stroke-width="4" stroke-linecap="round"/></svg></span><span class="rot">Treino<br>de reta</span><i class="selo recorde" id="recordeTreino" hidden></i></button>
+          <button class="atalho" id="btnPersonagem"><span class="c"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M10 62c1-13 10-20 22-20s21 7 22 20z" fill="#ffd21f" stroke="#061440" stroke-width="2.5"/><circle cx="32" cy="24" r="13" fill="#f2b88f" stroke="#061440" stroke-width="2.5"/><path d="M18 22c0-10 7-15 14-15s15 4 14 15c-3-4-7-6-10-5-4-3-12-2-18 5z" fill="#5a3418"/></svg></span><span class="rot">Perso-<br>nagem</span></button>
+          <button class="atalho" id="btnLoja"><span class="c"><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M12 22h40l-4 34H16z" fill="url(#gAmarelo)" stroke="#061440" stroke-width="2.5" stroke-linejoin="round"/><path d="M23 26v-6a9 9 0 0118 0v6" fill="none" stroke="#061440" stroke-width="3" stroke-linecap="round"/><path d="M26 38l4 4 9-9" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="rot">Loja</span></button>
+          <button class="atalho" id="btnRanking"><span class="c"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="24" y="18" width="16" height="38" rx="2" fill="url(#gAmarelo)" stroke="#061440" stroke-width="2.5"/><rect x="9" y="31" width="15" height="25" rx="2" fill="#e8edf4" stroke="#061440" stroke-width="2.5"/><rect x="40" y="37" width="15" height="19" rx="2" fill="#f0a35c" stroke="#061440" stroke-width="2.5"/><g font-family="Barlow Condensed, sans-serif" font-style="italic" font-weight="900" font-size="13" text-anchor="middle" fill="#061440"><text x="32" y="35">1</text><text x="16.5" y="46">2</text><text x="47.5" y="50">3</text></g></svg></span><span class="rot">Ranking</span></button>
+          <button class="atalho" id="btnTileConta"><span class="c"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="24" r="12" fill="#fff" stroke="#061440" stroke-width="2.5"/><path d="M10 58c2-13 11-19 22-19s20 6 22 19z" fill="#fff" stroke="#061440" stroke-width="2.5"/><circle cx="48" cy="46" r="11" fill="#2fc15a" stroke="#fff" stroke-width="3"/><path d="M48 40v12M42 46h12" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg></span><span class="rot">Conta</span></button>
+        </nav>
         <small class="creditos">Mapa © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">colaboradores do OpenStreetMap</a></small>
       </div>
 

@@ -27,7 +27,15 @@ export function criarVitrine({ loader, preparar, personagens }) {
   scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.6));
   const sol = new THREE.DirectionalLight(0xffffff, 2.2); sol.position.set(2, 4, 3); scene.add(sol);
   const contra = new THREE.DirectionalLight(0x9fc8ff, 1.0); contra.position.set(-3, 2, -3); scene.add(contra);
-  const chao = new THREE.Mesh(new THREE.CircleGeometry(0.55, 40), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25, depthWrite: false }));
+  // sombra de contato: um degradê suave (mais escuro no centro), para o personagem "pisar" no chão sem um disco duro
+  const texSombra = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, 'rgba(0,0,0,0.55)'); gr.addColorStop(0.45, 'rgba(0,0,0,0.3)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  })();
+  const chao = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshBasicMaterial({ map: texSombra, transparent: true, depthWrite: false }));
   chao.rotation.x = -Math.PI / 2; scene.add(chao);
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
   camera.position.set(0, 1.0, 4.4); camera.lookAt(0, 0.92, 0);
