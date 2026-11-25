@@ -285,7 +285,7 @@ export function remendoTris(pista, r, out) {
   const m = r.passada || 1, asf = r.tipo === 'asfalto', tipo = asf ? 'alargamento' : 'alargamentoCalcada';
   // (cada lado passa 0,5 m do eixo: nas curvas fechadas as duas tiras dobram e deixariam uma fresta no meio)
   if (asf) faixaDoEixo(pista, r.s0, r.s1, r.lado < 0 ? -MEIA - 0.25 * m : -0.5, r.lado < 0 ? 0.5 : MEIA + 0.25 * m, tipo, out);
-  else faixaDoEixo(pista, r.s0, r.s1, r.lado < 0 ? -LIMITE - 0.2 * m : MEIA - 0.1, r.lado < 0 ? -MEIA + 0.1 : LIMITE + 0.2 * m, tipo, out);
+  else faixaDoEixo(pista, r.s0, r.s1, r.lado < 0 ? -LIMITE - 0.2 * m : MEIA, r.lado < 0 ? -MEIA : LIMITE + 0.2 * m, tipo, out);
   for (let s = Math.max(0, r.s0); s <= Math.min(pista.total, r.s1); s += 2) {
     let v = Math.abs(pista.em(Math.min(pista.total, s + 3)).ang - pista.em(Math.max(0, s - 3)).ang); if (v > Math.PI) v = 2 * Math.PI - v;
     if (v < (20 * Math.PI) / 180) continue;
@@ -307,12 +307,41 @@ export function montarRuas(pista, dados, { eixo = null } = {}) {
         const hs = t.map(yDe);
         // pedaço de rua do percurso dentro de uma zona de fita (ponte, fallback): fica com a fita de sempre
         if (r.faixas && hs.every((h) => emZona(h.s, zonas))) continue;
-        out.push({ t, tipo, camada: r.camada, y: hs.map((h) => h.y) });
+        out.push({ t, tipo, camada: r.camada, y: hs.map((h) => h.y), faixas: r.faixas });
       }
     }
   }
-  for (const rm of dados.remendos || []) remendoTris(pista, rm, out);
-  return out;
+  for (const rm of dados.remendos || []) { const n0 = out.length; remendoTris(pista, rm, out); for (let k = n0; k < out.length; k++) out[k].faixas = [[rm.s0 - 30, rm.s1 + 30]]; }
+  // nada por cima do corredor: pedaço de rua do mapa que fique 0,15–5,5 m acima da faixa de OUTRA passagem (ex.:
+  // ligação entre duas pistas com altitudes diferentes no Portal, Indaiatuba 21K) não é desenhado
+  const limpos = out.filter((q) => !cobreOutraPassagem(q, E, q.faixas));
+  // calçada nunca em cima de asfalto: onde duas ruas se encontram (sem o recorte dos cruzamentos, que vem na 4c) a
+  // calçada de uma passaria por cima do asfalto da outra numa rampa
+  const asf = limpos.filter((q) => q.tipo === 'asfalto' || q.tipo === 'alargamento'), ia = indice(8);
+  asf.forEach((q, k) => { const xs = q.t.map((p) => p[0]), zs = q.t.map((p) => p[1]); ia.por(Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs), k); });
+  // (pelo centro do triângulo, e só se a calçada ficaria ACIMA do asfalto — o asfalto é desenhado 1 cm acima dela)
+  const sobreAsfalto = (q) => {
+    const x = (q.t[0][0] + q.t[1][0] + q.t[2][0]) / 3, z = (q.t[0][1] + q.t[1][1] + q.t[2][1]) / 3, y = (q.y[0] + q.y[1] + q.y[2]) / 3;
+    for (const k of ia.perto(x, z)) { const a = asf[k]; if (!dentroTri(x, z, a.t, -1e-3)) continue; const dy = y - alturaNoTri(x, z, a); if (dy > 0.01 && dy < 1.5) return true; }
+    return false;
+  };
+  return limpos.filter((q) => !(q.tipo === 'calcada' || q.tipo === 'alargamentoCalcada') || !sobreAsfalto(q));
+}
+function cobreOutraPassagem(q, E, proprias) {
+  for (let k = 0; k < 4; k++) {
+    const [x, z] = k < 3 ? q.t[k] : [(q.t[0][0] + q.t[1][0] + q.t[2][0]) / 3, (q.t[0][1] + q.t[1][1] + q.t[2][1]) / 3];
+    const y = k < 3 ? q.y[k] : (q.y[0] + q.y[1] + q.y[2]) / 3;
+    for (const a of E.ix.perto(x, z, LIMITE + 1)) {
+      if (proprias && proprias.some(([s0, s1]) => a.s >= s0 && a.s <= s1)) continue; // a própria passagem desta rua
+      for (const b of [E.eixo[a.k - 1], E.eixo[a.k + 1]]) {
+        if (!b) continue;
+        const dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / l2));
+        const dy = y - (a.y + (b.y - a.y) * t);
+        if (dy > 0.15 && dy < 5.5 && Math.hypot(x - a.x - dx * t, z - a.z - dz * t) < LIMITE + 0.5) return true;
+      }
+    }
+  }
+  return false;
 }
 
 // para medir (node): a fita de sempre nas zonas de fita, como o jogo desenha (rua ±4 m, calçada até 7,6 m)
@@ -321,33 +350,63 @@ export function fitaDasZonas(pista, zonas, out = []) {
   return out;
 }
 
-const alturaNoTri = (x, z, t) => {
+function alturaNoTri(x, z, t) {
   const [[ax, az], [bx, bz], [cx, cz]] = t.t, den = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
   if (Math.abs(den) < 1e-9) return (t.y[0] + t.y[1] + t.y[2]) / 3;
   const l1 = ((bz - cz) * (x - cx) + (cx - bx) * (z - cz)) / den, l2 = ((cz - az) * (x - cx) + (ax - cx) * (z - cz)) / den;
   return l1 * t.y[0] + l2 * t.y[1] + (1 - l1 - l2) * t.y[2];
-};
-const dentroTri = (x, z, t) => {
+}
+function dentroTri(x, z, t, margem = 1e-9) {
   const [[ax, az], [bx, bz], [cx, cz]] = t;
   const d1 = (bx - ax) * (z - az) - (bz - az) * (x - ax), d2 = (cx - bx) * (z - bz) - (cz - bz) * (x - bx), d3 = (ax - cx) * (z - cz) - (az - cz) * (x - cx);
-  return (d1 >= -1e-9 && d2 >= -1e-9 && d3 >= -1e-9) || (d1 <= 1e-9 && d2 <= 1e-9 && d3 <= 1e-9);
-};
+  return (d1 >= -margem && d2 >= -margem && d3 >= -margem) || (d1 <= margem && d2 <= margem && d3 <= margem);
+}
 const ASF = new Set(['asfalto', 'cruzamento', 'fita', 'alargamento']), PIS = new Set([...ASF, 'calcada', 'fitaCalcada', 'alargamentoCalcada']);
 
 // faixa do corredor: a cada 1 m (de 25 m antes da largada, onde o pelotão espera, até a chegada) e a cada 0,5 m de
 // lado — até ±4 m tem que ter asfalto e até ±7,6 m (penalidade) asfalto ou calçada, na altura do corredor (±1,5 m)
-export function medirFaixa(pista, tris, { passo = 1 } = {}) {
+// zonas: trechos com a fita de sempre (medida pelo checador do desenho atual, scripts/checar-sobreposicao.mjs) — pulados
+export function medirFaixa(pista, tris, { passo = 1, zonas = [] } = {}) {
   const it = indice(8);
   tris.forEach((t, k) => { const xs = t.t.map((q) => q[0]), zs = t.t.map((q) => q[1]); it.por(Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs), k); });
   const coberto = (x, z, y, tipos) => { for (const k of it.perto(x, z)) { const t = tris[k]; if (!tipos.has(t.tipo) || !dentroTri(x, z, t.t)) continue; if (Math.abs(alturaNoTri(x, z, t) - y) < 1.5) return true; } return false; };
-  const falta = [];
+  const falta = [], porCima = [];
+  // superfície desenhada mais alta no ponto (até 5,5 m acima do corredor): é o que aparece embaixo do pé
+  // calçada que aparece por cima do asfalto dentro da faixa do corredor (o asfalto é desenhado 1 cm acima)
+  const superficie = (x, z, y) => {
+    let asf = null, outra = null;
+    for (const k of it.perto(x, z)) {
+      const t = tris[k]; if (t.tipo.startsWith('fita') || !dentroTri(x, z, t.t)) continue;
+      const dy = alturaNoTri(x, z, t) - y; if (dy <= -1.5 || dy >= 5.5) continue;
+      if (ASF.has(t.tipo)) { if (!asf || dy > asf.dy) asf = { tipo: t.tipo, dy }; } else if (!outra || dy > outra.dy) outra = { tipo: t.tipo, dy };
+    }
+    return outra && (!asf || outra.dy > asf.dy + 0.01) ? outra : asf;
+  };
   let pontos = 0;
+  // algo desenhado 0,15–5,5 m acima do corredor (a fita de sempre fica de fora: ela já se encolhe sozinha)
+  // 'outra': rua de outra passagem (ou remendo) por cima; 'propria': a própria rua um pouco acima na beira (inclinação
+  // lateral numa curva em subida: o jogo trata o corte da rua como plano) — só a 'outra' é defeito
+  const acima = (x, z, y, s) => {
+    let pior = null;
+    for (const k of it.perto(x, z)) {
+      const t = tris[k]; if (t.tipo.startsWith('fita') || !dentroTri(x, z, t.t)) continue;
+      const dy = alturaNoTri(x, z, t) - y; if (!(dy > 0.15 && dy < 5.5)) continue;
+      const propria = !!t.faixas && t.faixas.some(([a, b]) => s >= a && s <= b);
+      if (!propria) return { tipo: 'outra', dy };
+      if (!pior || dy > pior.dy) pior = { tipo: 'propria', dy };
+    }
+    return pior;
+  };
   for (let s = -25; s <= pista.total; s += passo) {
+    if (emZona(s, zonas)) continue;
     const q = posicaoEstendida(pista, s), [rx, rz] = direita(q.ang);
     for (let d = -LIMITE; d <= LIMITE + 1e-9; d += 0.5) {
       const naRua = Math.abs(d) <= MEIA; pontos++;
       if (!coberto(q.x + rx * d, q.z + rz * d, q.y, naRua ? ASF : PIS)) falta.push({ s, lado: Math.sign(d) || 1, tipo: naRua ? 'asfalto' : 'calcada', d });
+      const ac = s >= 0 ? acima(q.x + rx * d, q.z + rz * d, q.y, s) : null;
+      if (ac) porCima.push({ s, d, ...ac });
+      if (naRua && s >= 0) { const topo = superficie(q.x + rx * d, q.z + rz * d, q.y); if (topo && !ASF.has(topo.tipo)) porCima.push({ s, d, tipo: 'outra', dy: topo.dy, calcadaNaRua: true }); }
     }
   }
-  return { pontos, falta };
+  return { pontos, falta, porCima };
 }

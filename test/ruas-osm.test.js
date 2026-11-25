@@ -96,14 +96,17 @@ test('etapa 4b: arquivo do jogo cobre a faixa do corredor nas 5 distâncias; ref
     for (const rot of rots) {
       const d = ruas.distancias[rot];
       assert.equal(d.resumo.faltaDepois, 0, `${rot}: faixa sem cobertura`);
+      assert.equal(d.resumo.porCima, 0, `${rot}: rua de outra passagem por cima do corredor`);
+      assert.ok(d.resumo.beiraAcimaNaRuaMaxM <= 0.5, `${rot}: beira da própria rua ${d.resumo.beiraAcimaNaRuaMaxM} m acima na faixa ±4 m`);
       if (!['6K', '21K'].includes(rot) || (rot === '21K' && !slug.startsWith('9-'))) continue;
       // o jogo monta a pista assim (modo de teste) e desenha com montarRuas; a fita de sempre só nas zonas
       const p = new PistaReal(aj.distancias[rot].percurso, { exagero: ex, janela: JANELA });
       const v = viadutosDoPercurso(prepararOSM(ler(`../public/osm/${slug}.json`), p.paraLocal), p, { mesmaPassagem: true });
       if (v.length) p.elevar(v, { altura: 7 });
       assert.ok(Math.abs(p.total - d.pistaTotal) < 0.5);
-      const m = medirFaixa(p, [...montarRuas(p, d), ...fitaDasZonas(p, d.zonasFita)], { passo: 2 });
+      const m = medirFaixa(p, [...montarRuas(p, d), ...fitaDasZonas(p, d.zonasFita)], { passo: 2, zonas: d.zonasFita });
       assert.equal(m.falta.length, 0, `${rot}: ${JSON.stringify(m.falta.slice(0, 3))}`);
+      assert.equal(m.porCima.filter((q) => q.tipo === 'outra').length, 0, `${rot}: rua de outra passagem por cima`);
     }
   }
 });
