@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { PistaReal, direita } from '../src/pista.js';
 import { posicaoEstendida, amostrasDoPercurso, planoFita, faixasAvenida, faixasComuns, amostrasAvenida } from '../src/faixas.js';
 import { prepararOSM, pistasDuplas, viadutosDoPercurso } from '../src/osm.js';
+import { refinarDistancias } from '../src/refino.js';
 
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SUPABASE_URL = 'https://ssfsxdmzbubvygctdjgf.supabase.co';
@@ -251,7 +252,9 @@ for (const slug of slugs) {
   const [c] = await baixar(slug);
   const arqOsm = path.join(RAIZ, 'public/osm', `${slug}.json`);
   const dadosOsm = fs.existsSync(arqOsm) ? JSON.parse(fs.readFileSync(arqOsm, 'utf8')) : null;
-  for (const d of (c.corrida_distancias || []).filter((x) => Array.isArray(x.percurso) && x.percurso.length > 10).sort((a, b) => a.km - b.km)) {
+  // mesmo refino do jogo: distância com GPS espaçado é encaixada numa distância mais detalhada da mesma prova
+  const distancias = refinarDistancias((c.corrida_distancias || []).filter((x) => Array.isArray(x.percurso) && x.percurso.length > 10).sort((a, b) => a.km - b.km));
+  for (const d of distancias) {
     const t0 = Date.now();
     const pista = new PistaReal(d.percurso, { exagero: RELEVO[slug] ?? 1.6 });
     const osm = dadosOsm ? prepararOSM(dadosOsm, pista.paraLocal) : null;

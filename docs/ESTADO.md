@@ -65,6 +65,13 @@ Personagens sempre anônimos (nada de rosto de pessoa real) e sem marcas.
   avenidas Dom Aguirre e 15 de Agosto; ponte Dom José Melhado Campos sobre o rio com viaduto sobre as avenidas.
 - O percurso vem do Portal (Supabase, `corrida_distancias.percurso`). Prova nova = entrada em `PROVAS`
   + `public/osm/<slug>.json`.
+- **Refino automático do percurso (vale para toda prova, `src/refino.js`):** ao carregar a prova, cada distância
+  com GPS mais espaçado é encaixada na distância mais detalhada da mesma prova que cubra ≥ 90% dos seus pontos
+  (a até 20 m), respeitando o sentido (ida e volta lado a lado não se trocam). Assim voltas repetidas caem no mesmo
+  lugar e as curvas não são cortadas. Ex.: o 42K de Sorocaba (2 voltas do 21K, um ponto a cada ~77 m) virou
+  41,22 km sobre o traçado do 21K (antes 40,62 km com ruas tortas lado a lado). Nada é gravado no Portal; o
+  medidor (`scripts/checar-sobreposicao.mjs`) usa o mesmo refino. Sem fonte que cubra, a distância fica como veio.
+  Resta 1,5 m² de rua sobre rua no retorno do 42K km 1,23 / 22,14 (emenda das duas voltas).
 
 ## Em andamento (24/11/2026)
 

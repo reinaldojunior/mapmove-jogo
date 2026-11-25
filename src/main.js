@@ -20,6 +20,7 @@ import { criarBandana } from './bandana.js';
 import { criarCeu } from './ceu.js';
 import * as CL from './clima.js';
 import { CEUS } from './ceus.js';
+import { refinarDistancias } from './refino.js';
 import * as PL from './pelotao.js';
 import * as MD from './medalhas.js';
 import { gerarCartao } from './cartao.js';
@@ -3517,7 +3518,10 @@ async function carregarProva() {
     const r = await fetch(url, { headers: { apikey: SUPABASE_KEY } });
     const [c] = await r.json();
     // rótulos padronizados em maiúsculas (21k → 21K): XP, medalhas e recordes usam esse rótulo
-    const dist = (c?.corrida_distancias || []).filter((d) => Array.isArray(d.percurso) && d.percurso.length > 10).sort((a, b) => a.km - b.km).map((d) => ({ ...d, rotulo: d.rotulo.toUpperCase() }));
+    const brutas = (c?.corrida_distancias || []).filter((d) => Array.isArray(d.percurso) && d.percurso.length > 10).sort((a, b) => a.km - b.km).map((d) => ({ ...d, rotulo: d.rotulo.toUpperCase() }));
+    // GPS espaçado (ex.: 42K = 2 voltas do 21K com metade dos pontos) é encaixado na distância mais detalhada da
+    // mesma prova: voltas caem no mesmo lugar e as curvas não são cortadas (src/refino.js; nada muda no Portal)
+    const dist = refinarDistancias(brutas);
     if (!dist.length) throw new Error('sem percurso');
     const marcadores = {};
     for (const [rot, v] of Object.entries(c.percurso_3d?.por || {})) marcadores[rot.toUpperCase()] = v.pontos || [];
