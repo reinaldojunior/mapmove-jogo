@@ -25,7 +25,8 @@ import { gerarCartao } from './cartao.js';
 import * as FT from './fantasma.js';
 import { manchasDeGrama, criarTufos, balancoDeArvore } from './grama.js';
 import { clone as clonarComOssos } from 'three/addons/utils/SkeletonUtils.js';
-import { pistasDuplas, duplaEm } from './osm.js';
+import { pistasDuplas, duplaEm, viadutosDoPercurso } from './osm.js';
+import { posicaoEstendida, amostrasDoPercurso, planoFita, faixasAvenida, faixasComuns, amostrasAvenida } from './faixas.js';
 import { prepararOSM, zonasDoPercurso, zonaEm, areaEm, pontoNoPoligono, placasDoPercurso, abreviarRua } from './osm.js';
 
 const SUPABASE_URL = 'https://ssfsxdmzbubvygctdjgf.supabase.co';
@@ -887,13 +888,7 @@ scene.add(fundo);
 }
 
 // posição da pista também antes da largada e depois da chegada (segue reto)
-function emEst(s) {
-  if (s >= 0 && s <= pista.total) return pista.em(s);
-  const ref = s < 0 ? 0 : pista.total;
-  const p = pista.em(ref);
-  const [fx, fz] = frente(p.ang);
-  return { ...p, x: p.x + fx * (s - ref), z: p.z + fz * (s - ref) };
-}
+const emEst = (s) => posicaoEstendida(pista, s);
 
 const corInclinacao = (inc, out) => {
   if (inc > 0.01) { const f = Math.min(1, (inc - 0.01) / 0.06); out.setRGB(1, 1 - f * 0.48, 1 - f * 0.6); }
@@ -902,31 +897,25 @@ const corInclinacao = (inc, out) => {
   return out;
 };
 
+// faixa (rua, calçada, grama...) entre os afastamentos d0..d1 ao longo das amostras; a planta (com os limites que
+// evitam invadir outro trecho do percurso) vem de planoFita em src/faixas.js, a mesma que o checador usa
 function fita(amostras, d0, d1, material, { vCada = 8, dy = 0, inclinacao = false, semLimite = false } = {}) {
   const n = amostras.length;
+  const { xz, u, ativo } = planoFita(amostras, d0, d1, { semLimite });
   const pos = new Float32Array(n * 2 * 3), uv = new Float32Array(n * 2 * 2), cor = inclinacao ? new Float32Array(n * 2 * 3) : null;
   const c = new THREE.Color();
   for (let i = 0; i < n; i++) {
     const a = amostras[i];
-    const prev = amostras[Math.max(0, i - 1)], next = amostras[Math.min(n - 1, i + 1)];
-    const ang = Math.atan2(next.x - prev.x, -(next.z - prev.z));
-    const [rx, rz] = direita(ang);
+    if (cor) corInclinacao(a.inclinacao, c);
     for (let k = 0; k < 2; k++) {
-      const dd = k === 0 ? d0 : d1, j = (i * 2 + k);
-      let d = typeof dd === 'function' ? dd(a) : dd;
-      // não invade outro trecho do percurso nem dobra em curva fechada; trecho repetido (2ª volta) não é desenhado de novo
-      if (a.lat && !semLimite) {
-        if (a.lat.dup) d = 0;
-        else if (d > R.MEIA_RUA) d = Math.min(d, Math.max(R.MEIA_RUA, a.lat.limD));
-        else if (d < -R.MEIA_RUA) d = Math.max(d, -Math.max(R.MEIA_RUA, a.lat.limE));
-      }
-      pos[j * 3] = a.x + rx * d; pos[j * 3 + 1] = a.y + dy; pos[j * 3 + 2] = a.z + rz * d;
-      uv[j * 2] = k; uv[j * 2 + 1] = a.s / vCada;
-      if (cor) { corInclinacao(a.inclinacao, c); cor[j * 3] = c.r; cor[j * 3 + 1] = c.g; cor[j * 3 + 2] = c.b; }
+      const j = i * 2 + k;
+      pos[j * 3] = xz[i * 4 + k * 2]; pos[j * 3 + 1] = a.y + dy; pos[j * 3 + 2] = xz[i * 4 + k * 2 + 1];
+      uv[j * 2] = u[j]; uv[j * 2 + 1] = a.s / vCada;
+      if (cor) { cor[j * 3] = c.r; cor[j * 3 + 1] = c.g; cor[j * 3 + 2] = c.b; }
     }
   }
   const idx = [];
-  for (let i = 0; i < n - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  for (let i = 0; i < n - 1; i++) { if (!ativo[i]) continue; const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
@@ -963,6 +952,7 @@ function ondeTufo(s, d) {
   // nada de grama nas ruas que cruzam nem em cima de outro trecho do percurso
   if (travessas.some((t) => Math.abs(t.s - s) < 5 + (t.vao || 0) / 2 && t.lados.includes(Math.sign(d)))) return { ok: false };
   if (Number.isFinite(pista.total) && pista.pertoDe(x, z, 20).dist < R.LIMITE_CALCADA + 0.3) return { ok: false };
+  if (pista.elevacao?.(s) > 0.3) return { ok: false };
   const du = duplaEm(duplas, s);
   if (du && Math.sign(d) === du.lado && Math.abs(d) > du.dist - 4.8 && Math.abs(d) < du.dist + 7) return { ok: false };
   return { ok: true, x, y: p.y - 0.02, z };
@@ -972,23 +962,17 @@ function montarTufos() { tufos.montar(TUFOS_POR_NIVEL[nivel] || 0, estado?.s || 
 function construirVisual() {
   scene.remove(visual);
   visual = new THREE.Group();
-  // circuito (chegada no lugar da largada): sem o pedaço extra depois da chegada, que caía em cima da largada
-  const real = Number.isFinite(pista.total), a0 = emEst(0), a1 = real ? emEst(pista.total) : a0;
-  const circuito = real && Math.hypot(a0.x - a1.x, a0.z - a1.z) < 40;
-  const fim = real ? pista.total + (circuito ? 0 : 80) : 420;
-  const amostras = [];
-  for (let s = -60; s <= fim; s += 4) amostras.push({ s, ...emEst(s), lat: pista.lateral?.(Math.max(0, Math.min(s, pista.total))) || null });
-  visual.add(fita(amostras, -R.MEIA_RUA, R.MEIA_RUA, matRua, { inclinacao: true }));
-  visual.add(fita(amostras, -R.LIMITE_CALCADA, -R.MEIA_RUA, matCalcada, { vCada: 4, dy: 0.06 }));
-  visual.add(fita(amostras, R.MEIA_RUA, R.LIMITE_CALCADA, matCalcada, { vCada: 4, dy: 0.06 }));
+  // amostras a cada 4 m (sem o pedaço extra depois da chegada num circuito, que caía em cima da largada)
+  const amostras = amostrasDoPercurso(pista);
+  const MATS = { rua: matRua, calcada: matCalcada, grama: matGrama };
   visual.userData.amostras = amostras;
   visual.userData.grama = [];
-  for (const [a, b] of [[-32, -R.LIMITE_CALCADA], [R.LIMITE_CALCADA, 32]]) {
-    const gr = fita(amostras, a, b, matGrama, { vCada: 4, dy: -0.04 });
-    gr.renderOrder = -1;
-    visual.add(gr);
-    visual.userData.grama.push(gr);
+  for (const [d0, d1, tipo, opts] of faixasComuns(false)) {
+    const f = fita(amostras, d0, d1, MATS[tipo], opts);
+    if (tipo === 'grama') { f.renderOrder = -1; visual.userData.grama.push(f); }
+    visual.add(f);
   }
+  construirViadutos(amostras);
   let minY = 0, cx = 0, cz = 0;
   for (const a of amostras) { minY = Math.min(minY, a.y); cx += a.x; cz += a.z; }
   const chao = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), matChao);
@@ -999,6 +983,70 @@ function construirVisual() {
   // morros ao fundo (Pão de Açúcar e Corcovado) só no treino
   fundo.visible = !Number.isFinite(pista.total);
   scene.add(visual);
+}
+
+// ─── VIADUTO: MURETA, LATERAL DE CONCRETO, LAJE POR BAIXO E PILARES ───────────
+const matConcreto = new THREE.MeshStandardMaterial({ color: 0xd6d2c8, roughness: 0.9, side: THREE.DoubleSide });
+const matLaje = new THREE.MeshStandardMaterial({ color: 0xa9a59c, roughness: 1, side: THREE.DoubleSide });
+// parede vertical ao longo de uma linha: pontos [{ x, z, y0, y1 }]
+function parede(pontos, material) {
+  const pos = new Float32Array(pontos.length * 6), idx = [];
+  pontos.forEach((p, i) => { pos.set([p.x, p.y0, p.z, p.x, p.y1, p.z], i * 6); if (i) { const a = (i - 1) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); } });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, material);
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
+}
+function construirViadutos(amostras) {
+  if (!pista.elev) return;
+  const g = new THREE.Group();
+  const VAO = 4.6; // daqui para cima o viaduto tem vão livre por baixo (pilares); abaixo disso é aterro com muro
+  const elevA = (a) => a.lat?.elev || 0;
+  const beiras = [planoFita(amostras, -R.LIMITE_CALCADA, -R.MEIA_RUA), planoFita(amostras, R.MEIA_RUA, R.LIMITE_CALCADA)];
+  // mureta de 1 m e a lateral (até o chão no aterro, só a espessura da laje no vão), na beira da calçada de cada lado;
+  // onde a calçada encolheu (outro trecho do percurso ao lado, começo da rampa) a parede é interrompida
+  for (const [k, b] of [[0, beiras[0]], [2, beiras[1]]]) {
+    let linha = [];
+    const fechar = () => {
+      if (linha.length > 1) {
+        g.add(parede(linha.map((p) => ({ x: p.x, z: p.z, y0: p.a.y + 0.06, y1: p.a.y + 1.06 })), matConcreto));
+        g.add(parede(linha.map((p) => ({ x: p.x, z: p.z, y0: elevA(p.a) >= VAO ? p.a.y - 1 : p.a.y - elevA(p.a) - 0.3, y1: p.a.y + 0.06 })), matConcreto));
+      }
+      linha = [];
+    };
+    amostras.forEach((a, i) => {
+      const x = b.xz[i * 4 + k], z = b.xz[i * 4 + k + 1];
+      const inteira = Math.hypot(x - a.x, z - a.z) > R.LIMITE_CALCADA - 0.3 && (i === 0 || b.ativo[i - 1] || b.ativo[i]);
+      if (elevA(a) > 0.05 && inteira) linha.push({ x, z, a }); else fechar();
+    });
+    fechar();
+  }
+  // laje vista de baixo (quem passa por baixo do viaduto)
+  const laje = fita(amostras, (a) => (elevA(a) >= VAO ? -R.LIMITE_CALCADA : 0), (a) => (elevA(a) >= VAO ? R.LIMITE_CALCADA : 0), matLaje, { dy: -1 });
+  g.add(laje);
+  // pilares a cada ~20 m, longe da rua de baixo
+  const longeDeOutroTrecho = (x, z, s) => {
+    for (let i = 0; i < pista.s.length; i++) if (Math.abs(pista.s[i] - s) > 60 && Math.hypot(pista.x[i] - x, pista.z[i] - z) < R.LIMITE_CALCADA + 2) return false;
+    return true;
+  };
+  for (const a of amostras) {
+    if (elevA(a) < VAO + 0.5 || Math.round(a.s) % 20 !== 0) continue;
+    const [rx, rz] = direita(a.ang);
+    for (const lado of [-1, 1]) {
+      const x = a.x + rx * lado * 3, z = a.z + rz * lado * 3;
+      if (!longeDeOutroTrecho(x, z, a.s)) continue;
+      const chao = a.y - elevA(a), h = elevA(a) - 1;
+      const pilar = malha(G.caixa, matConcreto, x, chao + h / 2 - 0.3, z);
+      pilar.scale.set(1.1, h + 0.6, 1.1);
+      pilar.rotation.y = -a.ang;
+      pilar.castShadow = true;
+      g.add(pilar);
+    }
+  }
+  visual.add(g);
 }
 
 // cenário reciclado numa janela à frente do corredor
@@ -1047,7 +1095,8 @@ function posicionarCenario(item, s) {
   const du = duplaEm(duplas, s);
   const naAvenida = du && Math.sign(item.d) === du.lado && Math.abs(item.d) < du.dist + 7;
   const tampaVista = item.molde.criar === arvoreDaBeira && naVistaLivre(s, Math.sign(item.d));
-  item.obj.visible = !fora && !invade && !naTravessa && combina && !naFrenteDeMarco && !naAvenida && !tampaVista;
+  const noViaduto = pista.elevacao?.(s) > 0.3;
+  item.obj.visible = !fora && !invade && !naTravessa && combina && !naFrenteDeMarco && !naAvenida && !tampaVista && !noViaduto;
   item.obj.position.set(x, p.y, z);
   item.obj.rotation.y = -p.ang + (item.rot || 0);
 }
@@ -1096,6 +1145,8 @@ function colocar(e) {
   const [rx, rz] = direita(p.ang);
   e.obj.position.set(p.x + rx * e.d, p.y + (e.dy || 0), p.z + rz * e.d);
   e.obj.rotation.y = -p.ang + e.rot;
+  // em cima do viaduto não há nada fora da beira (ficaria flutuando)
+  if (Math.abs(e.d) > R.LIMITE_CALCADA && pista.elevacao?.(e.s) > 0.3) e.obj.visible = false;
 }
 
 function cone(s, d) {
@@ -1798,8 +1849,8 @@ function construirOSM() {
   // com o mapa real, a faixa de grama da beira fica estreita para os parques e lagos aparecerem
   for (const gr of visual.userData.grama || []) visual.remove(gr);
   const amostras = visual.userData.amostras;
-  if (amostras) for (const [a, b] of [[-13, -R.LIMITE_CALCADA], [R.LIMITE_CALCADA, 13]]) {
-    const gr = fita(amostras, a, b, matGrama, { vCada: 4, dy: -0.04 });
+  if (amostras) for (const [a, b, , opts] of faixasComuns(true).filter((f) => f[2] === 'grama')) {
+    const gr = fita(amostras, a, b, matGrama, opts);
     gr.renderOrder = -1;
     visual.add(gr);
   }
@@ -1818,45 +1869,21 @@ function construirAvenidas() {
   visual.userData.avenidas = grupo;
   visual.add(grupo);
   const amostras = visual.userData.amostras || [];
-  for (const t of duplas) {
-    const sub = amostras.filter((a) => a.s >= t.s0 && a.s <= t.s1);
-    if (sub.length < 3) continue;
-    const L = t.lado, D = (a) => t.dist[Math.min(t.dist.length - 1, Math.max(0, Math.round((a.s - t.s0) / t.passo)))];
-    // ida e volta pela mesma avenida: se a outra pista também é do percurso (outro trecho), ela já está desenhada
-    const doPercurso = new Map(sub.map((a) => {
-      const [rx, rz] = direita(a.ang), x = a.x + rx * L * D(a), z = a.z + rz * L * D(a);
-      const q = pista.projetar(x, z, a.s, 0, 0), perto = pista.pertoDe(x, z, 40);
-      return [a, perto.dist < 5 && Math.abs(perto.s - a.s) > 60 && Math.abs(q.d) > 5];
-    }));
-    // numa curva fechada (ou perto de outro trecho do percurso) a faixa larga "dobra" e cai em cima da rua: não desenha
-    const cabe = (a, lat) => { const [rx, rz] = direita(a.ang); return pista.pertoDe(a.x + rx * L * lat, a.z + rz * L * lat, lat + 10).dist > lat - 2.5; };
-    // outro trecho do percurso desse lado (ida e volta pela mesma avenida): a grama comum já preenche o meio
-    const livre = (a) => { const lim = a.lat ? (L > 0 ? a.lat.limD : a.lat.limE) : 1e6; return lim > D(a) + 6.2; };
-    const okLonge = new Map(sub.map((a) => [a, !doPercurso.get(a) && livre(a) && cabe(a, D(a) + 7)]));
-    const okMeio = new Map(sub.map((a) => [a, livre(a) && cabe(a, D(a) - 4.5)]));
-    const fora = (a, v) => (okLonge.get(a) ? v : D(a) - 4.2); // largura zero onde não cabe a outra pista
-    // faixa entre dois afastamentos (sempre do menor para o maior, dos dois lados)
-    const faixa = (f0, f1, mat, opts) => grupo.add(fita(sub, L > 0 ? f0 : (a) => -f1(a), L > 0 ? f1 : (a) => -f0(a), mat, opts));
-    const k = (v) => () => v;
-    const M = R.MEIA_RUA, OUTRA = 4.2;
-    // pista do corredor vira mão única de 3 faixas
-    grupo.add(fita(sub, -M, M, matRuaFaixas, { inclinacao: true, dy: 0.03 }));
-    // guia, canteiro, guia
-    faixa(k(M), k(M + 0.3), matGuia, { vCada: 4, dy: 0.15 });
-    const meio = (a, v) => (okMeio.get(a) ? v : M + 0.3);
-    faixa(k(M + 0.3), (a) => meio(a, D(a) - OUTRA - 0.3), matCanteiro, { vCada: 4, dy: 0.12 });
-    faixa((a) => meio(a, D(a) - OUTRA - 0.3), (a) => meio(a, D(a) - OUTRA), matGuia, { vCada: 4, dy: 0.15 });
-    // a outra pista (mão contrária) e a calçada do outro lado
-    faixa((a) => meio(a, D(a) - OUTRA), (a) => meio(a, fora(a, D(a) + OUTRA)), matRuaOutra, { inclinacao: true, dy: 0.1 });
-    faixa((a) => fora(a, D(a) + OUTRA), (a) => fora(a, D(a) + OUTRA + 0.3), matGuia, { vCada: 4, dy: 0.15 });
-    faixa((a) => fora(a, D(a) + OUTRA + 0.3), (a) => fora(a, D(a) + OUTRA + 2.6), matCalcadaLisa, { vCada: 4, dy: 0.08 });
+  const MATS = { ruaFaixas: matRuaFaixas, ruaOutra: matRuaOutra, guia: matGuia, canteiro: matCanteiro, calcadaLisa: matCalcadaLisa };
+  // a geometria das faixas (e os limites que não deixam invadir outro trecho do percurso) vem de src/faixas.js
+  const ocupado = new Map();
+  for (const t of duplas) for (const sub of amostrasAvenida(t, amostras)) {
+    const { lista, okMeio } = faixasAvenida(t, sub, pista, ocupado);
+    for (const [f0, f1, tipo, opts] of lista) grupo.add(fita(sub, f0, f1, MATS[tipo], opts));
+    const L = t.lado, M = R.MEIA_RUA, OUTRA = 4.2;
     // postes de luz no meio do canteiro, a cada ~40 m
     const modelo = PROPS.poste?.modelo;
-    for (let s = t.s0 + 15; s < t.s1 - 10; s += 40) {
+    for (let s = Math.max(t.s0, sub[0].s) + 15; s < Math.min(t.s1, sub[sub.length - 1].s) - 10; s += 40) {
       const p = emEst(s), du = duplaEm([t], s);
       if (!du || du.dist - OUTRA - M < 2.5) continue;
-      { const a0 = sub.reduce((m, a) => (Math.abs(a.s - s) < Math.abs(m.s - s) ? a : m), sub[0]); if (!okMeio.get(a0)) continue; }
       const meio = L * (M + 0.3 + (du.dist - OUTRA - 0.3)) / 2;
+      // canteiro encolhido (outro trecho do percurso ao lado): sem poste
+      { const a0 = sub.reduce((m, a) => (Math.abs(a.s - s) < Math.abs(m.s - s) ? a : m), sub[0]); if (!okMeio.get(a0) || (a0.lat && Math.abs(meio) > (L > 0 ? a0.lat.limD : a0.lat.limE) - 0.5)) continue; }
       const [rx, rz] = direita(p.ang);
       const poste = modelo ? modelo.clone() : (() => { const g = new THREE.Group(); const h = malha(G.cilindro, mat(0x9aa3ad), 0, 4, 0); h.scale.set(0.12, 8, 0.12); g.add(h); return g; })();
       poste.position.set(p.x + rx * meio, p.y + 0.12, p.z + rz * meio);
@@ -2215,10 +2242,20 @@ async function carregarOSM(distancia, pistaAlvo) {
   if (pista !== pistaAlvo) return;
   if (!dados) return carregarTravessas(distancia, pistaAlvo);
   osm = prepararOSM(dados, pistaAlvo.paraLocal);
+  // viaduto: o trecho que passa por cima de outro trecho do percurso sobe (rampas suaves); o resto fica no chão
+  const viadutos = viadutosDoPercurso(osm, pistaAlvo);
+  if (viadutos.length) {
+    pistaAlvo.elevar(viadutos, { altura: 7 });
+    construirVisual();
+    for (const e of entidades) colocar(e);
+  }
   zonas = zonasDoPercurso(osm, pistaAlvo);
   duplas = pistasDuplas(osm, pistaAlvo);
   construirOSM();
-  const cruzamentos = encontrarTravessas(pistaAlvo, osm.vias).map((t) => ({ ...t, carro: false }));
+  // sem rua transversal em cima do viaduto nem onde o percurso passa por baixo dele
+  const sob = viadutos.flatMap((v) => v.sob);
+  const cruzamentos = encontrarTravessas(pistaAlvo, osm.vias).map((t) => ({ ...t, carro: false }))
+    .filter((t) => pistaAlvo.elevacao(t.s) < 0.3 && !sob.some((v) => Math.abs(v - t.s) < 25));
   definirTravessas(cruzamentos);
   definirPlacas(placasDoPercurso(osm, pistaAlvo, cruzamentos), semaforosDoPercurso());
 }
@@ -2372,7 +2409,7 @@ function atualizarPlacas(sCorredor) {
       // de frente para quem vem correndo, um pouco virada para o meio da rua
       p.obj.rotation.y = -e.ang + Math.PI / 2 - p.lado * 0.35;
       // nas esquinas fechadas a placa cairia em cima de outro trecho da rua
-      p.obj.visible = pista.pertoDe(p.obj.position.x, p.obj.position.z, 20).dist > R.LIMITE_CALCADA;
+      p.obj.visible = pista.pertoDe(p.obj.position.x, p.obj.position.z, 20).dist > R.LIMITE_CALCADA && !(pista.elevacao?.(p.s) > 0.3);
       grupoPlacas.add(p.obj);
     } else if (!perto && p.obj) soltarPlaca(p);
     if (p.tipo === 'ponto' && !p.avisado && sCorredor > (p.sPonto ?? p.s) - 5 && sCorredor < (p.sPonto ?? p.s) + 40) {
@@ -3220,7 +3257,7 @@ function passo(dt) {
     colocar(e);
     // pórticos e enfeites fixos só aparecem para quem está naquele trecho: na 2ª volta (ou na volta de um vai e vem)
     // o pórtico de "13 KM" da outra passagem fica no mesmo lugar e confundia
-    if (e.fixo) e.obj.visible = [e.s, ...(e.sAlt || [])].some((v) => v > s.s - 200 && v < s.s + 900);
+    if (e.fixo) e.obj.visible = [e.s, ...(e.sAlt || [])].some((v) => v > s.s - 200 && v < s.s + 900) && !(Math.abs(e.d) > R.LIMITE_CALCADA && pista.elevacao?.(e.s) > 0.3);
     if (e.tipo === 'decor' || e.pego || e.atingido) continue;
     if (e.item) {
       if (R.coleta(c, e)) {

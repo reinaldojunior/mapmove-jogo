@@ -114,68 +114,229 @@ export function unificarAlturas(x, z, s, y0, raio = 14) {
 }
 
 // trechos que passam de novo pela mesma rua (voltas, ida e volta na mesma pista): o ponto é puxado para cima da
-// primeira passagem e marcado como repetido (dup) — o desenho é feito uma vez só
-export function colarVoltas(x, z, s, raio = 12, minDs = 300, rampa = 5) {
+// passagem anterior (já na posição final dela) e marcado como repetido (dup) — o desenho é feito uma vez só.
+// A colagem entra e sai aos poucos ao longo do caminho (rampa suave de ~50 m), nunca pela distância. Os pontos da
+// rampa continuam desenhados; quem evita a rua "por cima" da outra é o corte lateral (folgaLateral / lateral).
+export function colarVoltas(x, z, s, { raio = 12, alcance = 30, minDs = 100, rampa = 10 } = {}) {
   const n = x.length, C = 20, grade = new Map(), dup = new Uint8Array(n);
   const ch = (a, b) => a + ',' + b;
-  for (let i = 0; i < n - 1; i++) {
-    const k = ch(Math.floor(x[i] / C), Math.floor(z[i] / C));
-    if (!grade.has(k)) grade.set(k, []);
-    grade.get(k).push(i);
-  }
   const x0 = Float64Array.from(x), z0 = Float64Array.from(z);
-  const alvo = new Array(n).fill(null), cola = new Float32Array(n);
-  for (let i = 0; i < n; i++) {
-    const cx = Math.floor(x0[i] / C), cz = Math.floor(z0[i] / C);
-    let melhor = null;
-    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (const j of grade.get(ch(cx + a, cz + b)) || []) {
-      if (s[j] > s[i] - minDs) continue;
-      const dx = x0[j + 1] - x0[j], dz = z0[j + 1] - z0[j], l2 = dx * dx + dz * dz || 1;
-      const t = Math.max(0, Math.min(1, ((x0[i] - x0[j]) * dx + (z0[i] - z0[j]) * dz) / l2));
-      const qx = x0[j] + dx * t, qz = z0[j] + dz * t, d = Math.hypot(x0[i] - qx, z0[i] - qz);
-      // só cola se as duas passagens andam na mesma direção ou na contrária (mesma rua), não num cruzamento
-      const ex = x0[Math.min(n - 1, i + 1)] - x0[Math.max(0, i - 1)], ez = z0[Math.min(n - 1, i + 1)] - z0[Math.max(0, i - 1)];
-      const alinh = Math.abs(ex * dx + ez * dz) / (Math.hypot(ex, ez) * Math.sqrt(l2) || 1);
-      if (alinh < 0.9) continue;
-      if (!melhor || d < melhor.d) melhor = { d, qx, qz };
+  const alvo = new Array(n).fill(null), cola = new Uint8Array(n);
+  let naGrade = 0; // segmentos j < naGrade já estão na posição final e na grade
+  const passoS = s[1] - s[0] || 5;
+  const suave = (w) => w * w * (3 - 2 * w);
+  const finalizar = (k) => {
+    // peso da colagem: o ponto colado mais próximo ao longo do caminho (até `rampa` amostras)
+    let w = 0, fonte = -1;
+    for (let q = -rampa; q <= rampa; q++) {
+      const j = k + q;
+      if (j < 0 || j >= n || !cola[j]) continue;
+      const wj = 1 - Math.abs(q) / (rampa + 1);
+      if (wj > w) { w = wj; fonte = j; }
     }
-    if (!melhor || melhor.d > 2.5 * raio) continue;
-    alvo[i] = melhor;
-    // as duas ruas (8 m cada) se encostariam ou ficariam uma por cima da outra: vira uma rua só
-    if (melhor.d < raio) cola[i] = 1;
-  }
-  // a colagem entra e sai aos poucos ao longo do caminho (~25 m), nunca pela distância: sem ruas "meio coladas"
+    if (!w) return;
+    // ponto colado vai para cima da passagem anterior; os da rampa acompanham o deslocamento do colado mais próximo,
+    // cada vez menos (translação suave: sem "salto" no caminho do corredor perto dos retornos)
+    if (cola[k]) { x[k] = alvo[k].qx; z[k] = alvo[k].qz; dup[k] = 1; return; }
+    const f = suave(w);
+    x[k] = x0[k] + (alvo[fonte].qx - x0[fonte]) * f; z[k] = z0[k] + (alvo[fonte].qz - z0[fonte]) * f;
+  };
   for (let i = 0; i < n; i++) {
-    if (!alvo[i]) continue;
-    let w = 0;
-    for (let k = -rampa; k <= rampa; k++) { const j = i + k; if (j >= 0 && j < n && cola[j]) w = Math.max(w, 1 - Math.abs(k) / (rampa + 1)); }
-    if (!w) continue;
-    x[i] = x0[i] + (alvo[i].qx - x0[i]) * w; z[i] = z0[i] + (alvo[i].qz - z0[i]) * w;
-    if (w > 0.8) dup[i] = 1;
+    // segmentos que já têm as duas pontas na posição final entram na grade
+    for (; naGrade < i - rampa - 1; naGrade++) {
+      const j = naGrade;
+      const k = ch(Math.floor((x[j] + x[j + 1]) / 2 / C), Math.floor((z[j] + z[j + 1]) / 2 / C));
+      if (!grade.has(k)) grade.set(k, []);
+      grade.get(k).push(j);
+    }
+    const procurar = (i, alinhMin) => {
+      const cx = Math.floor(x0[i] / C), cz = Math.floor(z0[i] / C);
+      const ex = x0[Math.min(n - 1, i + 1)] - x0[Math.max(0, i - 1)], ez = z0[Math.min(n - 1, i + 1)] - z0[Math.max(0, i - 1)];
+      const ant = i > 0 ? alvo[i - 1] : null;
+      let melhor = null;
+      for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) for (const j of grade.get(ch(cx + a, cz + b)) || []) {
+        if (s[j + 1] > s[i] - minDs) continue;
+        const dx = x[j + 1] - x[j], dz = z[j + 1] - z[j], l2 = dx * dx + dz * dz || 1;
+        // só cola se as duas passagens andam na mesma direção ou na contrária (mesma rua), não num cruzamento
+        const alinh = Math.abs(ex * dx + ez * dz) / (Math.hypot(ex, ez) * Math.sqrt(l2) || 1);
+        if (alinh < alinhMin) continue;
+        const tt = ((x0[i] - x[j]) * dx + (z0[i] - z[j]) * dz) / l2;
+        if (j === 0 && tt < 0) continue; // antes da largada: não amontoa os pontos no começo do percurso
+        const t = Math.max(0, Math.min(1, tt));
+        const qx = x[j] + dx * t, qz = z[j] + dz * t, d = Math.hypot(x0[i] - qx, z0[i] - qz);
+        // continuidade: perto de um cruzamento de duas passagens anteriores, segue na mesma em que o ponto de trás colou
+        const sj = s[j] + (s[j + 1] - s[j]) * t, nota = d + (ant && Math.abs(sj - ant.sj) > 30 ? 8 : 0);
+        if (!melhor || nota < melhor.nota) melhor = { d, qx, qz, sj, nota };
+      }
+      return melhor && melhor.d <= alcance ? melhor : null;
+    };
+    alvo[i] = procurar(i, 0.9);
+    // seguindo a mesma passagem anterior que o ponto de trás: avança nela no mesmo ritmo (nem para, nem volta,
+    // nem pula), corrigindo devagar para o ponto mais próximo
+    const ant = i > 0 && cola[i - 1] ? alvo[i - 1] : null;
+    if (alvo[i] && ant && Math.abs(alvo[i].sj - ant.sj) < 30) {
+      const ds = s[i] - s[i - 1], jA = Math.min(n - 2, Math.floor(ant.sj / passoS));
+      const ex = x0[Math.min(n - 1, i + 1)] - x0[Math.max(0, i - 1)], ez = z0[Math.min(n - 1, i + 1)] - z0[Math.max(0, i - 1)];
+      const sg = ex * (x[jA + 1] - x[jA]) + ez * (z[jA + 1] - z[jA]) >= 0 ? 1 : -1;
+      const a = ant.sj + sg * ds * 0.6, b = ant.sj + sg * ds * 1.4;
+      const sj = Math.max(Math.min(a, b), Math.min(Math.max(a, b), alvo[i].sj, s[i] - minDs));
+      const k = Math.max(0, Math.min(n - 2, Math.floor(sj / passoS))), f = Math.max(0, Math.min(1, (sj - s[k]) / (s[k + 1] - s[k] || 1)));
+      const qx = x[k] + (x[k + 1] - x[k]) * f, qz = z[k] + (z[k + 1] - z[k]) * f;
+      alvo[i] = { d: Math.hypot(x0[i] - qx, z0[i] - qz), qx, qz, sj, nota: 0 };
+    }
+    // as duas ruas (8 m cada) se encostariam ou ficariam uma por cima da outra: vira uma rua só
+    if (alvo[i] && alvo[i].d < raio) {
+      cola[i] = 1;
+      // buraco curto entre dois pedaços colados (a passagem de agora "corta" a esquina da anterior): cola também,
+      // no ponto mais próximo da passagem anterior, sem exigir a mesma direção — nada de ilhota de rua na esquina
+      let p = i - 1;
+      while (p >= Math.max(0, i - 8) && !cola[p]) p--;
+      if (p >= 0 && p >= i - 8 && p < i - 1 && cola[p]) {
+        for (let j = p + 1; j < i; j++) { const q = procurar(j, 0); if (q) { alvo[j] = q; cola[j] = 1; } }
+      }
+    }
+    if (i - rampa >= 0) finalizar(i - rampa);
+  }
+  for (let k = Math.max(0, n - rampa); k < n; k++) finalizar(k);
+  // passo maior que o normal entre dois pontos mexidos (colou em passagens diferentes, ou rampa curta demais):
+  // alisa só ali, puxando o ponto para o meio dos vizinhos
+  const passo = (i) => Math.hypot(x[i + 1] - x[i], z[i + 1] - z[i]) / Math.max(0.5, s[i + 1] - s[i]);
+  const mexido = (i) => x[i] !== x0[i] || z[i] !== z0[i];
+  for (let volta = 0; volta < 40; volta++) {
+    let algum = false;
+    for (let i = 1; i < n - 1; i++) {
+      if (!mexido(i) || Math.max(passo(i - 1), passo(i)) < 1.25) continue;
+      x[i] = (x[i - 1] + x[i + 1]) / 2; z[i] = (z[i - 1] + z[i + 1]) / 2; algum = true;
+    }
+    if (!algum) break;
+  }
+  // último ponto (pedaço curto no fim) segue a direção do penúltimo trecho
+  if (n > 2 && mexido(n - 1)) {
+    const k = (s[n - 1] - s[n - 2]) / Math.max(1e-6, s[n - 2] - s[n - 3]);
+    x[n - 1] = x[n - 2] + (x[n - 2] - x[n - 3]) * k; z[n - 1] = z[n - 2] + (z[n - 2] - z[n - 3]) * k;
   }
   return dup;
 }
 
-// para cada ponto: distância livre à direita e à esquerda até outro trecho do percurso (passagens repetidas não contam)
-// e o raio da curva com sinal (+ = curva para a direita)
-export function folgaLateral(x, z, s, dup, alcance = 30) {
-  const n = x.length, C = 15, grade = new Map(), ch = (a, b) => a + ',' + b;
-  for (let i = 0; i < n; i++) { const k = ch(Math.floor(x[i] / C), Math.floor(z[i] / C)); if (!grade.has(k)) grade.set(k, []); grade.get(k).push(i); }
-  const livreD = new Float32Array(n).fill(1e6), livreE = new Float32Array(n).fill(1e6), raio = new Float32Array(n).fill(1e6);
-  const viz = Math.ceil(alcance / C);
+// faixa coberta pela rua (meia largura `meiaRua`) do segmento a→b ao longo da reta p + t·r: intervalo [t0, t1] ou null
+// (ponta arredondada só onde a rua continua no segmento vizinho: no começo/fim de um trecho desenhado ela é reta)
+// faixa [b0, b1] = afastamentos (à direita do segmento) que a rua dele realmente ocupa; padrão ±meiaRua
+function intervaloRua(px, pz, rx, rz, ax, az, bx, bz, meiaRua, pontaA = true, pontaB = true, b0 = -meiaRua, b1 = meiaRua) {
+  const dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz);
+  let t0 = Infinity, t1 = -Infinity;
+  const disco = (cx, cz) => {
+    const wx = cx - px, wz = cz - pz, tc = wx * rx + wz * rz, perp2 = wx * wx + wz * wz - tc * tc;
+    if (perp2 < meiaRua * meiaRua) { const h = Math.sqrt(meiaRua * meiaRua - perp2); t0 = Math.min(t0, tc - h); t1 = Math.max(t1, tc + h); }
+  };
+  if (pontaA) disco(ax, az);
+  if (pontaB) disco(bx, bz);
+  if (L > 1e-6) {
+    const ux = dx / L, uz = dz / L, nx = -uz, nz = ux;
+    const al0 = (px - ax) * ux + (pz - az) * uz, ru = rx * ux + rz * uz;
+    const be0 = (px - ax) * nx + (pz - az) * nz, rn = rx * nx + rz * nz;
+    let lo = -Infinity, hi = Infinity;
+    if (Math.abs(ru) > 1e-9) { const q0 = -al0 / ru, q1 = (L - al0) / ru; lo = Math.max(lo, Math.min(q0, q1)); hi = Math.min(hi, Math.max(q0, q1)); }
+    else if (al0 < 0 || al0 > L) hi = -Infinity;
+    if (Math.abs(rn) > 1e-9) { const q0 = (b0 - be0) / rn, q1 = (b1 - be0) / rn; lo = Math.max(lo, Math.min(q0, q1)); hi = Math.min(hi, Math.max(q0, q1)); }
+    if (lo < hi) { t0 = Math.min(t0, lo); t1 = Math.max(t1, hi); }
+  }
+  return t0 < t1 ? [t0, t1] : null;
+}
+
+function unir(lista) {
+  lista.sort((a, b) => a[0] - b[0]);
+  const out = [];
+  for (const iv of lista) { const u = out[out.length - 1]; if (u && iv[0] <= u[1]) u[1] = Math.max(u[1], iv[1]); else out.push([iv[0], iv[1]]); }
+  return out;
+}
+
+// limites de desenho no ponto (px, pz) com direção `ang`, contra a rua dos OUTROS trechos desenhados do percurso
+// (|Δs| > 60 m, quase paralelos — cruzamento de verdade fica como está; passagens repetidas não contam).
+// Na reta lateral do ponto (t > 0 = direita) marca onde a rua de cada outro trecho passa:
+// - rua: a rua deste ponto ocupa [-ruaE, ruaD] dentro de ±meiaRua, sem a parte já coberta pela rua de um trecho
+//   desenhado ANTES (que tem a preferência): numa ida e volta que se aproxima, a rua de depois "encosta" na de antes;
+// - lim: calçada, grama e avenida vão no máximo até o meio do vão entre a beira desta rua e a da outra.
+const SEM = 1e6;
+export function folgaEm(seg, x, z, s, px, pz, ang, sRef, { alcance = 40, meiaRua = 4, todosAntes = false, folga = 0.3, elev = null, elevRef = 0 } = {}) {
+  const [rx, rz] = direita(ang), [fx, fz] = frente(ang);
+  const C = seg.C, cx = Math.floor(px / C), cz = Math.floor(pz / C), viz = Math.ceil((alcance + meiaRua) / C);
+  const ant = [], todos = [], marca = seg.marca, vez = ++seg.vez;
+  for (let p = -viz; p <= viz; p++) for (let q = -viz; q <= viz; q++) for (const j of seg.grade.get((cx + p) + ',' + (cz + q)) || []) {
+    if (marca[j] === vez) continue;
+    marca[j] = vez;
+    const perto = Math.min(Math.abs(s[j] - sRef), Math.abs(s[j + 1] - sRef));
+    if (perto < 15) continue; // o próprio trecho
+    if (elev && Math.abs((elev[j] + elev[j + 1]) / 2 - elevRef) > 2.5) continue; // viaduto: um passa por cima do outro
+    const dx = x[j + 1] - x[j], dz = z[j + 1] - z[j], l = Math.hypot(dx, dz);
+    if (l < 1e-6 || Math.abs(dx * fx + dz * fz) / l < 0.35) continue; // cruzamento (mais de ~70°)
+    // logo antes/depois no percurso só conta se já voltou no sentido contrário (retorno fechado: a calçada dobraria)
+    if (perto < 60 && (dx * fx + dz * fz) / l > -0.3) continue;
+    const desenhado = (k) => k >= 0 && k < x.length - 1 && !seg.dup[k] && !seg.dup[k + 1];
+    const iv = intervaloRua(px, pz, rx, rz, x[j], z[j], x[j + 1], z[j + 1], meiaRua, desenhado(j - 1), desenhado(j + 1));
+    if (!iv || iv[1] < -alcance || iv[0] > alcance) continue;
+    const ivf = [iv[0] - folga, iv[1] + folga];
+    todos.push(ivf);
+    if (!todosAntes && Math.min(s[j], s[j + 1]) >= sRef) continue;
+    // o trecho de antes pode ter a rua encolhida por um terceiro ainda mais antigo: vale o que ele desenha de fato
+    const b0 = seg.ruaE ? -Math.min(seg.ruaE[j], seg.ruaE[j + 1]) : -meiaRua, b1 = seg.ruaD ? Math.min(seg.ruaD[j], seg.ruaD[j + 1]) : meiaRua;
+    if (b0 <= -meiaRua + 1e-3 && b1 >= meiaRua - 1e-3) { ant.push(ivf); continue; }
+    if (b1 - b0 < 0.05) continue;
+    const ivr = intervaloRua(px, pz, rx, rz, x[j], z[j], x[j + 1], z[j + 1], meiaRua, false, false, b0, b1);
+    if (ivr) ant.push([ivr[0] - folga, ivr[1] + folga]);
+  }
+  // rua deste ponto: o maior pedaço livre de [-meiaRua, meiaRua] (de preferência o que contém o eixo)
+  let lo = -meiaRua, hi = meiaRua;
+  if (ant.length) {
+    const livres = [];
+    let ini = -meiaRua;
+    for (const [a, b] of unir(ant)) {
+      if (b <= ini) continue;
+      if (a >= meiaRua) break;
+      if (a > ini) livres.push([ini, a]);
+      ini = Math.max(ini, b);
+    }
+    if (ini < meiaRua) livres.push([ini, meiaRua]);
+    const comEixo = livres.find(([a, b]) => a <= 0 && b >= 0);
+    const melhor = comEixo || livres.sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]))[0];
+    if (melhor && melhor[1] - melhor[0] > 0.05) [lo, hi] = melhor; else lo = hi = 0;
+  }
+  // até onde vai o resto de cada lado: metade do vão até a rua de outro trecho
+  let limD = SEM, limE = SEM;
+  for (const [a, b] of unir(todos)) {
+    if (b > hi) limD = Math.min(limD, a <= hi ? hi : (a + Math.max(hi, meiaRua)) / 2 - 0.1);
+    if (a < lo) limE = Math.min(limE, b >= lo ? -lo : (-b + Math.max(-lo, meiaRua)) / 2 - 0.1);
+  }
+  return { ruaD: hi, ruaE: -lo, limD, limE };
+}
+
+// grade dos segmentos desenhados (os dois pontos fora de trecho repetido)
+export function gradeDesenhada(x, z, dup, C = 10) {
+  const grade = new Map();
+  for (let j = 0; j < x.length - 1; j++) {
+    if (dup[j] || dup[j + 1]) continue;
+    const x0 = Math.floor(Math.min(x[j], x[j + 1]) / C), x1 = Math.floor(Math.max(x[j], x[j + 1]) / C);
+    const z0 = Math.floor(Math.min(z[j], z[j + 1]) / C), z1 = Math.floor(Math.max(z[j], z[j + 1]) / C);
+    for (let a = x0; a <= x1; a++) for (let b = z0; b <= z1; b++) {
+      const k = a + ',' + b;
+      if (!grade.has(k)) grade.set(k, []);
+      grade.get(k).push(j);
+    }
+  }
+  return { grade, C, dup, marca: new Int32Array(x.length), vez: 0 };
+}
+
+// para cada ponto: folga de cada lado (folgaEm) e o raio da curva com sinal (+ = curva para a direita)
+export function folgaLateral(x, z, s, dup, alcance = 40, elev = null) {
+  const n = x.length, seg = gradeDesenhada(x, z, dup);
+  const campos = ['ruaD', 'ruaE', 'limD', 'limE'];
+  const out = Object.fromEntries(campos.map((c) => [c, new Float32Array(n).fill(4)]));
+  // calculado em ordem: cada ponto já conhece a rua que os trechos de antes desenham de fato
+  seg.ruaD = out.ruaD; seg.ruaE = out.ruaE;
+  const raio = new Float32Array(n).fill(1e6);
   for (let i = 0; i < n; i++) {
     const a = Math.max(0, i - 2), b = Math.min(n - 1, i + 2);
-    const fx = x[b] - x[a], fz = z[b] - z[a], fl = Math.hypot(fx, fz) || 1;
-    const [dx, dz] = direita(anguloDe(fx, fz));
-    const cx = Math.floor(x[i] / C), cz = Math.floor(z[i] / C);
-    for (let p = -viz; p <= viz; p++) for (let q = -viz; q <= viz; q++) for (const j of grade.get(ch(cx + p, cz + q)) || []) {
-      if (Math.abs(s[j] - s[i]) < 80) continue;
-      const vx = x[j] - x[i], vz = z[j] - z[i], d = Math.hypot(vx, vz);
-      if (d < 3 || d > alcance) continue; // passagem repetida (colada) não limita
-      const lat = vx * dx + vz * dz;
-      if (Math.abs(lat) < d * 0.7) continue; // só o que está de lado
-      if (lat > 0) livreD[i] = Math.min(livreD[i], lat); else livreE[i] = Math.min(livreE[i], -lat);
-    }
+    const f = folgaEm(seg, x, z, s, x[i], z[i], anguloDe(x[b] - x[a], z[b] - z[a]), s[i], { alcance, elev, elevRef: elev ? elev[i] : 0 });
+    for (const c of campos) out[c][i] = f[c];
     // curvatura: mudança de direção em ~12 m
     const i0 = Math.max(0, i - 3), i1 = Math.min(n - 1, i + 3);
     if (i0 + 1 < n && i1 - 1 >= 0) {
@@ -185,7 +346,13 @@ export function folgaLateral(x, z, s, dup, alcance = 30) {
       if (Math.abs(da) > 1e-3 && L > 0) raio[i] = L / da;
     }
   }
-  return { livreD, livreE, raio };
+  return { ...out, raio, seg };
+}
+
+// limites de desenho com a curva: calçada e grama não dobram numa curva fechada (lado de dentro)
+export function limitesLaterais(f, raio) {
+  const curvaD = raio > 0 ? raio * 0.85 : Infinity, curvaE = raio < 0 ? -raio * 0.85 : Infinity;
+  return { ruaD: f.ruaD, ruaE: f.ruaE, limD: Math.min(f.limD, curvaD), limE: Math.min(f.limE, curvaE) };
 }
 
 export class PistaReal {
@@ -229,6 +396,7 @@ export class PistaReal {
     let y = eDesenho.map((v) => (v - eDesenho[0]) * exagero);
     for (let i = 0; i < 4; i++) y = limitarInclinacao(s, unificarAlturas(x, z, s, y), 0.12); // as duas regras juntas
     this.y = y;
+    this.yChao = y; // altura do terreno (sem viaduto)
 
     // inclinação real numa janela de ~40 m, limitada a ±12%
     const k = Math.max(1, Math.round(20 / passo));
@@ -249,12 +417,84 @@ export class PistaReal {
     return lo;
   }
 
-  // limites de desenho no ponto s: o quanto a calçada/grama pode ir para cada lado sem invadir outro trecho
-  // nem dobrar numa curva fechada; dup = trecho repetido (já desenhado na primeira passagem)
-  lateral(s) {
-    const i = Math.min(this.s.length - 1, Math.round(s / Math.max(1e-6, this.s[1] - this.s[0])));
-    const r = this.raio[i], curvaD = r > 0 ? r * 0.85 : Infinity, curvaE = r < 0 ? -r * 0.85 : Infinity;
-    return { dup: !!this.dup[i], limD: Math.min(this.livreD[i] / 2 - 0.2, curvaD), limE: Math.min(this.livreE[i] / 2 - 0.2, curvaE) };
+  // limites de desenho no ponto s (ver limitesLaterais); dup = trecho repetido (já desenhado na primeira passagem)
+  // com (px, pz, ang) a folga é medida exatamente ali (amostras do desenho), senão vem da amostra de 5 m mais próxima
+  lateral(s, px, pz, ang) {
+    const i = Math.min(this.s.length - 1, Math.max(0, Math.round(s / Math.max(1e-6, this.s[1] - this.s[0]))));
+    const f = px === undefined ? { ruaD: this.ruaD[i], ruaE: this.ruaE[i], limD: this.limD[i], limE: this.limE[i] }
+      : folgaEm(this.seg, this.x, this.z, this.s, px, pz, ang, s, { elev: this.elev, elevRef: this.elevacao(s) });
+    return { dup: !!this.dup[i], elev: this.elev ? this.elev[i] : 0, ...limitesLaterais(f, this.raio[i]) };
+  }
+
+  // altura extra do desenho no ponto s (viaduto); 0 no chão
+  elevacao(s) {
+    if (!this.elev || s < 0 || s > this.total) return 0;
+    const i = this.indice(s), f = Math.max(0, Math.min(1, (s - this.s[i]) / (this.s[i + 1] - this.s[i] || 1)));
+    return this.elev[i] + (this.elev[i + 1] - this.elev[i]) * f;
+  }
+
+  // trechos que passam por cima de outro trecho do percurso (viadutosDoPercurso): sobem `altura` metros no cruzamento,
+  // com rampas suaves (até `rampaMax` m de cada lado) só onde não há outro trecho do percurso ao lado — a rampa nunca
+  // começa em cima de uma avenida por onde o percurso também passa no chão. A altura do terreno (pertoDe) não muda.
+  elevar(trechos, { altura = 6, rampaMax = 100, margem = 14 } = {}) {
+    const n = this.s.length, elev = new Float32Array(n), passo = this.s[1] - this.s[0];
+    const suave = (t) => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
+    const sobs = trechos.flatMap((t) => t.sob);
+    // outro trecho desenhado (que não é o de baixo no cruzamento) a menos de 12 m do ponto i
+    const vizinho = (i) => {
+      for (const j of this.segmentosPerto(this.x[i], this.z[i])) {
+        if (Math.abs(this.s[j] - this.s[i]) < 60 || this.dup[j] || this.dup[j + 1] || sobs.some((v) => Math.abs(v - this.s[j]) < 30)) continue;
+        const dx = this.x[j + 1] - this.x[j], dz = this.z[j + 1] - this.z[j], l2 = dx * dx + dz * dz || 1;
+        const t = Math.max(0, Math.min(1, ((this.x[i] - this.x[j]) * dx + (this.z[i] - this.z[j]) * dz) / l2));
+        if (Math.hypot(this.x[i] - this.x[j] - dx * t, this.z[i] - this.z[j] - dz * t) < 12) return true;
+      }
+      return false;
+    };
+    this.rampas = [];
+    for (const t of trechos) {
+      // passagem repetida (2ª volta colada na 1ª) não tem rampa própria: copia a altura de baixo (logo abaixo)
+      if (t.cruz.every((v) => this.dup[Math.round(v / passo)])) continue;
+      const c0 = Math.min(...t.cruz) - margem, c1 = Math.max(...t.cruz) + margem;
+      let i0 = this.indice(Math.max(0, c0)), i1 = Math.min(n - 1, this.indice(c1) + 1);
+      let a = i0, b = i1;
+      while (a > 0 && this.s[i0] - this.s[a - 1] <= rampaMax && !vizinho(a - 1)) a--;
+      while (b < n - 1 && this.s[b + 1] - this.s[i1] <= rampaMax && !vizinho(b + 1)) b++;
+      const antes = Math.max(passo, this.s[i0] - this.s[a]), depois = Math.max(passo, this.s[b] - this.s[i1]);
+      this.rampas.push({ s0: this.s[a], topo0: this.s[i0], topo1: this.s[i1], s1: this.s[b] });
+      for (let i = a; i <= b; i++) {
+        const v = this.s[i];
+        const h = i < i0 ? suave((v - this.s[a]) / antes) : i > i1 ? suave((this.s[b] - v) / depois) : 1;
+        elev[i] = Math.max(elev[i], altura * h);
+      }
+    }
+    // trecho repetido (colado em cima de outro): mesma altura do desenho embaixo dele
+    for (let i = 0; i < n; i++) {
+      if (!this.dup[i]) continue;
+      let melhor = Infinity, h = 0;
+      for (const j of this.segmentosPerto(this.x[i], this.z[i])) {
+        if (this.dup[j] || this.dup[j + 1] || Math.abs(this.s[j] - this.s[i]) < 60) continue;
+        const dx = this.x[j + 1] - this.x[j], dz = this.z[j + 1] - this.z[j], l2 = dx * dx + dz * dz || 1;
+        const t = Math.max(0, Math.min(1, ((this.x[i] - this.x[j]) * dx + (this.z[i] - this.z[j]) * dz) / l2));
+        const d = Math.hypot(this.x[i] - this.x[j] - dx * t, this.z[i] - this.z[j] - dz * t);
+        // no cruzamento do viaduto há dois desenhos embaixo: fica com o que anda na mesma direção
+        const al = Math.abs(dx * (this.x[Math.min(n - 1, i + 1)] - this.x[Math.max(0, i - 1)]) + dz * (this.z[Math.min(n - 1, i + 1)] - this.z[Math.max(0, i - 1)])) / (Math.sqrt(l2) * 10 || 1);
+        const nota = d + (al < 0.7 ? 20 : 0);
+        if (nota < melhor) { melhor = nota; h = elev[j] + (elev[j + 1] - elev[j]) * t; }
+      }
+      if (melhor < 25) elev[i] = h;
+    }
+    this.elev = elev;
+    this.viadutos = trechos;
+    this.y = this.yChao.map((v, i) => v + elev[i]);
+    Object.assign(this, folgaLateral(this.x, this.z, this.s, this.dup, 40, elev));
+  }
+
+  // limites num ponto fora do percurso (rua antes da largada / depois da chegada): cede a vez a todos os trechos
+  lateralEm(px, pz, ang, sRef) {
+    const f = folgaEm(this.seg, this.x, this.z, this.s, px, pz, ang, sRef, { todosAntes: true, elev: this.elev });
+    const l = limitesLaterais(f, 1e6);
+    // outro trecho do percurso ali perto (num circuito, a chegada passa atrás da largada): não desenha
+    return { dup: l.ruaD < 3.99 || l.ruaE < 3.99 || l.limD < 8 || l.limE < 8, fora: true, ...l };
   }
 
   em(s) {
@@ -307,7 +547,7 @@ export class PistaReal {
           const ax = this.x[i], az = this.z[i], dx = this.x[i + 1] - ax, dz = this.z[i + 1] - az;
           const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
           const dist = Math.hypot(x - ax - dx * t, z - az - dz * t);
-          if (!melhor || dist < melhor.dist) melhor = { dist, y: this.y[i] + (this.y[i + 1] - this.y[i]) * t, s: this.s[i] + (this.s[i + 1] - this.s[i]) * t };
+          if (!melhor || dist < melhor.dist) melhor = { dist, y: this.yChao[i] + (this.yChao[i + 1] - this.yChao[i]) * t, s: this.s[i] + (this.s[i + 1] - this.s[i]) * t };
         }
       }
       if (melhor && melhor.dist <= (r - 1) * C) break;
