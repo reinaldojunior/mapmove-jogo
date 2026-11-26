@@ -49,7 +49,9 @@ test('o arquivo do jogo é o resultado da etapa 2 sem esticar: distância geomé
     const a = ler(`../public/percursos/${slug}.json`), c = ler(`../dados/casados/${slug}.json`);
     for (const [rot, d] of Object.entries(a.distancias)) {
       assert.ok(percursoValido(d.percurso), `${rot}`);
-      assert.equal(d.kmGeometrico, c.distancias[rot].distancias.geometricaKm);
+      // só muda o que saiu como espeto de ida-e-volta curto (semEspetos)
+      const tirado = (d.espetosRemovidos || []).reduce((t, e) => t + e.m, 0) / 1000;
+      assert.ok(Math.abs(d.kmGeometrico - (c.distancias[rot].distancias.geometricaKm - tirado)) < 0.0015, `${rot}`);
       assert.equal(d.fallbackKm.length, c.distancias[rot].passagens.filter((p) => p.semCasamento).length);
     }
   }
@@ -59,6 +61,9 @@ test('o arquivo do jogo é o resultado da etapa 2 sem esticar: distância geomé
   // 42K: não foi esticado para os 42,2 km oficiais (a diferença fica documentada); as 2 voltas têm o comprimento do 21K
   assert.ok(arquivo.distancias['42K'].kmGeometrico < 42.2 - 0.2);
   assert.ok(Math.abs(arquivo.distancias['42K'].kmGeometrico - 2 * arquivo.distancias['21K'].kmGeometrico) < 0.5);
+  // espeto do 42K (km 40,6, 4,7 m na Alameda CIESP e volta) removido; o retorno de verdade da CIESP (40–49 m) fica
+  assert.deepEqual(arquivo.distancias['42K'].espetosRemovidos.map((e) => e.km), [40.62]);
+  assert.deepEqual(arquivo.distancias['21K'].espetosRemovidos, []);
   // Indaiatuba 21K: altitude do Portal mantida (anomalia preservada, nada trocado pelo terreno)
   const ind = ler('../public/percursos/1-meia-maratona-de-indaiatuba-2026-12-13.json').distancias['21K'];
   assert.equal(ind.altitudeGpsCoerente, false);

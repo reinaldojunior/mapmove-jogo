@@ -33,7 +33,21 @@ Para a prévia ser segura, entraram duas mudanças pequenas.
    - Antes, o fantasma do percurso antigo corria no percurso novo, com distâncias diferentes. Era a única mistura de
      resultados que ainda existia.
 
-Nada mudou em regras, física, colisões, movimentação, distâncias ou altitude.
+3. **Defeito corrigido no 42K do modo novo** (achado na corrida completa desta preparação).
+   - **Onde:** km 40,55, volta 2.
+   - **O que acontecia:** o traçado ajustado tinha um "espeto". O casamento do GPS com o mapa entrou 4,7 m na
+     Alameda CIESP e voltou pela mesma rua. Ali o corredor podia ficar preso indo e voltando; travou em 2 de 3
+     tentativas.
+   - **Correção:** o exportador da etapa 3 (`semEspetos` em `scripts/percurso/exportar-jogo.mjs`) tira idas e voltas
+     na mesma rua com menos de 15 m em cada perna. Os retornos de verdade ficam, porque os da CIESP têm 40–49 m.
+   - **Resultado:**
+     - só o 42K mudou: saiu 1 ponto, e a distância foi de 41,870 para 41,868 km;
+     - as outras 4 distâncias ficaram idênticas;
+     - a versão do percurso passou a `etapa3-v2`, e as ruas foram regeneradas;
+     - medidas do desenho iguais: 0 degrau, 0 fresta, vão 7 m, fita do 42K 3,2%;
+     - no mesmo ponto, 5 de 5 tentativas chegaram ao fim sem recuo.
+
+Nada mudou em regras, física, colisões ou movimentação. A altitude do GPX não foi tocada.
 
 ## 2. Proposta para recordes e ranking
 
@@ -58,7 +72,7 @@ Cada traçado tem a sua distância:
 | Prova | Percurso de sempre | Percurso ajustado | Diferença |
 |---|---|---|---|
 | Sorocaba 21K | 20,928 km | 21,158 km | +1,1% |
-| Sorocaba 42K | 41,522 km | 41,870 km | +0,8% |
+| Sorocaba 42K | 41,522 km | 41,868 km | +0,8% |
 | Indaiatuba 6K | 6,123 km | 6,140 km | +0,3% |
 | Indaiatuba 10K | 9,938 km | 10,001 km | +0,6% |
 | Indaiatuba 21K | 20,837 km | 20,964 km | +0,6% |

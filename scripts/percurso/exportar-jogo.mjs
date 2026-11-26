@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ler = (p) => JSON.parse(fs.readFileSync(path.join(RAIZ, p)));
-export const VERSAO = 'etapa3-v1';
+export const VERSAO = 'etapa3-v2'; // v2: sem espetos de ida-e-volta curtos (semEspetos)
 
 const interp = (xs, ys, x) => {
   let lo = 0, hi = xs.length - 1;
@@ -56,6 +56,26 @@ export function metadeDaRua(casado) {
   });
 }
 
+// Espeto: o matching entrou poucos metros numa rua e voltou pela mesma aresta (ruído do GPS numa esquina, ex.: 42K
+// km 40,6, 4,7 m na Alameda CIESP). Não é retorno de prova (os de verdade têm dezenas de metros: CIESP 40–49 m) e
+// deixava o corredor preso indo e voltando na ponta. Sai o par de passagens e os pontos da linha entre elas.
+export const ESPETO_MAX = 15; // m, cada perna
+export function semEspetos(casado) {
+  const ps = casado.passagens, fora = [];
+  for (let i = 0; i + 1 < ps.length; i++) {
+    const a = ps[i], b = ps[i + 1];
+    if (!a.aresta || a.aresta !== b.aresta || a.sent !== -b.sent) continue;
+    if (Math.abs(a.ate - a.de) >= ESPETO_MAX || Math.abs(b.ate - b.de) >= ESPETO_MAX) continue;
+    fora.push({ i, de: a.sAte * 1000 + 0.5, ate: b.sAte * 1000 + 0.5, m: Math.abs(a.ate - a.de) + Math.abs(b.ate - b.de) });
+    i++;
+  }
+  if (!fora.length) return { casado, espetos: [] };
+  const tira = new Set(fora.flatMap((f) => [f.i, f.i + 1]));
+  const linha = casado.linha.filter(([, , s]) => !fora.some((f) => s > f.de && s <= f.ate));
+  return { casado: { ...casado, linha, passagens: ps.filter((_, k) => !tira.has(k)) },
+    espetos: fora.map((f) => ({ km: +(f.de / 1000).toFixed(3), m: +f.m.toFixed(1) })) };
+}
+
 // pontos a cada ≤ PASSO m (retas longas do grafo ganham pontos no meio só para carregar a altitude do GPS)
 const PASSO = 20;
 export function percursoDoJogo(casado, elevacao) {
@@ -80,15 +100,18 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const casados = ler(`dados/casados/${slug}.json`), elev = ler(`dados/elevacao/${slug}.json`);
     const saida = { slug, versao: VERSAO, gerado: casados.gerado, fonte: 'map matching OSM (etapa 2)', distancias: {} };
     for (const [rot, c] of Object.entries(casados.distancias)) {
-      const percurso = percursoDoJogo(c, elev.distancias[rot]);
+      const { casado: c2, espetos } = semEspetos(c);
+      const percurso = percursoDoJogo(c2, elev.distancias[rot]);
+      const tirado = espetos.reduce((t, e) => t + e.m, 0) / 1000;
       saida.distancias[rot] = {
-        kmOficial: c.distancias.oficialKm, kmGeometrico: c.distancias.geometricaKm, kmGps: c.distancias.gpsKm,
+        kmOficial: c.distancias.oficialKm, kmGeometrico: +(c.distancias.geometricaKm - tirado).toFixed(3), kmGps: c.distancias.gpsKm,
+        espetosRemovidos: espetos,
         percentAjustado: c.confianca.percentAjustado,
         fallbackKm: c.passagens.filter((p) => p.semCasamento).map((p) => [p.sDe, p.sAte]),
         altitudeGpsCoerente: elev.distancias[rot].resumo.altitudeGpsCoerente,
         percurso,
       };
-      console.log(`${slug.slice(0, 24)} ${rot}: ${percurso.length} pontos · ${c.distancias.geometricaKm} km · fallback ${saida.distancias[rot].fallbackKm.length}`);
+      console.log(`${slug.slice(0, 24)} ${rot}: ${percurso.length} pontos · ${saida.distancias[rot].kmGeometrico} km · fallback ${saida.distancias[rot].fallbackKm.length} · espetos ${JSON.stringify(espetos)}`);
     }
     fs.mkdirSync(path.join(RAIZ, 'public/percursos'), { recursive: true });
     fs.writeFileSync(path.join(RAIZ, 'public/percursos', `${slug}.json`), JSON.stringify(saida));
