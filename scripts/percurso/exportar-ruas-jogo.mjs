@@ -14,7 +14,7 @@ import { METADE } from './exportar-jogo.mjs';
 
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ler = (p) => JSON.parse(fs.readFileSync(path.join(RAIZ, p)));
-export const VERSAO = 'etapa4c-v1';
+export const VERSAO = 'etapa4d-v1';
 const PROVAS = { '9-maratona-sorocaba-novembro-azul-2026-11-21': 0, '1-meia-maratona-de-indaiatuba-2026-12-13': 1.6 };
 
 // a pista exatamente como o jogo monta no modo de teste (percurso ajustado + viaduto sem o falso das voltas)
@@ -56,7 +56,14 @@ function juntas(tris, dados, E) {
       if (!contem(x, z).length) { const k0 = km(x, z); if (!emZona(k0.s)) frestas.push({ ...k0, tipo: r.tipo, nome: r.nome }); break; }
     }
   }
-  return { degraus, frestas };
+  // vão livre: debaixo de cada pedaço de asfalto elevado (tabuleiro), o asfalto mais alto que passa por baixo
+  let vao = Infinity;
+  for (const q of asf) {
+    const x = (q.t[0][0] + q.t[1][0] + q.t[2][0]) / 3, z = (q.t[0][1] + q.t[1][1] + q.t[2][1]) / 3, y = (q.y[0] + q.y[1] + q.y[2]) / 3;
+    if (!E.eixo.some((a) => a.alto && Math.hypot(a.x - x, a.z - z) < 12)) continue; // só o tabuleiro (trecho elevado)
+    for (const o of contem(x, z)) { const dy = y - yEm(o, x, z); if (dy > 1.5) vao = Math.min(vao, dy); }
+  }
+  return { degraus, frestas, vao };
 }
 const uniao = (zs) => { const o = zs.map(([a, b]) => [a, b]).sort((x, y) => x[0] - y[0]); let t = 0, c = null; for (const [a, b] of o) { if (!c || a > c[1]) { if (c) t += c[1] - c[0]; c = [a, b]; } else c[1] = Math.max(c[1], b); } if (c) t += c[1] - c[0]; return t; };
 export function dadosDistancia(slug, rot) {
@@ -97,21 +104,21 @@ export function dadosDistancia(slug, rot) {
   const cruz = polis.map((c) => ({ pol: c.pol.map(q2), cantos: c.cantos.map((k) => k.map(q2)), centro: q2(c.centro), camada: c.camada, faixas: arred(porNo.get(c.no) || []) }))
     .filter((c) => c.faixas.length);
   // zonas que continuam com a fita de sempre: viaduto/ponte do jogo (etapa 4d) e o fallback (ligação que falta no OSM)
-  const zonas = [];
+  const zonas = [], trechosElevados = [];
   for (let s = 0, ini = null; s <= pista.total + 2; s += 2) {
     const alto = s <= pista.total && (pista.elevacao?.(s) || 0) > 0.3;
     if (alto && ini === null) ini = s;
-    if (!alto && ini !== null) { zonas.push([ini - 20, s + 20, 'ponte']); ini = null; }
+    if (!alto && ini !== null) { trechosElevados.push([ini, s]); ini = null; } // 4d: a ponte usa o desenho novo
   }
   for (const [a, b] of ajust.fallbackKm || []) zonas.push([a * 1000 * fator - 15, b * 1000 * fator + 15, 'fallback']);
-  // duas passagens lado a lado (< 16,5 m: as faixas até a penalidade, com os remendos, se encostam) em alturas diferentes (0,3–5,5 m,
+  // duas passagens lado a lado (< 9,5 m: as faixas de asfalto ±4 m se encostam; a calçada entre elas é compartilhada) em alturas diferentes (0,3–5,5 m,
   // sem ser viaduto): qualquer rua desenhada para uma cobriria a outra. Ali fica a fita de sempre, que se encolhe.
   {
     const am = E.eixo.filter((_, k) => k % 2 === 0), marcados = [];
-    for (const a of am) for (const b of E.ix.perto(a.x, a.z, 17)) {
+    for (const a of am) for (const b of E.ix.perto(a.x, a.z, 10)) {
       if (Math.abs(a.s - b.s) < 60) continue;
       const dy = Math.abs(a.y - b.y);
-      if (Math.hypot(a.x - b.x, a.z - b.z) < 16.5 && dy > 0.3 && dy < 5.5) { marcados.push(a.s); break; }
+      if (Math.hypot(a.x - b.x, a.z - b.z) < 9.5 && dy > 0.3 && dy < 5.5) { marcados.push(a.s); break; }
     }
     let ini = null, ant = null;
     for (const s of marcados) { if (ini !== null && s - ant > 12) { zonas.push([ini - 10, ant + 10, 'alturas diferentes lado a lado']); ini = null; } if (ini === null) ini = s; ant = s; }
@@ -120,7 +127,7 @@ export function dadosDistancia(slug, rot) {
   const zonasFita = zonas.map(([a, b]) => [Math.round(a), Math.round(b)]); // (dados.zonasFita é esta mesma lista)
   // remendos: mede, alarga onde falta, repete (bordas)
   const dados = { ramos, cruzamentos: cruz, zonasFita, remendos: [] };
-  const medir = () => medirFaixa(pista, [...montarRuas(pista, dados, { eixo: E }), ...fitaDasZonas(pista, zonasFita)], { zonas: zonasFita });
+  const medir = () => medirFaixa(pista, [...montarRuas(pista, dados, { eixo: E }), ...fitaDasZonas(pista, zonasFita)], { zonas: zonasFita, eixo: E });
   let m = medir(); const antes = m.falta.length;
   for (let passada = 1; m.falta.length && passada <= 8; passada++) {
     for (const tipo of ['asfalto', 'calcada']) for (const lado of [-1, 1]) {
@@ -152,7 +159,7 @@ export function dadosDistancia(slug, rot) {
   let tris = montarRuas(pista, dados, { eixo: E });
   // 4c: degrau entre peças (cruzamento × rua × rua que cruza × remendo no mesmo ponto com alturas diferentes) e
   // fresta nas emendas (1,5 m além da ponta recortada de cada rua, para dentro do cruzamento, tem que ter asfalto)
-  const { degraus, frestas } = juntas(tris, dados, E);
+  const { degraus, frestas, vao } = juntas(tris, dados, E);
   const resumo = {
     pistaKm: +(pista.total / 1000).toFixed(3), faltaAntes: antes, faltaDepois: m.falta.length, pontosMedidos: m.pontos,
     porCima: m.porCima.filter((p) => p.tipo === 'outra').length,
@@ -166,6 +173,7 @@ export function dadosDistancia(slug, rot) {
     remendos: dados.remendos.length, remendosAsfaltoM: Math.round(dados.remendos.filter((r) => r.tipo === 'asfalto').reduce((t, r) => t + r.s1 - r.s0, 0)),
     zonasFita: zonas.map(([a, b, motivo]) => ({ km: [+(a / 1000).toFixed(3), +(b / 1000).toFixed(3)], motivo })), triangulos: tris.length,
     degrausEntrePecas: degraus.length, degrauPares: degraus.reduce((m, d) => { m[d.par] = (m[d.par] || 0) + 1; return m; }, {}), degrauMaxM: +degraus.reduce((x, d) => Math.max(x, d.dy), 0).toFixed(2), degrauKm: [...new Set(degraus.map((d) => d.km))].slice(0, 20),
+    vaoLivreMinM: Number.isFinite(vao) ? +vao.toFixed(2) : null, trechosElevadosKm: trechosElevados.map(([a, b]) => [+(a / 1000).toFixed(3), +(b / 1000).toFixed(3)]),
     frestas: frestas.length, frestaLista: frestas.slice(0, 8), frestaKm: [...new Set(frestas.map((d) => d.km))].slice(0, 20),
     fitaM: Math.round(uniao(dados.zonasFita)), fitaPct: +(100 * uniao(dados.zonasFita) / pista.total).toFixed(1),
   };
@@ -180,7 +188,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       const t0 = Date.now(), d = dadosDistancia(slug, rot);
       d.origem = aj.distancias[rot].percurso[0].slice(0, 2);
       saida.distancias[rot] = d;
-      console.log(`${slug.slice(0, 12)} ${rot}: faixa sem cobertura ${d.resumo.faltaAntes} → ${d.resumo.faltaDepois} pontos · outra passagem por cima ${d.resumo.porCima} ${JSON.stringify(d.resumo.porCimaKm.slice(0, 8))} · beira da própria rua acima: ${d.resumo.beiraAcimaPontos} pts, máx ${d.resumo.beiraAcimaMaxM} m (na faixa ±4 m: ${d.resumo.beiraAcimaNaRuaMaxM}) · ${d.resumo.ruas} ruas + ${d.resumo.ruasQueCruzam} que cruzam · ${d.resumo.cruzamentos} cruzamentos · ${d.remendos.length} remendos (${d.resumo.remendosAsfaltoM} m de asfalto) · ${d.resumo.triangulos} triângulos · degraus ${d.resumo.degrausEntrePecas} (máx ${d.resumo.degrauMaxM} m) ${JSON.stringify(d.resumo.degrauKm.slice(0, 6))} · frestas ${d.resumo.frestas} ${JSON.stringify(d.resumo.frestaKm.slice(0, 6))} · fita de sempre em ${d.resumo.fitaPct}% (${d.resumo.fitaM} m) · ${Date.now() - t0} ms`);
+      console.log(`${slug.slice(0, 12)} ${rot}: faixa sem cobertura ${d.resumo.faltaAntes} → ${d.resumo.faltaDepois} pontos · outra passagem por cima ${d.resumo.porCima} ${JSON.stringify(d.resumo.porCimaKm.slice(0, 8))} · beira da própria rua acima: ${d.resumo.beiraAcimaPontos} pts, máx ${d.resumo.beiraAcimaMaxM} m (na faixa ±4 m: ${d.resumo.beiraAcimaNaRuaMaxM}) · ${d.resumo.ruas} ruas + ${d.resumo.ruasQueCruzam} que cruzam · ${d.resumo.cruzamentos} cruzamentos · ${d.remendos.length} remendos (${d.resumo.remendosAsfaltoM} m de asfalto) · ${d.resumo.triangulos} triângulos · degraus ${d.resumo.degrausEntrePecas} (máx ${d.resumo.degrauMaxM} m) ${JSON.stringify(d.resumo.degrauKm.slice(0, 6))} · frestas ${d.resumo.frestas} ${JSON.stringify(d.resumo.frestaKm.slice(0, 6))} · vão ${d.resumo.vaoLivreMinM} m · fita de sempre em ${d.resumo.fitaPct}% (${d.resumo.fitaM} m) · ${Date.now() - t0} ms`);
     }
     fs.mkdirSync(path.join(RAIZ, 'public/ruas'), { recursive: true });
     fs.writeFileSync(path.join(RAIZ, 'public/ruas', `${slug}.json`), JSON.stringify(saida));

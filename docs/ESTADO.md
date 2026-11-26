@@ -145,7 +145,9 @@ para a etapa 4, o novo desenho das ruas): relatório em `docs/percursos/etapa3/R
 **Etapa 4 (novo desenho das ruas a partir do OSM), em andamento, uma sub-etapa por aprovação:**
 
 - **4a aprovada:** imagens em `docs/percursos/etapa4/`.
-- **4c feita, aguardando avaliação:** cruzamentos (cantos arredondados) e ruas que cruzam (50 m, somem no fim).
+- **4d feita, aguardando avaliação:** ponte com o desenho novo sobre a estrutura de `src/viaduto.js` (vão 7 m; rampas do
+  42K e descida do 21K seguem com a fita). Relatório em `docs/percursos/etapa4/ETAPA-4D.md`.
+- **4c aprovada:** cruzamentos (cantos arredondados) e ruas que cruzam (50 m, somem no fim).
   Relatório em `docs/percursos/etapa4/ETAPA-4C.md`. **Falta medir no Galaxy A05 real** antes de qualquer publicação.
 - **4b aprovada:** ruas do percurso e avenidas duplas no jogo, só com `?ruas=osm` junto com
   `?percurso=ajustado`. Relatório em `docs/percursos/etapa4/ETAPA-4B.md`.

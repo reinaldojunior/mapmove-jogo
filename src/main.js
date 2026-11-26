@@ -1015,7 +1015,8 @@ function construirVisual() {
     }
   };
   if (prova?.ruasOSM) {
-    // ruas do mapa (etapa 4b, ?ruas=osm): a fita de sempre só nas zonas da ponte e do fallback
+    // ruas do mapa (etapa 4, ?ruas=osm): a fita de sempre só nas zonas listadas no arquivo (fallback, alturas que não
+    // batem, cruzamento torto do mapa); a ponte (4d) usa o desenho novo, com a estrutura de src/viaduto.js
     for (const [a, b] of prova.ruasOSM.zonasFita) { const amo = amostras.filter((q) => q.s >= a && q.s <= b); if (amo.length > 1) desenharFita(amo); }
     visual.add(malhasRuasOSM(prova.ruasOSM));
   } else desenharFita(amostras);

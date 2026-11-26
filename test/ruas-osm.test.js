@@ -117,3 +117,46 @@ test('etapa 4b: arquivo do jogo cobre a faixa do corredor nas 5 distâncias; ref
     }
   }
 });
+
+test('etapa 4d: ponte Dom José com o desenho novo — vão livre ≥ 5,5 m, tabuleiro fora da fita, nada além da barreira', async () => {
+  const fs2 = await import('node:fs');
+  const { pistaDoJogo } = await import('../scripts/percurso/exportar-ruas-jogo.mjs');
+  const { montarRuas, eixoDaPista } = await import('../src/ruasOSM.js');
+  const SO = '9-maratona-sorocaba-novembro-azul-2026-11-21';
+  const ruas = JSON.parse(fs2.readFileSync(new URL(`../public/ruas/${SO}.json`, import.meta.url)));
+  for (const rot of ['21K', '42K']) {
+    const d = ruas.distancias[rot], r = d.resumo;
+    assert.ok(r.vaoLivreMinM >= 5.5, `${rot}: vão livre ${r.vaoLivreMinM} m`);
+    assert.equal(r.trechosElevadosKm.length, rot === '42K' ? 2 : 1, `${rot}: uma ponte por volta`);
+    // o meio de cada trecho elevado (o tabuleiro) não está em zona de fita: é desenhado pelo desenho novo
+    for (const [a, b] of r.trechosElevadosKm) {
+      const meio = ((a + b) / 2) * 1000;
+      assert.ok(!d.zonasFita.some(([z0, z1]) => meio >= z0 && meio <= z1), `${rot}: tabuleiro no km ${((a + b) / 2).toFixed(2)} ainda na fita`);
+    }
+  }
+  // no trecho elevado nada do desenho novo passa da barreira (7,6 m do eixo) e nenhuma rua que cruza sai dali
+  const { pista } = pistaDoJogo(SO, '21K'), E = eixoDaPista(pista), d = ruas.distancias['21K'];
+  const tris = montarRuas(pista, d, { eixo: E });
+  let fora = 0, tocoNoAlto = 0;
+  for (const q of tris) {
+    const x = (q.t[0][0] + q.t[1][0] + q.t[2][0]) / 3, z = (q.t[0][1] + q.t[1][1] + q.t[2][1]) / 3, h = E.alturaEm(x, z, null, null, 12);
+    if ((pista.elevacao(h.s) || 0) <= 0.3) continue;
+    if (h.d > 7.6 + 0.15 + 0.5 && !q.tipo.startsWith('alargamento')) fora++;
+    if (q.tipo === 'toco' && h.d < 7.6) tocoNoAlto++;
+  }
+  assert.equal(fora, 0, 'pedaços além da barreira no trecho elevado');
+  assert.equal(tocoNoAlto, 0, 'rua que cruza saindo do trecho elevado');
+});
+
+test('etapa 4d: pontes baixas (sobre córrego) ficam no chão, como no jogo', () => {
+  for (const slug of ['1-meia-maratona-de-indaiatuba-2026-12-13']) {
+    const ruas = JSON.parse(fs.readFileSync(new URL(`../public/ruas/${slug}.json`, import.meta.url)));
+    for (const [rot, d] of Object.entries(ruas.distancias)) {
+      assert.equal(d.resumo.trechosElevadosKm.length, 0, `${rot}: sem viaduto`);
+      assert.ok(d.ramos.every((r) => r.camada === 0), `${rot}: todas as ruas no chão`);
+    }
+  }
+  // Rua Ubirajara (ponte baixa) no 42K: sem viaduto falso e no chão
+  const so = JSON.parse(fs.readFileSync(new URL('../public/ruas/9-maratona-sorocaba-novembro-azul-2026-11-21.json', import.meta.url)));
+  assert.ok(so.distancias['42K'].ramos.filter((r) => /Ubirajara/.test(r.nome || '')).every((r) => r.camada === 0));
+});

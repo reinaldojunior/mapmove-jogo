@@ -258,7 +258,7 @@ export function eixoDaPista(pista) {
         if (!b) continue;
         const dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / l2));
         const d = Math.hypot(x - a.x - dx * t, z - a.z - dz * t), y = a.y + (b.y - a.y) * t, s = a.s + (b.s - a.s) * t;
-        if (a.alto === camada >= 1 && (!melhor || d < melhor.d)) melhor = { d, y, s };
+        if ((camada == null || a.alto === camada >= 1) && (!melhor || d < melhor.d)) melhor = { d, y, s };
         if (!melhorQ || d < melhorQ.d) melhorQ = { d, y, s };
       }
     }
@@ -308,14 +308,24 @@ export function remendoTris(pista, r, out) {
 // tipos: asfalto, calcada (ruas do mapa), alargamento, alargamentoCalcada (remendos D1)
 export function montarRuas(pista, dados, { eixo = null } = {}) {
   const E = eixo || eixoDaPista(pista), out = [], zonas = dados.zonasFita || [];
+  // 4d: no trecho elevado (rampa e tabuleiro) a estrutura do viaduto (src/viaduto.js) tem a barreira a LIMITE do eixo:
+  // nada da rua do mapa passa dela (senão o asfalto ficaria pendurado fora da ponte)
+  const foraDoTabuleiro = (t) => {
+    const x = (t[0][0] + t[1][0] + t[2][0]) / 3, z = (t[0][1] + t[1][1] + t[2][1]) / 3, h = E.alturaEm(x, z, null, null, 12);
+    return (pista.elevacao?.(h.s) || 0) > 0.3 && h.d > LIMITE + 0.15;
+  };
   for (const r of dados.ramos) {
     const pts = densificar(r.pts, 4), tipoR = r.tipo || 'rota', rota = tipoR === 'rota';
     // altura: rua do percurso pelas próprias passagens; ligação pelas passagens dos nós; rua que cruza (toco) fica na
     // altura do ponto onde encosta no percurso e some (alfa) nos últimos SUMIR_M metros (etapa 4c)
-    let yDe = ([x, z]) => E.alturaEm(x, z, r.camada, r.faixas);
+    // (etapa 4d) rua do percurso: altura só pelas próprias passagens, sem filtrar camada — na cabeceira da ponte a
+    // rampa continua da mesma passagem (filtrar "chão" pegava a altura do chão 30 m adiante e fazia degrau)
+    let yDe = ([x, z]) => E.alturaEm(x, z, tipoR === 'toco' ? r.camada : null, r.faixas);
     let alfa = () => 1;
     if (tipoR === 'toco') {
       const h0 = E.alturaEm(...pts[0], r.camada, r.faixas);
+      // rua que cruza não sai de trecho elevado (rampa/tabuleiro): ficaria flutuando ao lado da ponte (4d)
+      if ((pista.elevacao?.(h0.s) || 0) > 0.3) continue;
       yDe = () => h0;
       const L = r.comprimento, d0 = r.recorteInicio || 0;
       alfa = ([x, z]) => { const d = d0 + Math.hypot(x - pts[0][0], z - pts[0][1]); return Math.max(0, Math.min(1, (L - d) / SUMIR_M)); };
@@ -326,8 +336,9 @@ export function montarRuas(pista, dados, { eixo = null } = {}) {
     for (const [tipo, d0, d1] of partes) {
       for (const t of faixaTriangulos(pts, d0, d1)) {
         const hs = t.map(yDe);
-        // pedaço dentro de uma zona de fita (ponte, fallback, alturas que não batem): fica com a fita de sempre
+        // pedaço dentro de uma zona de fita (fallback, alturas que não batem): fica com a fita de sempre
         if (r.faixas && hs.every((h) => emZona(h.s, zonas))) continue;
+        if (foraDoTabuleiro(t)) continue;
         out.push({ t, tipo, camada: r.camada, y: hs.map((h) => h.y), faixas: r.faixas, a: tipoR === 'toco' ? t.map(alfa) : null });
       }
     }
@@ -340,10 +351,10 @@ export function montarRuas(pista, dados, { eixo = null } = {}) {
     const pol = c.pol.map(([x, z]) => { const dx = x - cx, dz = z - cz, l = Math.hypot(dx, dz) || 1; return [x + (dx / l) * 0.3, z + (dz / l) * 0.3]; });
     const tris = poligonoTriangulos(pol).map((t) => ({ t, hs: t.map(yDe) }));
     if (tris.length && tris.every((q) => q.hs.every((h) => emZona(h.s, zonas)))) continue;
-    for (const q of tris) out.push({ t: q.t, tipo: 'cruzamento', camada: c.camada, y: q.hs.map((h) => h.y), faixas: c.faixas });
+    for (const q of tris) if (!foraDoTabuleiro(q.t)) out.push({ t: q.t, tipo: 'cruzamento', camada: c.camada, y: q.hs.map((h) => h.y), faixas: c.faixas });
     for (const curva of c.cantos || []) {
       const fora = curva.map(([x, z]) => { const dx = x - cx, dz = z - cz, l = Math.hypot(dx, dz) || 1; return [x + (dx / l) * CALCADA_M, z + (dz / l) * CALCADA_M]; });
-      for (let k = 0; k < curva.length - 1; k++) for (const t of [[curva[k], fora[k], curva[k + 1]], [fora[k], fora[k + 1], curva[k + 1]]]) out.push({ t, tipo: 'calcada', camada: c.camada, y: t.map((p) => yDe(p).y), faixas: c.faixas });
+      for (let k = 0; k < curva.length - 1; k++) for (const t of [[curva[k], fora[k], curva[k + 1]], [fora[k], fora[k + 1], curva[k + 1]]]) if (!foraDoTabuleiro(t)) out.push({ t, tipo: 'calcada', camada: c.camada, y: t.map((p) => yDe(p).y), faixas: c.faixas });
     }
   }
   for (const rm of dados.remendos || []) { const n0 = out.length; remendoTris(pista, rm, out); for (let k = n0; k < out.length; k++) out[k].faixas = [[rm.s0 - 30, rm.s1 + 30]]; }
@@ -417,7 +428,14 @@ const ASF = new Set(['asfalto', 'cruzamento', 'fita', 'alargamento', 'toco']), P
 // faixa do corredor: a cada 1 m (de 25 m antes da largada, onde o pelotão espera, até a chegada) e a cada 0,5 m de
 // lado — até ±4 m tem que ter asfalto e até ±7,6 m (penalidade) asfalto ou calçada, na altura do corredor (±1,5 m)
 // zonas: trechos com a fita de sempre (medida pelo checador do desenho atual, scripts/checar-sobreposicao.mjs) — pulados
-export function medirFaixa(pista, tris, { passo = 1, zonas = [] } = {}) {
+export function medirFaixa(pista, tris, { passo = 1, zonas = [], eixo = null } = {}) {
+  // calçada encostada em outro trecho do percurso em outra altura (ex.: rampa da ponte ao lado da avenida de baixo):
+  // ali ela termina onde a outra começa, como a fita de sempre faz (folgaLateral) — não precisa ir até 7,6 m
+  const E = eixo || eixoDaPista(pista);
+  const calcadaCompartilhada = (x, z, s, y) => {
+    for (const a of E.ix.perto(x, z, LIMITE + 1)) if (Math.abs(a.s - s) > 60 && Math.abs(a.y - y) > 0.3 && Math.hypot(a.x - x, a.z - z) < LIMITE) return true;
+    return false;
+  };
   const it = indice(8);
   tris.forEach((t, k) => { const xs = t.t.map((q) => q[0]), zs = t.t.map((q) => q[1]); it.por(Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs), k); });
   const coberto = (x, z, y, tipos) => { for (const k of it.perto(x, z)) { const t = tris[k]; if (!tipos.has(t.tipo) || !dentroTri(x, z, t.t)) continue; if (Math.abs(alturaNoTri(x, z, t) - y) < 1.5) return true; } return false; };
@@ -454,7 +472,7 @@ export function medirFaixa(pista, tris, { passo = 1, zonas = [] } = {}) {
     const q = posicaoEstendida(pista, s), [rx, rz] = direita(q.ang);
     for (let d = -LIMITE; d <= LIMITE + 1e-9; d += 0.5) {
       const naRua = Math.abs(d) <= MEIA; pontos++;
-      if (!coberto(q.x + rx * d, q.z + rz * d, q.y, naRua ? ASF : PIS)) falta.push({ s, lado: Math.sign(d) || 1, tipo: naRua ? 'asfalto' : 'calcada', d });
+      if (!coberto(q.x + rx * d, q.z + rz * d, q.y, naRua ? ASF : PIS) && (naRua || !calcadaCompartilhada(q.x + rx * d, q.z + rz * d, s, q.y))) falta.push({ s, lado: Math.sign(d) || 1, tipo: naRua ? 'asfalto' : 'calcada', d });
       const ac = s >= 0 ? acima(q.x + rx * d, q.z + rz * d, q.y, s) : null;
       if (ac) porCima.push({ s, d, ...ac });
       if (naRua && s >= 0) { const topo = superficie(q.x + rx * d, q.z + rz * d, q.y); if (topo && (!ASF.has(topo.tipo) || topo.tipo === 'toco')) porCima.push({ s, d, tipo: 'outra', dy: topo.dy, calcadaNaRua: true, tipoTopo: topo.tipo }); }
