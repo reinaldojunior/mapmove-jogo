@@ -3265,6 +3265,7 @@ function penalizar() {
 // ─── LOOP ─────────────────────────────────────────────────────────────────────
 
 const GIRO_RAD_S = 1.8;
+const RETORNO_AUTO = 1.75; // rad (~100°): acima disso, no percurso ajustado, a curva é automática
 const GIRO_POR_TOQUE = 0.22;
 
 function passo(dt) {
@@ -3310,6 +3311,21 @@ function passo(dt) {
     if (Math.abs(giro) < 0.1 && Math.abs(s.giroPend) < 0.01) {
       const dif = difAngulo(p.ang, s.ang);
       if (Math.abs(dif) < 0.35) s.ang += dif * Math.min(1, 2.5 * ader * dt);
+    }
+    // percurso ajustado (teste): retorno ou curva muito fechada (> ~100°) vira sozinho, seguindo a rua; o jogador
+    // ainda desvia para os lados (com comando dele, a curva automática espera)
+    if (prova?.ajustado) {
+      const c = curvaEm(s.s), difR = Math.abs(difAngulo(p.ang, s.ang));
+      if (c > RETORNO_AUTO) s.retornoAuto = true;
+      else if (s.retornoAuto && c < 1.2 && difR < 0.2) s.retornoAuto = false;
+      if (s.retornoAuto && Math.abs(giro) < 0.1 && Math.abs(s.giroPend) < 0.01) {
+        const q = emEst(s.s + 7), [rx, rz] = direita(q.ang), dd = Math.max(-2.5, Math.min(2.5, s.d || 0));
+        const alvoAng = Math.atan2(q.x + rx * dd - s.x, -(q.z + rz * dd - s.z));
+        const da = difAngulo(alvoAng, s.ang), max = GIRO_RAD_S * 2.5 * ader * dt;
+        s.ang += Math.max(-max, Math.min(max, da));
+        if (!s.retornoAvisado) { s.retornoAvisado = true; aviso('↩️ Retorno: curva automática', '', 1400); }
+      }
+      if (!s.retornoAuto) s.retornoAvisado = false;
     }
     s.gelAtivo = Math.max(0, s.gelAtivo - dt);
     s.freio = Math.max(0, (s.freio || 0) - dt);
