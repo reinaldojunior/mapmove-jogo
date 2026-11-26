@@ -3384,7 +3384,8 @@ const GIRO_RAD_S = 1.8;
 const RAPIDO_AJUSTADO = 1.5;
 const rapidez = () => (prova?.ajustado ? RAPIDO_AJUSTADO : 1);
 const escalaTempo = () => R.ESCALA_TEMPO * rapidez();
-const RETORNO_AUTO = 1.75; // rad (~100°): acima disso, no percurso ajustado, a curva é automática
+const RETORNO_AUTO = 1.75;
+const FREIO_RETORNO_AUTO = 0.85; // na curva automática mantém 85% da velocidade (a curva normal desce até 50%) // rad (~100°): acima disso, no percurso ajustado, a curva é automática
 const GIRO_POR_TOQUE = 0.22;
 
 function passo(dt) {
@@ -3459,7 +3460,9 @@ function passo(dt) {
     const alvo = R.velocidadeAlvo({ gel: s.gelAtivo > 0, inclinacao: p.inclinacao, naCalcada: Math.abs(s.d) > R.MEIA_RUA, energia: s.energia, pace: s.paceBase / s.fatorTenis, freando: s.freio > 0 });
     s.v = R.aproximarVelocidade(s.v, alvo * CL.fatorVento(cl, s.ang) * R.fatorHidratacao(s.agua, s.semAgua || 0), dt); // vento; sem água vai perdendo força
     // curva fechada ou retorno à frente (ou ainda virando): tira o pé sozinho, mais rápido do que o soltar normal
-    const fCurva = R.fatorCurva(Math.max(curvaEm(s.s), Math.abs(difAngulo(p.ang, s.ang))));
+    let fCurva = R.fatorCurva(Math.max(curvaEm(s.s), Math.abs(difAngulo(p.ang, s.ang))));
+    // percurso ajustado: na curva automática (retorno) quase não freia
+    if (prova?.ajustado && (s.retornoAuto || curvaEm(s.s) > RETORNO_AUTO)) fCurva = Math.max(fCurva, FREIO_RETORNO_AUTO);
     if (s.v > alvo * fCurva) s.v = Math.max(alvo * fCurva, s.v - R.CURVA.freio * dt);
     if (fCurva < 0.8 && !s.curvaAvisada) { s.curvaAvisada = true; aviso('↪️ Curva fechada: tirando o pé', '', 900); }
     if (fCurva > 0.97) s.curvaAvisada = false;
