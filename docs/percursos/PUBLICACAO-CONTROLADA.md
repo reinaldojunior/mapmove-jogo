@@ -123,10 +123,21 @@ ela não grava nada. Se o modo de teste for liberado em produção atrás dos pa
 | Build da prévia na Vercel | o pacote publicado (`index-DeeFN0sX.js`) é o mesmo do build de prévia local, com o selo |
 | Prévia local (marca ligada) | selo aparece; "Entrar com Google" mostra "Prévia de teste: nada é gravado na conta"; 0 requisição de gravação; 0 erro |
 | Build normal (sem marca) | sem selo; "Entrar com Google" leva ao Google, como em produção |
-| Corrida completa, 5 provas × 2 modos | ver `RESULTADO DA CORRIDA COMPLETA` abaixo |
+| Corrida completa, 5 provas × 2 modos | todas chegam, 0 penalidade, 0 erro, 0 gravação (tabela abaixo) |
 | Pontes, cruzamentos, avenidas, retornos; comparação com produção; desempenho | sem mudança de desenho desde a validação final: valem os números de `etapa4/VALIDACAO-FINAL.md` (0 degrau, 0 fresta, vão 7 m; FPS médio 6,34 → 6,68; triângulos 256 mil → 209 mil) |
 
-RESULTADO DA CORRIDA COMPLETA
+### Corrida completa (piloto automático da largada à chegada)
+
+| Prova | Padrão: chega / recuos / penal. / erros | Novo (após a correção): chega / recuos / penal. / erros | Gravações na rede |
+|---|---|---|---|
+| Sorocaba 21K | sim / 0 / 0 / 0 | sim / 0 / 0 / 0 (21,158 km) | 0 |
+| Sorocaba 42K | sim / 5* / 0 / 0 | sim / 0 / 0 / 0 (41,868 km) | 0 |
+| Indaiatuba 6K | sim / 0 / 0 / 0 | sim / 0 / 0 / 0 (6,140 km) | 0 |
+| Indaiatuba 10K | sim / 0 / 0 / 0 | sim / 0 / 0 / 0 (10,001 km) | 0 |
+| Indaiatuba 21K | sim / 0 / 0 / 0 | sim / 0 / 0 / 0 (20,964 km) | 0 |
+
+\* Os recuos do 42K padrão já acontecem em produção hoje (GPS atual do Portal) e variam de uma corrida para outra.
+Recordes gravados: nas chaves de sempre no padrão e nas `…-ajustado` no modo novo.
 
 ## 5. Como reverter
 
