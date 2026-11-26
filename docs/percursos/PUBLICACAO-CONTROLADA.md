@@ -79,7 +79,11 @@ Cada traçado tem a sua distância:
 
 Um tempo do percurso de sempre não é convertido para o novo. Ele continua valendo no percurso em que foi feito.
 
-### Decisão pendente: XP, Move$, medalhas e conquistas no modo de teste
+### Decisão: XP, Move$, medalhas e conquistas no modo de teste
+
+**Decidido em 26/11/2026: opção C, publicar como está.** No modo de teste, a corrida soma XP, Move$, medalhas,
+conquistas e usa a mochila como qualquer corrida. Recordes de tempo, ranking e fantasma continuam separados (tabela
+acima). As opções avaliadas:
 
 Hoje, uma corrida com `?percurso=ajustado` soma XP e Move$, dá medalha de colocação e conquista da prova, e gasta os
 itens da mochila, como qualquer corrida. Com login, esse perfil vai para a nuvem. Na prévia isso não acontece, porque
