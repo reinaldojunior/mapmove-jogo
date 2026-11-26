@@ -142,16 +142,19 @@ para a etapa 4, o novo desenho das ruas): relatório em `docs/percursos/etapa3/R
 - O GPS do 42K de Sorocaba mudou no Portal em 25/11/2026 (528 → 590 pontos): no jogo de hoje ele tem 41,52 km e, na
   simulação, recua e salta no retorno da volta 2. No ajustado tem 41,87 km, sem recuo.
 
-**Etapa 4 (novo desenho das ruas a partir do OSM), em andamento, uma sub-etapa por aprovação:**
+**Etapa 4 (novo desenho das ruas a partir do OSM), 4a–4e aprovadas, validação final feita:**
 
+- **Validação final feita (26/11/2026), aguardando autorização para publicar:** relatório em
+  `docs/percursos/etapa4/VALIDACAO-FINAL.md`, imagens produção × novo em `docs/percursos/etapa4/img-final/`.
+  Padrão idêntico à produção; 5 provas até a chegada sem penalidade nem recuo; desenho com 0 degrau e 0 fresta.
+  Teste no Galaxy A05 real dispensado pelo usuário (recomendado antes de publicar).
 - **4a aprovada:** imagens em `docs/percursos/etapa4/`.
-- **4e feita, aguardando avaliação:** acabamento visual (bordas na largura real, acostamento, cor de rampa, juntas da
+- **4e aprovada:** acabamento visual (bordas na largura real, acostamento, cor de rampa, juntas da
   ponte, pintura, faixas de pedestre do OSM, linha azul, cones). Relatório em `docs/percursos/etapa4/ETAPA-4E.md`.
-  **Falta medir no Galaxy A05 real** antes de qualquer publicação.
 - **4d aprovada:** ponte com o desenho novo sobre a estrutura de `src/viaduto.js` (vão 7 m; rampas do
   42K e descida do 21K seguem com a fita). Relatório em `docs/percursos/etapa4/ETAPA-4D.md`.
 - **4c aprovada:** cruzamentos (cantos arredondados) e ruas que cruzam (50 m, somem no fim).
-  Relatório em `docs/percursos/etapa4/ETAPA-4C.md`. **Falta medir no Galaxy A05 real** antes de qualquer publicação.
+  Relatório em `docs/percursos/etapa4/ETAPA-4C.md`.
 - **4b aprovada:** ruas do percurso e avenidas duplas no jogo, só com `?ruas=osm` junto com
   `?percurso=ajustado`. Relatório em `docs/percursos/etapa4/ETAPA-4B.md`.
   - Geometria em `src/ruasOSM.js`; dados em `public/ruas/`, gerados por
