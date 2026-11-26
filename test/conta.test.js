@@ -21,3 +21,23 @@ test('Strava: 10 XP e 1 Move$ por km válido', () => {
   assert.equal(g.xp, 210);
   assert.equal(g.moves, 21);
 });
+
+test('prévia: sem a marca do build, a conta funciona como sempre (PREVIA false)', async () => {
+  const C = await import('../src/conta.js');
+  assert.equal(C.PREVIA, false);
+});
+
+test('prévia da Vercel: nenhuma gravação na conta, no ranking, no fantasma nem no Strava', async () => {
+  globalThis.__MAPMOVE_PREVIA__ = true;
+  try {
+    const C = await import('../src/conta.js?previa');
+    assert.equal(C.PREVIA, true);
+    assert.equal(await C.usuarioAtual(), null);
+    const u = { id: 'x', user_metadata: {} };
+    for (const f of [() => C.entrarComGoogle(), () => C.salvarPerfilNuvem(u, { xp: 1 }), () => C.salvarFantasma(u, { amostras: [] }),
+      () => C.registrarCorridaNuvem(u, { modo: '21K', pontos: 1, km: 1, tempo: 1, concluiu: true }),
+      () => C.stravaSincronizar(), () => C.stravaConectar('c', 's'), () => C.adicionarAmigo('abc'), () => C.meuCodigo()]) {
+      await assert.rejects(f, /Prévia de teste/);
+    }
+  } finally { delete globalThis.__MAPMOVE_PREVIA__; }
+});

@@ -6,6 +6,12 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = 'https://ssfsxdmzbubvygctdjgf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_s2yoUApfYl_ZvSUkqYYrVw_uXwKsybM'; // chave pública (a mesma do Portal)
 
+// Prévia da Vercel (marca posta pelo vite.config.js só no build de prévia): sem login e sem gravar nada no Supabase
+// nem no Strava, para testar sem mexer nos dados dos jogadores. Em produção é sempre false.
+export const PREVIA = typeof __MAPMOVE_PREVIA__ !== 'undefined' && __MAPMOVE_PREVIA__ === true;
+const SEM_GRAVAR = 'Prévia de teste: nada é gravado na conta.';
+const naPrevia = () => { if (PREVIA) throw new Error(SEM_GRAVAR); };
+
 let sb = null;
 function cliente() {
   if (!sb) sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, detectSessionInUrl: true, flowType: 'pkce' } });
@@ -33,14 +39,17 @@ export function mesclarPerfis(local, nuvem) {
 }
 
 export async function usuarioAtual() {
+  if (PREVIA) return null;
   try { const { data } = await cliente().auth.getSession(); return data.session?.user || null; } catch { return null; }
 }
 
 export function aoMudarLogin(fn) {
+  if (PREVIA) return;
   try { cliente().auth.onAuthStateChange((_ev, sessao) => fn(sessao?.user || null)); } catch { /* sem rede */ }
 }
 
 export async function entrarComGoogle() {
+  naPrevia();
   const { error } = await cliente().auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.origin + window.location.pathname }
@@ -62,6 +71,7 @@ export async function lerPerfilNuvem(u) {
 }
 
 export async function salvarPerfilNuvem(u, perfil) {
+  naPrevia();
   const { nome, foto } = dadosDoUsuario(u);
   const { error } = await cliente().from('jogo_perfis')
     .upsert({ user_id: u.id, nome, foto, perfil, atualizado_em: new Date().toISOString() }, { onConflict: 'user_id' });
@@ -74,6 +84,7 @@ async function tokenAtual() {
   return data.session?.access_token || null;
 }
 async function api(acao, corpo) {
+  naPrevia();
   const token = await tokenAtual();
   const r = await fetch(`/api/strava?acao=${acao}`, {
     method: corpo ? 'POST' : 'GET',
@@ -107,13 +118,17 @@ export function ganhoStrava(novas) {
 
 // ── Ranking de pontos (soma da semana / 30 dias) e amigos ──
 export async function registrarCorridaNuvem(u, { modo, pontos, km, tempo, concluiu }) {
+  naPrevia();
   const { error } = await cliente().from('jogo_corridas').insert({
     user_id: u.id, modo, pontos: Math.max(0, Math.round(pontos)), km: Math.round(km * 100) / 100,
     tempo_s: Math.max(0, Math.round(tempo || 0)), concluiu: !!concluiu
   });
   if (error) throw error;
 }
+// funções do Supabase que só leem (liberadas na prévia)
+const LEITURAS = new Set(['jogo_ranking', 'jogo_semana_passada', 'jogo_fantasma', 'jogo_quem_convidou']);
 async function rpc(nome, args) {
+  if (PREVIA && !LEITURAS.has(nome)) throw new Error(SEM_GRAVAR);
   const { data, error } = await cliente().rpc(nome, args);
   if (error) throw error;
   return data;
@@ -127,6 +142,7 @@ export const linkConvite = (codigo) => `https://jogo.mapmove.com.br/?amigo=${enc
 
 // ── Desafio com fantasma: guarda o ritmo da corrida e lê o desafio pelo link ──
 export async function salvarFantasma(u, { prova, rotulo, tempo, passo, amostras }) {
+  naPrevia();
   const { data, error } = await cliente().from('jogo_fantasmas')
     .insert({ user_id: u.id, prova, rotulo, tempo_s: Math.round(tempo), passo_s: passo, amostras: amostras.map((v) => Math.round(v * 10) / 10) })
     .select('id').single();

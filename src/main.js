@@ -2940,7 +2940,10 @@ function iniciar(escolha, clima) {
   estado.festaEm = prova && PROVA_SLUG === PROVA_DO_CARRO ? proximoCarroKm(0, true) : 0;
   // grava o ritmo da prova (posição a cada 10 s de prova) para virar fantasma num desafio
   estado.gravacao = prova ? { passo: 10, amostras: [0], prox: 10 } : null;
-  estado.desafioAtivo = !!(desafio && prova && desafio.prova === PROVA_SLUG && desafio.rotulo === prova.rotulo);
+  // desafio fantasma só no mesmo percurso em que foi gravado (os fantasmas são do percurso de sempre)
+  estado.desafioAtivo = !!(desafio && prova && !prova.ajustado && desafio.prova === PROVA_SLUG && desafio.rotulo === prova.rotulo);
+  if (desafio && prova && prova.ajustado && desafio.prova === PROVA_SLUG && desafio.rotulo === prova.rotulo)
+    setTimeout(() => aviso('👻 Desafio desligado no percurso ajustado (teste): o fantasma é do percurso de sempre', 'alerta', 3200), 5200);
   if (estado.desafioAtivo) setTimeout(() => aviso(`👻 Desafio: ${desafio.nome} fez ${R.formatarTempo(desafio.tempo)}. Bata o fantasma!`, 'km', 3000), 5200);
   aplicarEquipamento();
   atualizarHud();
@@ -3971,6 +3974,12 @@ $('#btnAddAmigo').addEventListener('click', async () => {
 });
 Conta.aoMudarLogin((u) => { if (u) entrouNaConta(u); else { usuario = null; mostrarConta(); } });
 Conta.usuarioAtual().then((u) => entrouNaConta(u));
+if (Conta.PREVIA) { // prévia da Vercel: aviso fixo de que nada é gravado (em produção este bloco nem entra no build)
+  const selo = document.createElement('div');
+  selo.textContent = 'PRÉVIA DE TESTE · nada é gravado na conta';
+  selo.style.cssText = 'position:fixed;left:50%;bottom:4px;transform:translateX(-50%);z-index:9999;pointer-events:none;font:600 10px/1.4 system-ui,sans-serif;color:#fff;background:#c0392bcc;padding:2px 8px;border-radius:8px';
+  document.body.appendChild(selo);
+}
 $('#btnGoogle').addEventListener('click', () => Conta.entrarComGoogle().catch((e) => aviso(`Não foi possível entrar: ${e.message}`, 'alerta', 3000)));
 $('#btnSairConta').addEventListener('click', async () => { await Conta.sair(); usuario = null; mostrarConta(); });
 $('#btnStravaBuscar').addEventListener('click', async (ev) => {
