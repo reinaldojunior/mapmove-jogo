@@ -144,7 +144,10 @@ para a etapa 4, o novo desenho das ruas): relatório em `docs/percursos/etapa3/R
 
 **Etapa 4 (novo desenho das ruas a partir do OSM), 4a–4e aprovadas, validação final feita:**
 
-- **Publicação controlada preparada (26/11/2026), aguardando avaliação da prévia:** `docs/percursos/PUBLICACAO-CONTROLADA.md`
+- **Publicado em produção em 26/11/2026** (`main` = `ad761cc`, Vercel `dpl_ZYyY1zCdgYo8C1gL1K5mC24Aj2uS`). Sem parâmetro o jogo
+  é o de antes; o modo novo só com `?percurso=ajustado&ruas=osm`. Voltar: Instant Rollback para
+  `dpl_H3aNaaXvyxE6h5ELkqkjf7GeL6Tj` (`218b45d`). Corrigido antes da publicação: espeto do 42K km 40,6 (`etapa3-v2`).
+- **Publicação controlada preparada (26/11/2026):** `docs/percursos/PUBLICACAO-CONTROLADA.md`
   (proposta de recordes e ranking, conferências). Prévias da Vercel não gravam nada na conta (`vite.config.js` marca
   `VERCEL_ENV=preview`; selo "PRÉVIA DE TESTE"); em produção nada muda. Desafio fantasma não roda no percurso ajustado.
   Pendente: escolher a opção de XP/medalhas no modo de teste (A recomendada).
