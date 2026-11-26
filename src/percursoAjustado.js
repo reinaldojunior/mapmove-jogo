@@ -52,7 +52,9 @@ export async function aplicarPercursoAjustado(slug, distancias, buscar = globalT
 }
 
 // janela de projeção da PistaReal no percurso ajustado (ver PistaReal): o corredor anda menos de 1 m por quadro
-export const JANELA = { atras: 15, frente: 15 };
+// opções da pista no percurso ajustado: janela curta da projeção e, em `contraMax`, até que distância passagens em
+// sentidos contrários viram uma linha só (6 m: mesma rua, sim; as duas pistas de uma avenida dupla, não)
+export const JANELA = { atras: 15, frente: 15, contraMax: 6 };
 
 // sufixo das chaves locais (recorde, travessas) da distância
 export const sufixo = (d) => (d?.ajustado ? SUFIXO : '');

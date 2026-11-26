@@ -117,7 +117,10 @@ export function unificarAlturas(x, z, s, y0, raio = 14) {
 // passagem anterior (já na posição final dela) e marcado como repetido (dup) — o desenho é feito uma vez só.
 // A colagem entra e sai aos poucos ao longo do caminho (rampa suave de ~50 m), nunca pela distância. Os pontos da
 // rampa continuam desenhados; quem evita a rua "por cima" da outra é o corte lateral (folgaLateral / lateral).
-export function colarVoltas(x, z, s, { raio = 12, alcance = 30, minDs = 100, rampa = 10 } = {}) {
+// contraMax: passagens em sentidos contrários só colam até essa distância (padrão: até `raio`, como sempre). O
+// percurso ajustado ao OSM usa 6 m: ali ida e volta a ~11 m são as duas pistas de uma avenida dupla, cada uma com o
+// seu asfalto, e colar levaria o corredor por cima do canteiro.
+export function colarVoltas(x, z, s, { raio = 12, alcance = 30, minDs = 100, rampa = 10, contraMax = Infinity } = {}) {
   const n = x.length, C = 20, grade = new Map(), dup = new Uint8Array(n);
   const ch = (a, b) => a + ',' + b;
   const x0 = Float64Array.from(x), z0 = Float64Array.from(z);
@@ -158,7 +161,7 @@ export function colarVoltas(x, z, s, { raio = 12, alcance = 30, minDs = 100, ram
         if (s[j + 1] > s[i] - minDs) continue;
         const dx = x[j + 1] - x[j], dz = z[j + 1] - z[j], l2 = dx * dx + dz * dz || 1;
         // só cola se as duas passagens andam na mesma direção ou na contrária (mesma rua), não num cruzamento
-        const alinh = Math.abs(ex * dx + ez * dz) / (Math.hypot(ex, ez) * Math.sqrt(l2) || 1);
+        const prod = ex * dx + ez * dz, alinh = Math.abs(prod) / (Math.hypot(ex, ez) * Math.sqrt(l2) || 1);
         if (alinh < alinhMin) continue;
         const tt = ((x0[i] - x[j]) * dx + (z0[i] - z[j]) * dz) / l2;
         if (j === 0 && tt < 0) continue; // antes da largada: não amontoa os pontos no começo do percurso
@@ -166,7 +169,7 @@ export function colarVoltas(x, z, s, { raio = 12, alcance = 30, minDs = 100, ram
         const qx = x[j] + dx * t, qz = z[j] + dz * t, d = Math.hypot(x0[i] - qx, z0[i] - qz);
         // continuidade: perto de um cruzamento de duas passagens anteriores, segue na mesma em que o ponto de trás colou
         const sj = s[j] + (s[j + 1] - s[j]) * t, nota = d + (ant && Math.abs(sj - ant.sj) > 30 ? 8 : 0);
-        if (!melhor || nota < melhor.nota) melhor = { d, qx, qz, sj, nota };
+        if (!melhor || nota < melhor.nota) melhor = { d, qx, qz, sj, nota, oposto: prod < 0 };
       }
       return melhor && melhor.d <= alcance ? melhor : null;
     };
@@ -182,10 +185,10 @@ export function colarVoltas(x, z, s, { raio = 12, alcance = 30, minDs = 100, ram
       const sj = Math.max(Math.min(a, b), Math.min(Math.max(a, b), alvo[i].sj, s[i] - minDs));
       const k = Math.max(0, Math.min(n - 2, Math.floor(sj / passoS))), f = Math.max(0, Math.min(1, (sj - s[k]) / (s[k + 1] - s[k] || 1)));
       const qx = x[k] + (x[k + 1] - x[k]) * f, qz = z[k] + (z[k + 1] - z[k]) * f;
-      alvo[i] = { d: Math.hypot(x0[i] - qx, z0[i] - qz), qx, qz, sj, nota: 0 };
+      alvo[i] = { d: Math.hypot(x0[i] - qx, z0[i] - qz), qx, qz, sj, nota: 0, oposto: alvo[i].oposto };
     }
     // as duas ruas (8 m cada) se encostariam ou ficariam uma por cima da outra: vira uma rua só
-    if (alvo[i] && alvo[i].d < raio) {
+    if (alvo[i] && alvo[i].d < (alvo[i].oposto ? Math.min(raio, contraMax) : raio)) {
       cola[i] = 1;
       // buraco curto entre dois pedaços colados (a passagem de agora "corta" a esquina da anterior): cola também,
       // no ponto mais próximo da passagem anterior, sem exigir a mesma direção — nada de ilhota de rua na esquina
@@ -409,7 +412,7 @@ export class PistaReal {
     }
 
     // segunda volta / mesmo trecho de rua passado de novo: cola no desenho da primeira passagem (sem pista duplicada)
-    this.dup = colarVoltas(x, z, s);
+    this.dup = colarVoltas(x, z, s, janela?.contraMax != null ? { contraMax: janela.contraMax } : {});
     this.x = x; this.z = z; this.e = e; this.s = s;
     // espaço livre de cada lado (até outro trecho do percurso) e raio das curvas: limitam o desenho de calçada e grama
     Object.assign(this, folgaLateral(x, z, s, this.dup));
