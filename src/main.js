@@ -2598,6 +2598,45 @@ function bip(freq, dur, volume = 0.18) {
   } catch { /* sem áudio */ }
 }
 
+// percurso ajustado (teste): curva forte perto de s (até 40 m antes ou depois)? Carros das travessas não saem ali
+function pertoDeCurva(sx) {
+  for (let d = -40; d <= 40; d += 8) if (curvaEm(sx + d) > 0.6) return true;
+  return false;
+}
+// próxima curva forte (> ~50°) até 150 m à frente: distância, giro (+ direita, − esquerda) e se é retorno
+let cacheVirar = { k: null, v: null };
+function proximaCurva(s0) {
+  const k = Math.round(s0 / 4);
+  if (cacheVirar.k === k && cacheVirar.p === pista) return cacheVirar.v;
+  let v = null;
+  for (let d = 0; d <= 150 && s0 + d < pista.total; d += 4) {
+    const sc = s0 + d, giro = difAngulo(emEst(sc + 24).ang, emEst(sc - 8).ang);
+    if (Math.abs(giro) > 0.9) {
+      // o meio da curva: onde a pista mais vira, nos próximos 30 m
+      let melhor = sc, mx = -1;
+      for (let m = 0; m <= 30; m += 2) { const g = Math.abs(difAngulo(emEst(sc + m + 4).ang, emEst(sc + m - 4).ang)); if (g > mx) { mx = g; melhor = sc + m; } }
+      // retorno: o giro somado nos próximos ~60 m chega perto de meia-volta (retorno de avenida são duas viradas de 90°)
+      let soma = 0; for (let m = -8; m < 64; m += 4) soma += difAngulo(emEst(sc + m + 4).ang, emEst(sc + m).ang);
+      v = { s: melhor, d: melhor - s0, giro: Math.abs(soma) > Math.abs(giro) ? soma : giro, retorno: Math.abs(soma) > 2.4 };
+      break;
+    }
+  }
+  cacheVirar = { k, v, p: pista };
+  return v;
+}
+function mostrarVirar(s) {
+  const el = $('#hudVirar');
+  const c = prova?.ajustado ? proximaCurva(s) : null;
+  if (!c || c.d < -5) { if (!el.hidden) el.hidden = true; return; }
+  const dir = c.giro > 0 ? 'direita' : 'esquerda';
+  const seta = c.retorno ? (c.giro > 0 ? '↷' : '↶') : (c.giro > 0 ? '↱' : '↰');
+  const txt = c.d < 15 ? (c.retorno ? 'Retorno agora' : `Vire à ${dir}`) : `${c.retorno ? 'Retorno' : dir[0].toUpperCase() + dir.slice(1)} em ${Math.max(10, Math.round(c.d / 10) * 10)} m`;
+  if ($('#hudVirarSeta').textContent !== seta) $('#hudVirarSeta').textContent = seta;
+  if ($('#hudVirarTxt').textContent !== txt) $('#hudVirarTxt').textContent = txt;
+  el.classList.toggle('perto', c.d < 50);
+  if (el.hidden) el.hidden = false;
+}
+
 // ─── HUD, MINIMAPA E TELAS ────────────────────────────────────────────────────
 
 const hud = {
@@ -2654,7 +2693,16 @@ function desenharMinimapa() {
     for (let a = 0; a < 4; a++) for (let c = 0; c < 4; c++) if ((a + c) % 2 === 0) g.fillRect(x - 13 + a * 6.5, y - 13 + c * 6.5, 6.5, 6.5);
     g.strokeStyle = '#061440'; g.lineWidth = 3; g.strokeRect(x - 13, y - 13, 26, 26);
   }
+  // percurso ajustado (teste): marca da próxima curva forte
+  const curva = prova.ajustado ? proximaCurva(s) : null;
+  if (curva && curva.d > 0) {
+    const [x, y] = tela(emEst(curva.s));
+    g.beginPath(); g.arc(x, y, 15, 0, Math.PI * 2); g.fillStyle = '#ffd21f'; g.fill(); g.lineWidth = 3; g.strokeStyle = '#061440'; g.stroke();
+    g.fillStyle = '#061440'; g.font = 'bold 20px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(curva.retorno ? (curva.giro > 0 ? '↷' : '↶') : (curva.giro > 0 ? '↱' : '↰'), x, y + 1);
+  }
   g.restore();
+  mostrarVirar(s);
   g.save(); g.translate(C, CY);
   g.beginPath(); g.moveTo(0, -16); g.lineTo(12, 12); g.lineTo(0, 6); g.lineTo(-12, 12); g.closePath();
   g.fillStyle = '#ff3b30'; g.fill(); g.lineWidth = 4; g.strokeStyle = '#fff'; g.stroke();
@@ -3319,8 +3367,9 @@ function passo(dt) {
       if (c > RETORNO_AUTO) s.retornoAuto = true;
       else if (s.retornoAuto && c < 1.2 && difR < 0.2) s.retornoAuto = false;
       if (s.retornoAuto && Math.abs(giro) < 0.1 && Math.abs(s.giroPend) < 0.01) {
-        const q = emEst(s.s + 7), [rx, rz] = direita(q.ang), dd = Math.max(-2.5, Math.min(2.5, s.d || 0));
-        const alvoAng = Math.atan2(q.x + rx * dd - s.x, -(q.z + rz * dd - s.z));
+        // segue o rumo da pista no ponto em que está (sem mirar à frente: num retorno estreito isso cortaria a ponta),
+        // corrigindo devagar só se estiver a mais de 1,5 m do meio
+        const d = s.d || 0, alvoAng = p.ang - Math.atan(0.3 * (d - Math.max(-1.5, Math.min(1.5, d))));
         const da = difAngulo(alvoAng, s.ang), max = GIRO_RAD_S * 2.5 * ader * dt;
         s.ang += Math.max(-max, Math.min(max, da));
         if (!s.retornoAvisado) { s.retornoAvisado = true; aviso('↩️ Retorno: curva automática', '', 1400); }
@@ -3423,7 +3472,7 @@ function passo(dt) {
     t.carro = true;
     // na avenida dupla o carro vem numa das duas pistas, nunca no canteiro
     const sCarro = t.vao ? t.s + (Math.random() < 0.5 ? -1 : 1) * t.vao / 2 : t.s;
-    if (Math.random() < 0.7 && livre(sCarro, 30)) carro(sCarro, escolher(t.lados));
+    if (Math.random() < 0.7 && livre(sCarro, 30) && !(prova?.ajustado && pertoDeCurva(sCarro))) carro(sCarro, escolher(t.lados)); // modo novo: nunca colado numa curva
   }
 
   // dica ao chegar perto do posto
@@ -3437,7 +3486,7 @@ function passo(dt) {
   // carro desgovernado: aparece uma vez em algumas provas, no meio do percurso
   if (prova && s.festaEm && !festa && s.s > s.festaEm) {
     // metade das vezes tenta a travessa (uma rua principal entre 80 e 300 m à frente); sem travessa, vem na contramão
-    const t = (s.festaModo ? s.festaModo === 'travessa' : Math.random() < 0.5) && travessas.find((x) => x.principal && !x.carro && x.s > s.s + 80 && x.s < s.s + 300);
+    const t = (s.festaModo ? s.festaModo === 'travessa' : Math.random() < 0.5) && travessas.find((x) => x.principal && !x.carro && x.s > s.s + 80 && x.s < s.s + 300 && !(prova?.ajustado && pertoDeCurva(x.s)));
     if (t) { t.carro = true; festa = carroDesgovernadoTravessa(t); } else festa = carroDesgovernado(s.s + 230);
     // último km: vem na contramão com a polícia atrás
     if (festa && !festa.travessa && pista.total - s.s < 1300) viaturaAtras(festa);

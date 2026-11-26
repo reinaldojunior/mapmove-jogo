@@ -1136,3 +1136,8 @@ kbd {
 #palco #hud #minimapa { display: block; width: clamp(84px, 24cqw, 100px); height: clamp(84px, 24cqw, 100px); border-radius: 50%; }
 #hud .dist-chegada { position: absolute; left: 50%; bottom: -10px; transform: translateX(-50%); white-space: nowrap; font-size: 10.5px; font-weight: 800; padding: 0 7px; line-height: 16px; border-radius: 999px; background: var(--mm-p3); border: 1.5px solid var(--mm-noite); color: #fff; }
 #hud .dist-chegada:empty { display: none; }
+/* percurso ajustado (teste): aviso da próxima curva forte, embaixo do minimapa */
+#hud .hud-virar { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding: 3px 10px 3px 6px; border-radius: 999px; background: #ffd21f; border: 2px solid var(--mm-noite); color: var(--mm-noite); font-weight: 800; font-size: 13px; line-height: 1.1; box-shadow: 0 3px 0 var(--mm-noite); white-space: nowrap; }
+#hud .hud-virar[hidden] { display: none; }
+#hud .hud-virar b { font-size: 22px; line-height: 1; }
+#hud .hud-virar.perto { background: #ff8a1f; }
