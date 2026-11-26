@@ -171,7 +171,9 @@ export function ajustarCameraViaduto(pos, x, yCabeca, z) {
 
 // pista: PistaReal já elevada; amostras: as do desenho (amostrasDoPercurso); osm: prepararOSM (ou null);
 // matAgua: material da água do resto do mapa (ganha uma cópia que grava profundidade)
-export function construirViadutos({ pista, amostras, osm = null, matAgua = null }) {
+// alturaJunta: altura da junta de dilatação sobre o eixo { rua, calcada } (padrão = fita de sempre). No modo ruas do
+// mapa (?ruas=osm, etapa 4e) o asfalto é desenhado 6 cm acima e a calçada no nível da pista.
+export function construirViadutos({ pista, amostras, osm = null, matAgua = null, alturaJunta = { rua: 0.004, calcada: 0.066 } }) {
   tabuleiros = [];
   if (!pista?.elev || !amostras?.length) return null;
   const n = amostras.length;
@@ -361,7 +363,7 @@ export function construirViadutos({ pista, amostras, osm = null, matAgua = null 
     const faixa = (d0, d1, h) => juntas.quad(
       [p.x + rx * d0 - fx, p.y + h, p.z + rz * d0 - fz], [p.x + rx * d1 - fx, p.y + h, p.z + rz * d1 - fz],
       [p.x + rx * d1 + fx, p.y + h, p.z + rz * d1 + fz], [p.x + rx * d0 + fx, p.y + h, p.z + rz * d0 + fz], C.neoprene);
-    faixa(-MEIA_RUA, MEIA_RUA, 0.004); faixa(-BEIRA, -MEIA_RUA, 0.066); faixa(MEIA_RUA, BEIRA, 0.066);
+    faixa(-MEIA_RUA, MEIA_RUA, alturaJunta.rua); faixa(-BEIRA, -MEIA_RUA, alturaJunta.calcada); faixa(MEIA_RUA, BEIRA, alturaJunta.calcada);
   }
 
   // ─ tabuleiros para a câmera (fundo das vigas no vão; no aterro é tudo cheio)

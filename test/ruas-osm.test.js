@@ -160,3 +160,31 @@ test('etapa 4d: pontes baixas (sobre córrego) ficam no chão, como no jogo', ()
   const so = JSON.parse(fs.readFileSync(new URL('../public/ruas/9-maratona-sorocaba-novembro-azul-2026-11-21.json', import.meta.url)));
   assert.ok(so.distancias['42K'].ramos.filter((r) => /Ubirajara/.test(r.nome || '')).every((r) => r.camada === 0));
 });
+
+test('etapa 4e: pintura só sobre o asfalto novo, borda na largura real, acostamento, faixas de pedestre e cones (só enfeite)', async () => {
+  const { pistaDoJogo } = await import('../scripts/percurso/exportar-ruas-jogo.mjs');
+  const { montarRuas, pinturaRuas, conesDosRetornos, eixoDaPista, medirFaixa, fitaDasZonas } = await import('../src/ruasOSM.js');
+  const SO = '9-maratona-sorocaba-novembro-azul-2026-11-21';
+  const d = JSON.parse(fs.readFileSync(new URL(`../public/ruas/${SO}.json`, import.meta.url))).distancias['21K'];
+  const { pista } = pistaDoJogo(SO, '21K'), E = eixoDaPista(pista);
+  const sup = montarRuas(pista, d, { eixo: E }), pint = pinturaRuas(pista, d, sup, { eixo: E });
+  const tipos = new Set(pint.map((q) => q.tipo));
+  assert.ok(['pinturaBranca', 'pinturaAmarela', 'azul'].every((t) => tipos.has(t)));
+  // acostamento só onde a regra D1 alargou, e as linhas de borda ficam dentro da largura real
+  assert.ok(sup.some((q) => q.tipo === 'acostamento'));
+  assert.ok(d.ramos.filter((r) => r.tipo !== 'toco').every((r) => r.pistas >= 1 && r.mao && Array.isArray(r.zebra)));
+  assert.ok(d.ramos.some((r) => r.zebra.some(Boolean)), 'faixas de pedestre do OSM');
+  // a pintura não muda nada da corrida: medir a faixa com ou sem ela dá o mesmo (ela não é superfície nem obstáculo)
+  const m1 = medirFaixa(pista, [...sup, ...fitaDasZonas(pista, d.zonasFita)], { passo: 4, zonas: d.zonasFita, eixo: E });
+  assert.equal(m1.falta.length, 0);
+  assert.equal(m1.porCima.filter((q) => q.tipo === 'outra').length, 0);
+  // cones: um retorno na mesma rua (Alameda CIESP), na linha do meio, fora da ponta da curva
+  const cones = conesDosRetornos(pista, d);
+  assert.equal(cones.length, 5);
+  // cor da subida: o asfalto leva o km da pista em cada vértice (a cor sai da inclinação, a altitude não muda)
+  assert.ok(sup.filter((q) => q.tipo === 'asfalto').every((q) => q.s && q.s.length === 3));
+  // o jogo usa tudo isso só com ?ruas=osm, e a junta da ponte só muda nesse modo
+  const main = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /prova\?\.ruasOSM \? \{ alturaJunta:/);
+  assert.match(fs.readFileSync(new URL('../src/viaduto.js', import.meta.url), 'utf8'), /alturaJunta = \{ rua: 0\.004, calcada: 0\.066 \}/);
+});

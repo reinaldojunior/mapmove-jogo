@@ -14,7 +14,7 @@ import { METADE } from './exportar-jogo.mjs';
 
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ler = (p) => JSON.parse(fs.readFileSync(path.join(RAIZ, p)));
-export const VERSAO = 'etapa4d-v1';
+export const VERSAO = 'etapa4e-v1';
 const PROVAS = { '9-maratona-sorocaba-novembro-azul-2026-11-21': 0, '1-meia-maratona-de-indaiatuba-2026-12-13': 1.6 };
 
 // a pista exatamente como o jogo monta no modo de teste (percurso ajustado + viaduto sem o falso das voltas)
@@ -26,7 +26,7 @@ export function pistaDoJogo(slug, rot) {
   return { pista: p, ajust: a };
 }
 
-const ASF_J = new Set(['asfalto', 'cruzamento', 'alargamento', 'toco']);
+const ASF_J = new Set(['asfalto', 'cruzamento', 'alargamento', 'toco', 'acostamento']);
 function juntas(tris, dados, E) {
   const zonas = dados.zonasFita, emZona = (s) => zonas.some(([a, b]) => s >= a && s <= b);
   const asf = tris.filter((q) => ASF_J.has(q.tipo)), C = 8, grade = new Map(), k = (x, z) => Math.floor(x / C) * 100003 + Math.floor(z / C);
@@ -98,6 +98,9 @@ export function dadosDistancia(slug, rot) {
     if (!fx.length) return;
     ramos.push({ tipo, pts: trecho(r.pts, c0, L - c1).map(q2), w: +r.w.toFixed(2), calc: +(r.calc ?? CALCADA_M).toFixed(2), camada: r.camada,
       faixas: arred(fx), comprimento: +L.toFixed(1), recorteInicio: +c0.toFixed(2), nome: r.nome, wReal: +r.wReal.toFixed(2), fonte: r.fonte,
+      // 4e (pintura): faixas de rodagem do OSM (ou pela largura real), mão, e travessia/semáforo do OSM em cada ponta
+      pistas: r.faixas || Math.max(1, Math.round(r.wReal / 3.3)), mao: r.mao,
+      zebra: r.nos.map((n) => { const i = rede.info[n]; return !!(i && (i.travessia || i.semaforo)); }),
       // pedaço recortado pelos cruzamentos (só para medir frestas; o jogo não usa)
       _recortado: [c0 > 0.3 ? trecho(r.pts, 0, c0) : null, c1 > 0.3 ? trecho(r.pts, L - c1, L) : null] });
   });

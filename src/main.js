@@ -22,7 +22,7 @@ import * as CL from './clima.js';
 import { CEUS } from './ceus.js';
 import { refinarDistancias } from './refino.js';
 import { modoPercurso, aplicarPercursoAjustado, sufixo, JANELA as JANELA_AJUSTADO, modoRuas, aplicarRuasOSM } from './percursoAjustado.js';
-import { montarRuas } from './ruasOSM.js';
+import { montarRuas, pinturaRuas, conesDosRetornos, eixoDaPista } from './ruasOSM.js';
 import * as PL from './pelotao.js';
 import * as MD from './medalhas.js';
 import { gerarCartao } from './cartao.js';
@@ -1042,35 +1042,57 @@ const texAsfaltoLiso = textura(512, 512, (g, w, h) => {
   for (let i = 0; i < 6; i++) manchaAsfalto(g, w, h);
   for (let i = 0; i < 4000; i++) { const c = 55 + Math.random() * 50; g.fillStyle = `rgba(${c},${c},${c + 6},0.5)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
 });
-const matRuaOSM = new THREE.MeshStandardMaterial({ map: texAsfaltoLiso, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
+const matRuaOSM = new THREE.MeshStandardMaterial({ map: texAsfaltoLiso, roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
 const matCalcadaOSM = new THREE.MeshStandardMaterial({ map: texCalcada, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
 const ACIMA_RUA = 0.06; // = ACIMA em src/ruasOSM.js
+// 4e: acostamento (o asfalto que a regra D1 pôs além da largura real) um tom mais claro; pintura viária
+const matAcostamentoOSM = new THREE.MeshStandardMaterial({ map: texAsfaltoLiso, color: 0xc4c6ca, roughness: 1, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
+const matPinturaBranca = new THREE.MeshStandardMaterial({ color: 0xf2f2f0, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8 });
+const matPinturaAmarela = new THREE.MeshStandardMaterial({ color: 0xf0c22a, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8 });
 const matRuaOSMToco = new THREE.MeshStandardMaterial({ map: texAsfaltoLiso, roughness: 0.95, vertexColors: true, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -3 });
 const matCalcadaOSMToco = new THREE.MeshStandardMaterial({ map: texCalcada, roughness: 1, vertexColors: true, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
 function malhasRuasOSM(dados) {
   const grupo = new THREE.Group();
   // asfalto ACIMA (6 cm) acima da calçada: pequenas diferenças de altura numa rampa não deixam a calçada aparecer por
   // cima do asfalto; as ruas que cruzam (4c) somem no fim (alfa por vértice) e ficam numa malha transparente própria
-  const porMat = [[['asfalto', 'alargamento', 'cruzamento'], matRuaOSM, ACIMA_RUA, 8, false], [['calcada', 'alargamentoCalcada'], matCalcadaOSM, 0, 4, false],
-    [['toco'], matRuaOSMToco, ACIMA_RUA - 0.01, 8, true], [['tocoCalcada'], matCalcadaOSMToco, -0.01, 4, true]];
-  const tris = montarRuas(pista, dados);
-  for (const [tipos, material, dy, rep, comAlfa] of porMat) {
+  // (4e) asfalto e acostamento com a cor da inclinação (avermelhado na subida, azulado na descida, como a fita de
+  // sempre: corInclinacao); pintura, linha azul e cones são só enfeite, sem colisão
+  const porMat = [[['asfalto', 'alargamento', 'cruzamento'], matRuaOSM, ACIMA_RUA, 8, 'inclinacao'], [['acostamento'], matAcostamentoOSM, ACIMA_RUA, 8, 'inclinacao'],
+    [['calcada', 'alargamentoCalcada'], matCalcadaOSM, 0, 4, null],
+    [['toco'], matRuaOSMToco, ACIMA_RUA - 0.01, 8, 'alfa'], [['tocoCalcada'], matCalcadaOSMToco, -0.01, 4, 'alfa'],
+    [['pinturaBranca'], matPinturaBranca, ACIMA_RUA + 0.015, 1, null], [['pinturaAmarela'], matPinturaAmarela, ACIMA_RUA + 0.015, 1, null], [['azul'], matBordaAzul, ACIMA_RUA + 0.012, 1, null]];
+  const E = eixoDaPista(pista), tris = montarRuas(pista, dados, { eixo: E });
+  tris.push(...pinturaRuas(pista, dados, tris, { eixo: E }));
+  const c = new THREE.Color();
+  for (const [tipos, material, dy, rep, modoCor] of porMat) {
     const lista = tris.filter((q) => tipos.includes(q.tipo));
     if (!lista.length) continue;
-    const pos = new Float32Array(lista.length * 9), uv = new Float32Array(lista.length * 6), cor = comAlfa ? new Float32Array(lista.length * 12) : null;
+    const n = modoCor === 'alfa' ? 4 : 3;
+    const pos = new Float32Array(lista.length * 9), uv = new Float32Array(lista.length * 6), cor = modoCor ? new Float32Array(lista.length * 3 * n) : null;
     lista.forEach((q, i) => {
-      let [a, b, c] = q.t, [ya, yb, yc] = q.y, [aa, ab, ac] = q.a || [1, 1, 1];
+      let [a, b, cc] = q.t, [ya, yb, yc] = q.y, [aa, ab, ac] = q.a || [1, 1, 1], [sa, sb, sc] = q.s || [0, 0, 0];
       // face para cima (normal +y): senão o triângulo some com o corte de faces de trás
-      if ((b[1] - a[1]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[1] - a[1]) < 0) { [b, c] = [c, b]; [yb, yc] = [yc, yb]; [ab, ac] = [ac, ab]; }
-      [[a, ya, aa], [b, yb, ab], [c, yc, ac]].forEach(([p, y, al], k) => { pos.set([p[0], y + dy, p[1]], i * 9 + k * 3); uv.set([p[0] / rep, p[1] / rep], i * 6 + k * 2); if (cor) cor.set([1, 1, 1, al], i * 12 + k * 4); });
+      if ((b[1] - a[1]) * (cc[0] - a[0]) - (b[0] - a[0]) * (cc[1] - a[1]) < 0) { [b, cc] = [cc, b]; [yb, yc] = [yc, yb]; [ab, ac] = [ac, ab]; [sb, sc] = [sc, sb]; }
+      [[a, ya, aa, sa], [b, yb, ab, sb], [cc, yc, ac, sc]].forEach(([p, y, al, s], k) => {
+        pos.set([p[0], y + dy, p[1]], i * 9 + k * 3); uv.set([p[0] / rep, p[1] / rep], i * 6 + k * 2);
+        if (modoCor === 'alfa') cor.set([1, 1, 1, al], (i * 3 + k) * 4);
+        else if (modoCor === 'inclinacao') { corInclinacao(s >= 0 ? pista.em(s).inclinacao : 0, c); cor.set([c.r, c.g, c.b], (i * 3 + k) * 3); }
+      });
     });
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-    if (cor) geo.setAttribute('color', new THREE.BufferAttribute(cor, 4));
+    if (cor) geo.setAttribute('color', new THREE.BufferAttribute(cor, n));
     geo.computeVertexNormals();
     const m = new THREE.Mesh(geo, material); m.receiveShadow = true; m.name = 'ruasOSM';
     grupo.add(m);
+  }
+  // cones dos retornos (enfeite, sem colisão), numa instância só
+  const cones = conesDosRetornos(pista, dados);
+  if (cones.length) {
+    const inst = new THREE.InstancedMesh(G.cone, mat(0xff6a00), cones.length), o = new THREE.Object3D();
+    cones.forEach(([x, y, z], k) => { o.position.set(x, y + ACIMA_RUA + 0.36, z); o.scale.set(0.24, 0.72, 0.24); o.updateMatrix(); inst.setMatrixAt(k, o.matrix); });
+    inst.name = 'ruasOSM'; grupo.add(inst);
   }
   return grupo;
 }
@@ -1078,7 +1100,8 @@ function malhasRuasOSM(dados) {
 // ─── VIADUTO / PONTE (estrutura em src/viaduto.js) ───────────────────────────
 function construirViadutos(amostras) {
   if (!pista.elev) { montarViadutos({ pista }); return; } // sem viaduto (limpa o da prova anterior)
-  const g = montarViadutos({ pista, amostras, osm, matAgua: matRio });
+  // ruas do mapa (4e): juntas de dilatação por cima do asfalto novo (6 cm acima) e da calçada nova
+  const g = montarViadutos({ pista, amostras, osm, matAgua: matRio, ...(prova?.ruasOSM ? { alturaJunta: { rua: ACIMA_RUA + 0.02, calcada: 0.02 } } : {}) });
   if (g) visual.add(g);
 }
 
@@ -1623,7 +1646,8 @@ function adicionarPistaTravessa(t, sPista) {
       fiscal.rotation.y = -q.ang + (lado > 0 ? -Math.PI / 2 : Math.PI / 2);
       t.objs.push(fiscal);
     }
-    // faixa de pedestre atravessando a rua da prova, colada no asfalto
+    // faixa de pedestre atravessando a rua da prova, colada no asfalto (no modo ruas do mapa ela vem do OSM)
+    if (prova?.ruasOSM?.cruzamentos) return;
     const zebra = planoChao(8, 2.6, matZebra);
     zebra.position.set(p.x, p.y + 0.05, p.z);
     zebra.rotation.y = -p.ang;
