@@ -711,7 +711,7 @@ function desenharPelotao(dt) {
     p.holder.position.set(e.x + rx * c.d, e.y, e.z + rz * c.d);
     p.holder.rotation.y = -e.ang;
     p.holder.visible = true;
-    p.mixer.update(s.modo === 'jogando' ? dt * (s.paceBase / c.pace) : 0);
+    p.mixer.update(s.modo === 'jogando' ? dt * rapidez() * (s.paceBase / c.pace) : 0);
   }
   desenharLideres();
 }
@@ -1325,7 +1325,7 @@ function ciclista(s, d) {
   // pedala mais devagar que o corredor: é preciso ultrapassar
   return addEntidade({
     tipo: 'ciclista', motivo: 'Bateu na bicicleta', obj: g, s, d, larg: 0.9, prof: 1.8, h: 2.3,
-    vs: R.mps(estado.paceBase || R.PACE_BASE) * R.ESCALA_TEMPO * 0.45, pernas,
+    vs: R.mps(estado.paceBase || R.PACE_BASE) * escalaTempo() * 0.45, pernas,
     anima(t) { this.pernas.forEach((p, i) => { p.rotation.x = Math.sin(t * 9 + i * Math.PI) * 0.6 - 0.3; }); }
   });
 }
@@ -2918,7 +2918,7 @@ function mesaDaVez() {
   for (const e of entidades) {
     if (!e.mesa || e.tentada) continue;
     const dist = e.s - estado.s;
-    if (dist > -R.janelaAgua(estado.paceBase) - 1 && dist < 50 && (!melhor || e.s < melhor.s)) melhor = e;
+    if (dist > -R.janelaAgua(estado.paceBase, escalaTempo()) - 1 && dist < 50 && (!melhor || e.s < melhor.s)) melhor = e;
   }
   return melhor;
 }
@@ -2933,7 +2933,7 @@ function atualizarGota(dt) {
   g.hidden = false;
   g.classList.toggle('esq', m.lado < 0);
   g.classList.toggle('dir', m.lado > 0);
-  g.classList.toggle('verde', Math.abs(dist) <= R.janelaAgua(estado.paceBase));
+  g.classList.toggle('verde', Math.abs(dist) <= R.janelaAgua(estado.paceBase, escalaTempo()));
   g.style.setProperty('--pisca', `${Math.max(0.12, Math.min(0.6, dist / 70))}s`);
 }
 
@@ -3281,7 +3281,7 @@ function beber() {
   const s = estado;
   const m = mesaDaVez();
   if (!m || m.s - s.s > 50) return;
-  const res = R.resultadoAgua(s.s, s.d, m, R.janelaAgua(s.paceBase));
+  const res = R.resultadoAgua(s.s, s.d, m, R.janelaAgua(s.paceBase, escalaTempo()));
   const g = hud.gota;
   if (res === 'longe') return aviso(`Encoste do lado ${m.lado > 0 ? 'direito' : 'esquerdo'}, perto da mesa!`, '', 1100);
   m.tentada = true;
@@ -3379,15 +3379,20 @@ function penalizar() {
 // ─── LOOP ─────────────────────────────────────────────────────────────────────
 
 const GIRO_RAD_S = 1.8;
+// percurso ajustado (teste): o jogo corre 1,5x mais rápido (prova mais curta em minutos de verdade). O relógio da
+// prova acompanha, então pace e tempo final continuam os mesmos; sede e energia gastam igual por km
+const RAPIDO_AJUSTADO = 1.5;
+const rapidez = () => (prova?.ajustado ? RAPIDO_AJUSTADO : 1);
+const escalaTempo = () => R.ESCALA_TEMPO * rapidez();
 const RETORNO_AUTO = 1.75; // rad (~100°): acima disso, no percurso ajustado, a curva é automática
 const GIRO_POR_TOQUE = 0.22;
 
 function passo(dt) {
   const s = estado;
   s.t += dt;
-  s.tempoReal += dt * R.ESCALA_TEMPO;
+  s.tempoReal += dt * escalaTempo();
   const cl = s.clima || CL.CLIMAS[0];
-  s.agua = R.desidratar(s.agua, dt * CL.fatorSede(cl)); // calor e umidade secam mais rápido
+  s.agua = R.desidratar(s.agua, dt * rapidez() * CL.fatorSede(cl)); // calor e umidade secam mais rápido
   // sem água o corredor vai perdendo força (não cai de uma vez); água ou isotônico a tempo e ele volta a correr
   s.semAgua = s.agua <= 0 ? (s.semAgua || 0) + dt : 0;
   if (s.agua < R.AGUA_BAIXA && s.agua > 0 && !s.aguaAvisada) {
@@ -3415,7 +3420,9 @@ function passo(dt) {
   } else {
     const giro = controles.giro();
     s.giroPend += controles.consumirToques() * GIRO_POR_TOQUE;
-    const ader = CL.aderencia(cl); // na chuva o tênis escorrega: a curva sai mais lenta
+    // na chuva o tênis escorrega: a curva sai mais lenta. No jogo mais rápido (ajustado) vira na mesma proporção: a curva
+    // fica do mesmo tamanho no chão
+    const ader = CL.aderencia(cl) * rapidez();
     s.ang += giro * GIRO_RAD_S * ader * dt;
     if (s.giroPend) {
       const passoGiro = Math.sign(s.giroPend) * Math.min(Math.abs(s.giroPend), GIRO_RAD_S * 1.2 * ader * dt);
@@ -3444,7 +3451,7 @@ function passo(dt) {
     }
     s.gelAtivo = Math.max(0, s.gelAtivo - dt);
     s.freio = Math.max(0, (s.freio || 0) - dt);
-    s.energia = R.gastarEnergia(s.energia, dt, { inclinacao: p.inclinacao, gel: s.gelAtivo > 0, sede: s.agua < 25, freando: s.freio > 0, calor: CL.fatorEnergiaClima(cl) });
+    s.energia = R.gastarEnergia(s.energia, dt * rapidez(), { inclinacao: p.inclinacao, gel: s.gelAtivo > 0, sede: s.agua < 25, freando: s.freio > 0, calor: CL.fatorEnergiaClima(cl) });
     if (s.energia < R.ENERGIA_BAIXA && !s.energiaAvisada) {
       s.energiaAvisada = true;
       aviso(s.geis ? '🔋 Energia baixa! Use um gel ⚡' : '🔋 Energia baixa! Pegue um gel ⚡', 'alerta', 1800);
@@ -3456,7 +3463,7 @@ function passo(dt) {
     if (s.v > alvo * fCurva) s.v = Math.max(alvo * fCurva, s.v - R.CURVA.freio * dt);
     if (fCurva < 0.8 && !s.curvaAvisada) { s.curvaAvisada = true; aviso('↪️ Curva fechada: tirando o pé', '', 900); }
     if (fCurva > 0.97) s.curvaAvisada = false;
-    const W = s.v * R.ESCALA_TEMPO;
+    const W = s.v * escalaTempo();
     const [fx, fz] = frente(s.ang);
     s.x += fx * W * dt; s.z += fz * W * dt;
     const q = pista.projetar(s.x, s.z, s.s);
@@ -3475,7 +3482,7 @@ function passo(dt) {
         c.fCurva = c.fCurva ?? 1;
         c.fCurva += (alvoCurva - c.fCurva) * Math.min(1, (alvoCurva < c.fCurva ? 2.5 : 0.8) * dt);
         return CL.fatorNpc(s.clima, emEst(c.s).ang) * c.fCurva;
-      });
+      }, escalaTempo());
       const pos = PL.colocacao(pelotao, s.s);
       if (s.posicao && pos.posicao < s.posicao.posicao && s.s > 60) {
         // sobe de posição: avisa nos marcos (30º, 20º, 10º e no top 5)
@@ -3579,7 +3586,7 @@ function passo(dt) {
     if (fim < -24) { festa = null; som.carro(0); som.sirene(0); } // as entidades somem 25 m atrás do corredor
   }
   const c = { s: s.s, d: s.d, y: s.y, altura: s.agachado > 0 ? R.ALTURA_AGACHADO : R.ALTURA_EM_PE };
-  const vCorredor = s.v * R.ESCALA_TEMPO;
+  const vCorredor = s.v * escalaTempo();
   for (const e of entidades) {
     if (e.vs) e.s += e.vs * dt;
     // cachorro e carro esperam na lateral e cruzam quando o corredor chega perto
@@ -3658,7 +3665,7 @@ function desenhar(dt) {
     : s.modo === 'contagem' && s.chegada > 0 ? 'caminhar'
     : s.modo === 'inicio' || s.modo === 'contagem' ? 'aquecer' : 'parado';
   // a passada acelera com o nível; quem não tem caminhada chega num trote lento
-  const ritmo = s.modo === 'jogando' ? (andando ? Math.max(0.35, s.v / (R.mps(R.PACE_BASE) * 0.35)) : 1.25 * (s.v / R.mps(R.PACE_BASE))) : anim === 'caminhar' && !corredor.atleta?.partes?.caminhar ? 0.45 : 1;
+  const ritmo = s.modo === 'jogando' ? (andando ? Math.max(0.35, s.v / (R.mps(R.PACE_BASE) * 0.35)) : 1.25 * rapidez() * (s.v / R.mps(R.PACE_BASE))) : anim === 'caminhar' && !corredor.atleta?.partes?.caminhar ? 0.45 : 1;
   const comModelo = s.modo !== 'pausa' && animarAtleta(corredor, dt, { anim, ritmo, noAr, agachado });
   if (!comModelo) {
     if (s.modo === 'jogando') animarCorredor(corredor, s.fase, { noAr, agachado, parado: s.v < 0.2 });
