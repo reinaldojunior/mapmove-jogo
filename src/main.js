@@ -2603,38 +2603,105 @@ function pertoDeCurva(sx) {
   for (let d = -40; d <= 40; d += 8) if (curvaEm(sx + d) > 0.6) return true;
   return false;
 }
-// próxima curva forte (> ~50°) até 150 m à frente: distância, giro (+ direita, − esquerda) e se é retorno
-let cacheVirar = { k: null, v: null };
-function proximaCurva(s0) {
-  const k = Math.round(s0 / 4);
-  if (cacheVirar.k === k && cacheVirar.p === pista) return cacheVirar.v;
-  let v = null;
-  for (let d = 0; d <= 150 && s0 + d < pista.total; d += 4) {
-    const sc = s0 + d, giro = difAngulo(emEst(sc + 24).ang, emEst(sc - 8).ang);
-    if (Math.abs(giro) > 0.9) {
-      // o meio da curva: onde a pista mais vira, nos próximos 30 m
-      let melhor = sc, mx = -1;
-      for (let m = 0; m <= 30; m += 2) { const g = Math.abs(difAngulo(emEst(sc + m + 4).ang, emEst(sc + m - 4).ang)); if (g > mx) { mx = g; melhor = sc + m; } }
-      // retorno: o giro somado nos próximos ~60 m chega perto de meia-volta (retorno de avenida são duas viradas de 90°)
-      let soma = 0; for (let m = -8; m < 64; m += 4) soma += difAngulo(emEst(sc + m + 4).ang, emEst(sc + m).ang);
-      v = { s: melhor, d: melhor - s0, giro: Math.abs(soma) > Math.abs(giro) ? soma : giro, retorno: Math.abs(soma) > 2.4 };
-      break;
-    }
+// curvas fortes (> ~50°) do percurso inteiro, uma vez por pista: meio da curva, giro (+ direita, − esquerda), se é
+// retorno e onde ficam os cones e os staffs da organização (só enfeite, sem colisão)
+let curvasCache = { p: null, v: [] };
+function curvasDaPista() {
+  if (curvasCache.p === pista) return curvasCache.v;
+  const v = [];
+  for (let sc = 30; sc < pista.total - 10; sc += 4) {
+    const giro = difAngulo(emEst(sc + 24).ang, emEst(sc - 8).ang);
+    if (Math.abs(giro) <= 0.9) continue;
+    // o meio da curva: onde a pista mais vira, nos próximos 30 m
+    let melhor = sc, mx = -1;
+    for (let m = 0; m <= 30; m += 2) { const g = Math.abs(difAngulo(emEst(sc + m + 4).ang, emEst(sc + m - 4).ang)); if (g > mx) { mx = g; melhor = sc + m; } }
+    // retorno: o giro somado nos próximos ~60 m chega perto de meia-volta (retorno de avenida são duas viradas de 90°)
+    let soma = 0; for (let m = -8; m < 64; m += 4) soma += difAngulo(emEst(sc + m + 4).ang, emEst(sc + m).ang);
+    const c = { s: melhor, giro: Math.abs(soma) > Math.abs(giro) ? soma : giro, retorno: Math.abs(soma) > 2.4 };
+    sinalizacaoDaCurva(c);
+    v.push(c);
+    sc = melhor + 36;
   }
-  cacheVirar = { k, v, p: pista };
+  curvasCache = { p: pista, v };
   return v;
 }
-function mostrarVirar(s) {
-  const el = $('#hudVirar');
-  const c = prova?.ajustado ? proximaCurva(s) : null;
-  if (!c || c.d < -5) { if (!el.hidden) el.hidden = true; return; }
-  const dir = c.giro > 0 ? 'direita' : 'esquerda';
-  const seta = c.retorno ? (c.giro > 0 ? '↷' : '↶') : (c.giro > 0 ? '↱' : '↰');
-  const txt = c.d < 15 ? (c.retorno ? 'Retorno agora' : `Vire à ${dir}`) : `${c.retorno ? 'Retorno' : dir[0].toUpperCase() + dir.slice(1)} em ${Math.max(10, Math.round(c.d / 10) * 10)} m`;
-  if ($('#hudVirarSeta').textContent !== seta) $('#hudVirarSeta').textContent = seta;
-  if ($('#hudVirarTxt').textContent !== txt) $('#hudVirarTxt').textContent = txt;
-  el.classList.toggle('perto', c.d < 50);
-  if (el.hidden) el.hidden = false;
+// onde pôr os cones (fechando o caminho reto, que é o errado) e os dois staffs, longe do percurso em volta da curva.
+// Só aparecem quando o corredor chega perto desta curva: a rua fechada pode ser usada por outro trecho da prova
+function sinalizacaoDaCurva(c) {
+  const P = emEst(c.s), hIn = emEst(c.s - 25).ang, [fx, fz] = frente(hIn), [rx, rz] = direita(hIn);
+  const perto = []; for (let s = c.s - 120; s <= c.s + 200; s += 2) { const q = emEst(s); perto.push(q.x, q.z); }
+  const longe = (x, z, m) => { for (let i = 0; i < perto.length; i += 2) if (Math.hypot(perto[i] - x, perto[i + 1] - z) < m) return false; return true; };
+  const lado = c.giro > 0 ? 1 : -1; // lado da virada (direita do corredor = +1)
+  c.cones = []; c.staffs = [];
+  for (let k = 4; k <= 24; k++) {
+    const qx = P.x + fx * k, qz = P.z + fz * k;
+    if (!longe(qx, qz, 5)) continue;
+    for (let j = -6; j <= 6; j += 1.3) { const x = qx + rx * j, z = qz + rz * j; if (longe(x, z, 4.2)) c.cones.push([x, P.y, z]); }
+    if (c.cones.length < 3) { c.cones = []; continue; }
+    const ax = qx + fx * 1.2, az = qz + fz * 1.2;
+    if (longe(ax, az, 4.5)) c.staffs.push({ x: ax, y: P.y, z: az, ang: hIn + Math.PI, lado: -lado });
+    break;
+  }
+  // o segundo, antes da curva, na calçada do lado de fora, apontando para onde virar
+  const B = emEst(c.s - 22), [bx, bz] = direita(B.ang), fora = -lado * (R.LIMITE_CALCADA + 0.6);
+  const sx = B.x + bx * fora, sz = B.z + bz * fora;
+  if (longe(sx, sz, R.LIMITE_CALCADA + 0.2)) c.staffs.push({ x: sx, y: B.y, z: sz, ang: B.ang + Math.PI + lado * 0.5, lado: -lado });
+}
+// próxima curva forte até 150 m à frente (minimapa)
+function proximaCurva(s0) {
+  const c = curvasDaPista().find((q) => q.s >= s0 - 5);
+  return c && c.s - s0 <= 150 ? { ...c, d: c.s - s0 } : null;
+}
+// staff da organização: colete laranja com faixa refletiva, um braço apontando o sentido e acenando com a bandeirinha
+function criarStaff() {
+  const g = new THREE.Group(), pele = mat(escolher(PELES)), calca = mat(0x26324a), colete = mat(0xff7a00);
+  const corpo = new THREE.Group();
+  for (const x of [-0.11, 0.11]) { const perna = malha(G.capsula, calca, x, 0.45, 0); perna.scale.set(0.15, 0.62, 0.15); corpo.add(perna); }
+  const tronco = malha(G.capsula, colete, 0, 1.15, 0); tronco.scale.set(0.42, 0.5, 0.3); corpo.add(tronco);
+  const faixa = malha(G.caixa, mat(0xf4f4f4), 0, 1.08, 0); faixa.scale.set(0.44, 0.06, 0.32); corpo.add(faixa);
+  const cabeca = malha(G.esfera, pele, 0, 1.62, 0); cabeca.scale.setScalar(0.13); corpo.add(cabeca);
+  g.add(achatar(corpo));
+  const braco = (lado) => {
+    const piv = new THREE.Group(); piv.position.set(lado * 0.25, 1.38, 0);
+    const b = malha(G.capsula, colete, 0, -0.3, 0); b.scale.set(0.1, 0.5, 0.1); piv.add(b);
+    const mao = malha(G.esfera, pele, 0, -0.62, 0); mao.scale.setScalar(0.06); piv.add(mao);
+    g.add(piv); return piv;
+  };
+  g.userData.bracos = { [-1]: braco(-1), [1]: braco(1) };
+  const band = malha(G.caixa, mat(0xffd21f), 0, -0.72, -0.16); band.scale.set(0.02, 0.22, 0.32);
+  g.userData.bandeira = band;
+  g.visible = false; scene.add(g);
+  return g;
+}
+const staffs = [];
+// cones das curvas por perto numa instância só, refeita quando muda o grupo de curvas
+const CONES_MAX = 60;
+let conesCurva = null, conesChave = '';
+function desenharStaffs(dt) {
+  if (!staffs.length && !prova?.ajustado) return;
+  const s = estado.s, curvas = prova?.ajustado ? curvasDaPista().filter((c) => c.s > s - 25 && c.s < s + 230).slice(0, 2) : [];
+  const perto = curvas.flatMap((c) => c.staffs);
+  while (staffs.length < perto.length) staffs.push(criarStaff());
+  const t = relogio.elapsedTime, y0 = prova?.ruasOSM ? ACIMA_RUA : 0;
+  if (!conesCurva) { conesCurva = new THREE.InstancedMesh(G.cone, mat(0xff6a00), CONES_MAX); conesCurva.frustumCulled = false; scene.add(conesCurva); }
+  const chave = curvas.map((c) => c.s).join(',') + '|' + y0 + '|' + pista.total;
+  if (chave !== conesChave) {
+    conesChave = chave;
+    const lista = curvas.flatMap((c) => c.cones).slice(0, CONES_MAX), o = new THREE.Object3D();
+    lista.forEach(([x, y, z], k) => { o.position.set(x, y + y0 + 0.36, z); o.scale.set(0.24, 0.72, 0.24); o.updateMatrix(); conesCurva.setMatrixAt(k, o.matrix); });
+    conesCurva.count = lista.length; conesCurva.instanceMatrix.needsUpdate = true;
+  }
+  staffs.forEach((g, i) => {
+    const q = perto[i];
+    if (!q) { g.visible = false; return; }
+    g.visible = true; g.position.set(q.x, q.y + y0, q.z); g.rotation.y = -q.ang;
+    // braço do lado da virada estendido, varrendo da frente para o lado ("por aqui"); o outro solto ao lado do corpo
+    const aponta = g.userData.bracos[q.lado], solto = g.userData.bracos[-q.lado];
+    if (aponta.userData.lado !== q.lado) { aponta.add(g.userData.bandeira); aponta.userData.lado = q.lado; }
+    const onda = 0.5 + 0.5 * Math.sin(t * 5 + i);
+    aponta.rotation.set(0, q.lado * 0.9 * onda, q.lado * (Math.PI / 2 - 0.1));
+    solto.rotation.set(0, 0, -q.lado * 0.2);
+  });
 }
 
 // ─── HUD, MINIMAPA E TELAS ────────────────────────────────────────────────────
@@ -2702,7 +2769,6 @@ function desenharMinimapa() {
     g.fillText(curva.retorno ? (curva.giro > 0 ? '↷' : '↶') : (curva.giro > 0 ? '↱' : '↰'), x, y + 1);
   }
   g.restore();
-  mostrarVirar(s);
   g.save(); g.translate(C, CY);
   g.beginPath(); g.moveTo(0, -16); g.lineTo(12, 12); g.lineTo(0, 6); g.lineTo(-12, 12); g.closePath();
   g.fillStyle = '#ff3b30'; g.fill(); g.lineWidth = 4; g.strokeStyle = '#fff'; g.stroke();
@@ -3623,6 +3689,7 @@ function desenhar(dt) {
   ceu.position.copy(camera.position);
   animarChuva(Math.min(dt || 0.016, 0.05));
   desenharPelotao(Math.min(dt || 0.016, 0.05));
+  desenharStaffs(Math.min(dt || 0.016, 0.05));
   desenharFantasma(Math.min(dt || 0.016, 0.05));
   renderer.render(scene, camera);
 }
@@ -4445,7 +4512,7 @@ carregarProva();
 loop();
 
 // ganchos para testes automatizados
-window.__jogo = { L, vestirAtleta, abrirLoja, ACESSORIOS_3D, corredor, camera, perfil: () => perfil, P, TR, fazerTreino, definirPerfil: (p) => { perfil = p; salvarPerfil(); mostrarInicio(); }, criar: { cone, barreira, cachorro }, osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, placas: () => placas, semaforos: () => semaforos, atualizarPlacas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };
+window.__jogo = { L, curvas: () => curvasDaPista(), vestirAtleta, abrirLoja, ACESSORIOS_3D, corredor, camera, perfil: () => perfil, P, TR, fazerTreino, definirPerfil: (p) => { perfil = p; salvarPerfil(); mostrarInicio(); }, criar: { cone, barreira, cachorro }, osm: () => osm, zonas: () => zonas, chunks: () => chunksArvores.length, qualidade: () => NIVEIS[nivel].nome, aplicarQualidade, atleta: () => corredor.atleta, estado, entidades: () => entidades, postos: () => postos, travessas: () => travessas, placas: () => placas, semaforos: () => semaforos, atualizarPlacas, passo, acao, iniciar, dados: () => dadosProva, pista: () => pista, info: renderer.info, controles };
 
 // voltou para o jogo (ex.: depois de abrir o Strava): busca corridas novas
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && estado.modo === 'inicio') sincronizarStrava(); });
