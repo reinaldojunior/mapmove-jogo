@@ -150,6 +150,7 @@ para a etapa 4, o novo desenho das ruas): relatório em `docs/percursos/etapa3/R
 - **Publicação controlada preparada (26/11/2026):** `docs/percursos/PUBLICACAO-CONTROLADA.md`
   (proposta de recordes e ranking, conferências). Prévias da Vercel não gravam nada na conta (`vite.config.js` marca
   `VERCEL_ENV=preview`; selo "PRÉVIA DE TESTE"); em produção nada muda. Desafio fantasma não roda no percurso ajustado.
+  Teste no celular do usuário (26/11/2026), modo novo com `&fps=1`: fluido, sem travadas (números não registrados).
   XP/Move$/medalhas no modo de teste: opção C escolhida (contam como qualquer corrida; recordes, ranking e fantasma
   separados).
 - **Validação final aprovada (26/11/2026):** relatório em

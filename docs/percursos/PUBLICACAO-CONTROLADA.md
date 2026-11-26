@@ -150,3 +150,8 @@ Recordes gravados: nas chaves de sempre no padrão e nas `…-ajustado` no modo 
 - **Código:** a `main` não recebeu nada. Se um dia receber, `git revert` do merge volta ao estado `218b45d`. A Vercel
   também permite voltar à publicação anterior ("Instant Rollback"; a atual é `dpl_H3aNaaXvyxE6h5ELkqkjf7GeL6Tj`).
 - **Desligar só o modo novo:** apagar `public/percursos/` e `public/ruas/`.
+
+## 6. Teste no celular (depois da publicação)
+
+26/11/2026: o usuário testou o modo novo no próprio celular, em produção, com `?percurso=ajustado&ruas=osm&fps=1`.
+Resultado relatado: **fluido, sem travadas**. Os valores de FPS não foram anotados.
