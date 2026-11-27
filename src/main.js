@@ -709,10 +709,36 @@ function prepararPelotao() {
 }
 // corrida de conscientização (prova no parque): cachorro correndo junto, preso na cintura por uma guia
 const matGuiaCao = new THREE.LineBasicMaterial({ color: 0xe53935 });
-const CORES_CAO = [0xffffff, 0x3a3a3a, 0xd9a066, 0x9a6a40, 0xb8b8b8]; // mesmo modelo, pelagens diferentes
+const CORES_CAO = [0xffffff, 0x3a3a3a, 0xd9a066, 0x9a6a40, 0xb8b8b8]; // mesmo modelo, pelagens diferentes (reserva)
+// raças da corrida do parque (Meshy, reduzidas a ~10 mil triângulos com a textura refeita); só baixam na prova do parque
+const RACAS_CAO = [
+  { id: 'cao-1', nome: 'Caramelo', altura: 0.88 },
+  { id: 'cao-2', nome: 'Dobermann', altura: 1.0 },
+  { id: 'cao-3', nome: 'Labrador', altura: 0.95 },
+  { id: 'cao-4', nome: 'Weimaraner', altura: 1.0 }
+];
+const racasModelo = {}; // id -> malha com esqueleto do jogo
+let racasPedidas = false;
+function carregarRacas() {
+  if (racasPedidas) return;
+  racasPedidas = true;
+  for (const r of RACAS_CAO) emPreparo(gltfLoader.loadAsync(`/modelos/${r.id}.glb`).then((g) => {
+    prepararMalhaAtleta(g.scene);
+    racasModelo[r.id] = rigarQuadrupede(g.scene, r.altura, { inverter: !!r.inverter });
+  }).catch((e) => console.warn('cachorro', r.id, e)));
+}
+const racasProntas = () => RACAS_CAO.filter((r) => racasModelo[r.id]).map((r) => r.id);
+// parceiro de corrida (prova do parque): 'aleatorio', um id de RACAS_CAO ou 'nenhum'
+let parceiroCao = (() => { try { return localStorage.getItem('mapmove-parceiro') || 'aleatorio'; } catch { return 'aleatorio'; } })();
+function sortearParceiro() {
+  if (parceiroCao === 'nenhum') return null;
+  const prontas = racasProntas();
+  if (prontas.includes(parceiroCao)) return parceiroCao;
+  return prontas.length ? prontas[Math.floor(Math.random() * prontas.length)] : (caoModelo ? 'reserva' : null);
+}
 const PONTOS_GUIA = 12;
-function novoCaoJunto(escala, cor = 0xffffff) {
-  const malha = clonarComOssos(caoModelo), g = new THREE.Group(); g.add(malha); g.scale.setScalar(escala);
+function novoCaoJunto(escala, cor = 0xffffff, modelo = caoModelo) {
+  const malha = clonarComOssos(modelo), g = new THREE.Group(); g.add(malha); g.scale.setScalar(escala);
   malha.traverse((o) => { if (!o.isMesh) return; o.castShadow = true; o.frustumCulled = false; if (cor !== 0xffffff) { o.material = o.material.clone(); o.material.color.multiply(new THREE.Color(cor)); } });
   const guia = new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(PONTOS_GUIA * 3), 3)), matGuiaCao);
   guia.frustumCulled = false;
@@ -730,9 +756,12 @@ function ligarGuia(guia, a, b, comp = 1.9) {
 }
 // um em cada quatro corredores do pelotão leva cachorro, cada um de uma cor (referencial do boneco: frente = -z)
 function caoDoNpc(p, k, dt) {
-  const quer = !!prova?.parque && !!caoModelo && k % 4 === 1;
+  const prontas = racasProntas(), quer = !!prova?.parque && (prontas.length > 0 || !!caoModelo) && k % 4 === 1;
   if (quer && !p.cao) {
-    p.cao = novoCaoJunto(0.78, CORES_CAO[(k >> 2) % CORES_CAO.length]); p.cao.g.position.set(0.9, 0, -1.2); p.cao.g.rotation.y = Math.PI / 2;
+    // raça sorteada para cada corredor; sem as raças, o cachorro de reserva com outra pelagem
+    p.cao = prontas.length ? novoCaoJunto(0.78, 0xffffff, racasModelo[prontas[Math.floor(Math.random() * prontas.length)]])
+      : novoCaoJunto(0.78, CORES_CAO[(k >> 2) % CORES_CAO.length]);
+    p.cao.g.position.set(0.9, 0, -1.2); p.cao.g.rotation.y = Math.PI / 2;
     p.holder.add(p.cao.g, p.cao.guia); ligarGuia(p.cao.guia, [0.2, 1.0, 0], [0.9, 0.5, -1.55]);
   }
   if (!p.cao) return;
@@ -741,8 +770,10 @@ function caoDoNpc(p, k, dt) {
 }
 let caoJunto = null;
 function desenharCaoJunto(chao, dt) {
-  const s = estado, quer = !!prova?.parque && !!caoModelo && ['jogando', 'contagem', 'fim'].includes(s.modo);
-  if (quer && !caoJunto) { caoJunto = novoCaoJunto(0.82, 0xd9a066); scene.add(caoJunto.g, caoJunto.guia); }
+  const s = estado, id = s.parceiro, modelo = id === 'reserva' ? caoModelo : racasModelo[id];
+  const quer = !!prova?.parque && !!modelo && ['jogando', 'contagem', 'fim'].includes(s.modo);
+  if (caoJunto && caoJunto.id !== id && quer) { scene.remove(caoJunto.g, caoJunto.guia); caoJunto = null; } // trocou de parceiro
+  if (quer && !caoJunto) { caoJunto = novoCaoJunto(0.82, id === 'reserva' ? 0xd9a066 : 0xffffff, modelo); caoJunto.id = id; scene.add(caoJunto.g, caoJunto.guia); }
   if (!caoJunto) return;
   caoJunto.g.visible = caoJunto.guia.visible = quer;
   if (!quer) return;
@@ -1295,7 +1326,7 @@ function atualizarCenario(sCorredor) {
 // ─── OBSTÁCULOS E ITENS (EM COORDENADAS DA PISTA: s AO LONGO, d PARA OS LADOS) ─
 
 let entidades = [];
-if (import.meta.env.DEV) window.__dbg = { pista: () => pista, prova: () => prova, renderer: () => renderer, passo: (dt) => passo(dt), curva: (s) => curvaEm(s), ents: () => entidades, carro: (...a) => carro(...a), bicho: (s) => cachorro(s), npcs: () => npcPool.filter((p) => p.holder.visible).length, desenharPelotao: (dt) => desenharPelotao(dt), npcDist: () => npcPool.filter((p) => p.holder.visible).map((p) => Math.round(p.npc.s - estado.s)), capivaraPronta: () => !!capivaraModelo, estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString()]); } }; // só no modo de desenvolvimento, para testes
+if (import.meta.env.DEV) window.__dbg = { pista: () => pista, prova: () => prova, renderer: () => renderer, passo: (dt) => passo(dt), curva: (s) => curvaEm(s), ents: () => entidades, carro: (...a) => carro(...a), bicho: (s) => cachorro(s), caoJunto: () => caoJunto?.pos, npcs: () => npcPool.filter((p) => p.holder.visible).length, desenharPelotao: (dt) => desenharPelotao(dt), npcDist: () => npcPool.filter((p) => p.holder.visible).map((p) => Math.round(p.npc.s - estado.s)), capivaraPronta: () => !!capivaraModelo, estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString()]); } }; // só no modo de desenvolvimento, para testes
 let postos = [];
 let travessas = [];
 
@@ -1360,6 +1391,7 @@ let capivaraModelo = null, capivaraPedida = false;
 function carregarCapivara(slug) {
   if (capivaraPedida || !PROVAS.find((p) => p.slug === slug)?.parque) return;
   capivaraPedida = true;
+  carregarRacas();
   emPreparo(gltfLoader.loadAsync('/modelos/capivara.glb').then((g) => {
     prepararMalhaAtleta(g.scene); // tira o brilho de metal que vira mancha branca
     capivaraModelo = rigarQuadrupede(g.scene, 0.72);
@@ -3320,6 +3352,19 @@ function indicadoresClima(c) {
   const pis = c.chuva ? ['i-pista-molhada', 'Pista', 'Molhada', 'curvas e pulo menores', 'ruim'] : ['i-pista', 'Pista', 'Seca', 'aderência normal', 'bom'];
   return [hid, ene, ven, pis];
 }
+// escolha do parceiro de corrida (prova do parque): sorteado, uma das raças ou sem cachorro
+function desenharParceiros() {
+  const ops = [{ id: 'aleatorio', nome: 'Sortear', ic: '🎲' }, ...RACAS_CAO.map((r) => ({ id: r.id, nome: r.nome, img: `/ui/caes/${r.id}.png` })), { id: 'nenhum', nome: 'Sem cão', ic: '🚫' }];
+  $('#parceiros').innerHTML = ops.map((o) => `<button class="parceiro${o.id === parceiroCao ? ' ativo' : ''}" data-id="${o.id}" aria-pressed="${o.id === parceiroCao}">`
+    + (o.img ? `<img src="${o.img}" alt="" draggable="false">` : `<span class="ic">${o.ic}</span>`) + `<small>${o.nome}</small></button>`).join('');
+}
+$('#parceiros').addEventListener('click', (ev) => {
+  const b = ev.target.closest('.parceiro'); if (!b) return;
+  parceiroCao = b.dataset.id;
+  try { localStorage.setItem('mapmove-parceiro', parceiroCao); } catch { /* sem storage */ }
+  desenharParceiros();
+});
+
 function abrirClima(escolha) {
   escolhaDaLargada = escolha;
   climaDaLargada = CL.sortearClima();
@@ -3339,6 +3384,9 @@ function abrirClima(escolha) {
   $('#climaIndicadores').innerHTML = indicadoresClima(c).map(([ico, rot, valor, sub, tom]) =>
     `<div class="clima-ind ${tom}"><span class="ic"><svg><use href="#${ico}"/></svg></span><span class="tx"><span class="lab">${rot}</span><b>${valor}</b><small>${sub}</small></span></div>`).join('');
   $('#climaCuidados').innerHTML = x.cuidados.map((t, i) => `<li><span class="n">${i + 1}</span><span>${t}</span></li>`).join('');
+  const noParque = !!(ehProva && PROVAS.find((p) => p.slug === PROVA_SLUG)?.parque);
+  $('#climaParceiro').hidden = !noParque;
+  if (noParque) desenharParceiros();
   mostrar('telaClima');
 }
 $('#btnLargar').addEventListener('click', () => largar(escolhaDaLargada, climaDaLargada));
@@ -3391,6 +3439,7 @@ function iniciar(escolha, clima) {
   estado.clima = clima || CL.sortearClima();
   aplicarClima(estado.clima);
   prepararPelotao();
+  estado.parceiro = sortearParceiro(); // cachorro que corre com você (prova do parque)
   // carro desgovernado em ~1 a cada 3 provas, entre 30% e 70% do percurso
   festa = null;
   // só nas provas de Sorocaba, e em todas elas: num ponto sorteado, na contramão ou furando uma travessa

@@ -32,7 +32,8 @@ function geometriaUnica(model) {
   return { geo, material };
 }
 
-export function rigarQuadrupede(model, alturaFinal = 0.75) {
+// inverter = true: a detecção errou a frente (ex.: rabo enrolado mais alto que a cabeça); gira o animal 180°
+export function rigarQuadrupede(model, alturaFinal = 0.75, { inverter = false } = {}) {
   const { geo, material } = geometriaUnica(model);
   geo.computeBoundingBox();
   let bb = geo.boundingBox;
@@ -47,7 +48,7 @@ export function rigarQuadrupede(model, alturaFinal = 0.75) {
     if (x > bb.max.x - L0 * 0.25) altMax = Math.max(altMax, y);
     if (x < bb.min.x + L0 * 0.25) altMin = Math.max(altMin, y);
   }
-  if (altMin > altMax) geo.rotateY(Math.PI);
+  if ((altMin > altMax) !== inverter) geo.rotateY(Math.PI);
   // centraliza: pés no chão, meio do corpo na origem, e escala para a altura pedida
   geo.computeBoundingBox(); bb = geo.boundingBox;
   geo.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
@@ -110,8 +111,19 @@ export function rigarQuadrupede(model, alturaFinal = 0.75) {
   geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
   geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
 
+  // cabeça virada de fábrica (o modelo olha para um lado): mede o desvio da ponta do focinho em relação ao meio do
+  // corpo e guarda o giro que deixa a cabeça olhando para a frente (a animação parte daí)
+  let hx = 0, hz = 0, hn = 0, cz = 0, cn = 0;
+  for (let i = 0; i < n; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    if (x > bb.max.x - L * 0.14 && y > H * 0.45) { hx += x; hz += z; hn++; }
+    else if (Math.abs(x) < L * 0.2 && y > barriga) { cz += z; cn++; }
+  }
+  const giroCabeca = hn && cn ? Math.max(-0.8, Math.min(0.8, Math.atan2(hz / hn - cz / cn, hx / hn - L * 0.3))) : 0;
+
   const mat = Array.isArray(material) ? material[0] : material;
   const malha = new THREE.SkinnedMesh(geo, mat);
+  malha.userData.giroCabeca = giroCabeca;
   malha.add(raiz);
   malha.bind(new THREE.Skeleton(ossos));
   malha.castShadow = true;
@@ -134,5 +146,8 @@ export function animarQuadrupede(malha, t, corre, { rabo = true, ritmo = 1 } = {
   raiz.position.y = raiz.userData.y0 + (corre ? Math.abs(Math.sin(a)) * 0.05 : 0);
   raiz.rotation.z = corre ? Math.sin(a) * 0.08 : 0;
   b('cabeca').rotation.z = corre ? Math.sin(a + 0.6) * 0.1 : Math.sin(t * 2) * 0.05;
+  // olha para a frente e, de vez em quando, dá uma olhada para um lado (sem ritmo fixo)
+  const olhada = Math.sin(t * 0.37) * Math.max(0, Math.sin(t * 0.21 + 1.3)) * 0.45;
+  b('cabeca').rotation.y = (malha.userData.giroCabeca || 0) + olhada;
   b('rabo').rotation.y = rabo ? Math.sin(t * 14) * 0.5 : 0;
 }
