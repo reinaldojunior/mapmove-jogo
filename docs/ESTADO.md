@@ -3,7 +3,7 @@
 Resumo para quem continuar o projeto (pessoa ou Claude em outra conta/sessão). Leia também o `CLAUDE.md`
 (regras de personagens 3D e de jogo) e o `docs/ideias.md` (ideias guardadas).
 
-Atualizado em 25/11/2026.
+Atualizado em 25/11/2026. **Passagem de 27/11/2026 (o que foi feito depois e o que falta): `docs/PASSAGEM-2026-11-27.md`.**
 
 ## O que é
 
