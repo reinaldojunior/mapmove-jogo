@@ -1137,3 +1137,26 @@ kbd {
 #hud .dist-chegada { position: absolute; left: 50%; bottom: -10px; transform: translateX(-50%); white-space: nowrap; font-size: 10.5px; font-weight: 800; padding: 0 7px; line-height: 16px; border-radius: 999px; background: var(--mm-p3); border: 1.5px solid var(--mm-noite); color: #fff; }
 #hud .dist-chegada:empty { display: none; }
 /* percurso ajustado (teste): aviso da próxima curva forte, embaixo do minimapa */
+
+/* tela de carregamento do mapa (imagem parada: o celular pode travar alguns instantes preparando os modelos 3D).
+   A imagem da prova aparece inteira, sem corte, encostada no topo; o que sobrar da tela (celular mais alto embaixo,
+   computador dos lados) é a mesma imagem desfocada. O aviso fica no rodapé. */
+.tela-carregando {
+  position: absolute; inset: 0; z-index: 50; overflow: hidden;
+  background: linear-gradient(180deg, #9fd6ff 0%, #5fb3ff 45%, #2e7d32 100%);
+  display: flex; flex-direction: column; justify-content: flex-end;
+}
+.tela-carregando[hidden] { display: none; }
+.tela-carregando::before, .tela-carregando::after { content: ''; position: absolute; inset: 0; pointer-events: none; }
+.tela-carregando.com-imagem::before { inset: -24px; background: var(--img) bottom center / cover no-repeat; filter: blur(18px) brightness(0.85); }
+.tela-carregando.com-imagem::after { background: var(--img) top center / contain no-repeat; }
+.carregando-rodape {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; color: #fff;
+  padding: 26px 16px max(18px, calc(env(safe-area-inset-bottom) + 12px));
+  background: linear-gradient(180deg, rgba(6, 20, 64, 0) 0%, rgba(6, 20, 64, 0.78) 55%);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+}
+.carregando-rodape b { font-size: 19px; font-weight: 800; color: var(--mm-amarelo, #ffd21f); }
+.carregando-rodape b:empty { display: none; }
+.carregando-rodape span { font-size: 16px; font-weight: 700; }

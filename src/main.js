@@ -463,7 +463,7 @@ let carregandoAtleta = 0;
 async function carregarAtleta(c, id = 'portal') {
   const vez = ++carregandoAtleta;
   const pers = PERSONAGENS[id] || PERSONAGENS.portal;
-  if (pers.arquivo) return carregarAtletaUnico(c, pers, id, vez);
+  if (pers.arquivo) return emPreparo(carregarAtletaUnico(c, pers, id, vez));
   // carrega tudo antes de trocar, para o corredor não sumir no meio
   const gltfs = await Promise.all(pers.anims.map(([, arquivo]) => gltfLoader.loadAsync(`/modelos/${arquivo}`)));
   if (vez !== carregandoAtleta) return;
@@ -665,12 +665,17 @@ function trocarAnimacao(c, nome) {
   a.atual = parte;
 }
 
+// modelos 3D em preparo (corredor, pelotão, cachorro): o preparo das texturas trava o celular alguns instantes, então
+// a largada espera por eles atrás da tela parada "Carregando mapa"
+const preparando = new Set();
+function emPreparo(p) { preparando.add(p); const fim = () => preparando.delete(p); p.then(fim, fim); return p; }
+
 // ─── PELOTÃO: OUTROS CORREDORES (NPCs), MOTO BATEDORA E CARRO LÍDER ─────────────
 const NPC_POR_NIVEL = [14, 9, 5];
 const NPC_TOTAL = 120; // inscritos virtuais na prova (só os perto de você aparecem)
 const npcModelos = [];
 let pelotao = [], npcPool = [];
-(async () => {
+emPreparo((async () => {
   for (const [arq, clipe] of [['corredora.glb', 'Run_02'], ['maratonista-corrida.glb', null]]) {
     try {
       const g = await gltfLoader.loadAsync(`/modelos/${arq}`);
@@ -680,7 +685,7 @@ let pelotao = [], npcPool = [];
       npcModelos.push({ cena: g.scene, clip, box: new THREE.Box3().setFromObject(g.scene, true) });
     } catch (e) { console.warn('npc', arq, e); }
   }
-})();
+})());
 function criarNpc(k) {
   const m = npcModelos[k % npcModelos.length];
   const model = clonarComOssos(m.cena), b = m.box, h = (b.max.y - b.min.y) || 1;
@@ -1324,10 +1329,10 @@ function barreira(s, d) {
 // border collie 3D (Higgsfield) com esqueleto montado pelo jogo; enquanto não carrega, o caramelo de blocos
 let caoModelo = null;
 // o do Meshy (feito a partir das fotos) é o principal; o do Higgsfield fica de reserva
-gltfLoader.loadAsync('/modelos/cao-meshy.glb').catch(() => gltfLoader.loadAsync('/modelos/border-collie.glb')).then((g) => {
+emPreparo(gltfLoader.loadAsync('/modelos/cao-meshy.glb').catch(() => gltfLoader.loadAsync('/modelos/border-collie.glb')).then((g) => {
   prepararMalhaAtleta(g.scene); // tira o brilho de metal que vira mancha branca
   caoModelo = rigarQuadrupede(g.scene, 0.95);
-}).catch(() => {});
+}).catch(() => {}));
 
 // vira-lata caramelo atravessando a rua em galope (frente do cachorro para +x)
 // capivara (prova no parque, no lugar do cachorro): mesmo comportamento e a mesma caixa de colisão do cachorro
@@ -3293,7 +3298,40 @@ function abrirClima(escolha) {
   $('#climaCuidados').innerHTML = x.cuidados.map((t, i) => `<li><span class="n">${i + 1}</span><span>${t}</span></li>`).join('');
   mostrar('telaClima');
 }
-$('#btnLargar').addEventListener('click', () => iniciar(escolhaDaLargada, climaDaLargada));
+$('#btnLargar').addEventListener('click', () => largar(escolhaDaLargada, climaDaLargada));
+
+// imagem da tela de carregamento de cada prova (sem imagem: fundo de céu e grama)
+const IMAGEM_CARREGANDO = { 'corrida-upar-2026-11-28': '/ui/carregando-parque-do-mirim.jpg' };
+const imagensCarregando = {}; // já baixadas antes da largada, para a tela aparecer com a imagem na hora
+function imagemCarregando(slug) {
+  const url = IMAGEM_CARREGANDO[slug]; if (!url) return null;
+  if (!imagensCarregando[url]) { const im = new Image(); im.src = url; imagensCarregando[url] = im.decode().catch(() => {}); }
+  return imagensCarregando[url];
+}
+imagemCarregando(PROVA_SLUG);
+const quadro = () => new Promise((ok) => requestAnimationFrame(() => ok()));
+let largando = false;
+// mostra "Carregando mapa" (imagem parada) enquanto os modelos terminam de preparar e o cenário da corrida é
+// montado e compilado na placa de vídeo; a contagem 3, 2, 1 só começa depois
+async function largar(escolha, clima) {
+  if (largando) return;
+  largando = true;
+  const ehProva = escolha?.tipo === 'prova', tela = $('#telaCarregando'), img = ehProva && IMAGEM_CARREGANDO[PROVA_SLUG];
+  if (img) { tela.style.setProperty('--img', `url(${img})`); await Promise.race([imagemCarregando(PROVA_SLUG), new Promise((ok) => setTimeout(ok, 1500))]); }
+  tela.classList.toggle('com-imagem', !!img);
+  $('#carregandoProva').textContent = ehProva && dadosProva ? `${escolha.distancia.rotulo} · ${dadosProva.nome}` : '';
+  tela.hidden = false;
+  try {
+    await quadro(); await quadro(); // a tela aparece antes de qualquer trabalho pesado
+    while (preparando.size) await Promise.all([...preparando].map((p) => p.catch(() => {})));
+    iniciar(escolha, clima);
+    try { renderer.compile(scene, camera); } catch {}
+    await quadro(); await quadro();
+  } finally {
+    tela.hidden = true;
+    largando = false;
+  }
+}
 $('#btnClimaVoltar').addEventListener('click', () => {
   // voltou da previsão no meio da corrida (pausa): o céu volta a ser o da corrida em andamento
   if (estado.modo === 'pausa') { aplicarClima(estado.clima); mostrar('telaPausa'); } else mostrarInicio();
@@ -4037,7 +4075,7 @@ function mostrarAbasProvas() {
 function trocarProva(slug) {
   {
     if (slug === PROVA_SLUG) { mostrarAbasProvas(); return; }
-    PROVA_SLUG = slug;
+    PROVA_SLUG = slug; imagemCarregando(slug);
     try { localStorage.setItem('mapmove-prova', PROVA_SLUG); } catch { /* sem storage */ }
     dadosProva = null;
     $('#provaInfo').textContent = 'Carregando o percurso…';
