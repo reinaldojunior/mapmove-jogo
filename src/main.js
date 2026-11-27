@@ -765,13 +765,30 @@ function desenharCaoJunto(chao, dt) {
   ligarGuia(c.guia, [s.x + rx * 0.22, chao + s.y + 1.0, s.z + rz * 0.22], [c.pos.x + cx * 0.35, chao + c.pos.y + 0.52, c.pos.z + cz * 0.35], 2.8);
 }
 
+// prova no parque: menos gente e mais espalhada. Boneco novo só aparece longe (a partir de 40 m à frente) e com
+// pelo menos 9 m de outro; quem já tem boneco continua até ficar ~10 m para trás (você vê chegar e ultrapassa)
+function escolherNoParque(s, n) {
+  const ficam = [];
+  for (const p of npcPool) if (p.npc && p.npc.s > s.s - 10 && p.npc.s < s.s + 190) ficam.push(p.npc);
+  const lista = ficam.slice(0, n);
+  const novos = pelotao.filter((c) => c.s > s.s + 40 && c.s < s.s + 170 && !lista.includes(c)).sort((a, b) => a.s - b.s);
+  for (const c of novos) {
+    if (lista.length >= n) break;
+    if (lista.some((o) => Math.abs(o.s - c.s) < 9)) continue;
+    lista.push(c);
+  }
+  return lista;
+}
+
 function desenharPelotao(dt) {
   const s = estado, n = Math.min(npcPool.length, npcVisiveis());
   // os mais perto do corredor (um pouco atrás até bem à frente) ganham um boneco
   // quem vem à frente ganha boneco primeiro e de longe (até ~170 m), para não "brotar" perto; atrás, só os colados
-  const atras = pelotao.filter((c) => c.s <= s.s && c.s > s.s - 12).sort((a, b) => b.s - a.s).slice(0, Math.max(1, Math.floor(n / 4)));
-  const frente = pelotao.filter((c) => c.s > s.s && c.s < s.s + 170).sort((a, b) => a.s - b.s).slice(0, n - atras.length);
-  const perto = [...frente, ...atras];
+  const perto = prova?.parque ? escolherNoParque(s, n) : (() => {
+    const atras = pelotao.filter((c) => c.s <= s.s && c.s > s.s - 12).sort((a, b) => b.s - a.s).slice(0, Math.max(1, Math.floor(n / 4)));
+    const frente = pelotao.filter((c) => c.s > s.s && c.s < s.s + 170).sort((a, b) => a.s - b.s).slice(0, n - atras.length);
+    return [...frente, ...atras];
+  })();
   const usados = new Set(perto);
   for (const p of npcPool) if (p.npc && !usados.has(p.npc)) { p.npc = null; p.holder.visible = false; }
   for (const c of perto) {
@@ -1278,7 +1295,7 @@ function atualizarCenario(sCorredor) {
 // ─── OBSTÁCULOS E ITENS (EM COORDENADAS DA PISTA: s AO LONGO, d PARA OS LADOS) ─
 
 let entidades = [];
-if (import.meta.env.DEV) window.__dbg = { pista: () => pista, prova: () => prova, renderer: () => renderer, passo: (dt) => passo(dt), curva: (s) => curvaEm(s), ents: () => entidades, carro: (...a) => carro(...a), bicho: (s) => cachorro(s), npcs: () => npcPool.filter((p) => p.holder.visible).length, capivaraPronta: () => !!capivaraModelo, estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString()]); } }; // só no modo de desenvolvimento, para testes
+if (import.meta.env.DEV) window.__dbg = { pista: () => pista, prova: () => prova, renderer: () => renderer, passo: (dt) => passo(dt), curva: (s) => curvaEm(s), ents: () => entidades, carro: (...a) => carro(...a), bicho: (s) => cachorro(s), npcs: () => npcPool.filter((p) => p.holder.visible).length, desenharPelotao: (dt) => desenharPelotao(dt), npcDist: () => npcPool.filter((p) => p.holder.visible).map((p) => Math.round(p.npc.s - estado.s)), capivaraPronta: () => !!capivaraModelo, estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString()]); } }; // só no modo de desenvolvimento, para testes
 let postos = [];
 let travessas = [];
 
@@ -3829,6 +3846,7 @@ function passo(dt) {
       // esbarrão: perde um pouco de velocidade, sem penalidade
       for (const c of pelotao) {
         if (s.s < 40 || c.esbarrou || Math.abs(c.s - s.s) > 0.7 || Math.abs(c.d - s.d) > 0.55 || s.y > 0.3) continue; // na largada todo mundo está junto
+        if (prova.parque && !npcPool.some((p) => p.npc === c && p.holder.visible)) continue; // no parque: só esbarra em quem aparece
         c.esbarrou = true; s.v *= 0.85; aviso('😬 Esbarrou num corredor', 'alerta', 900);
       }
     }
