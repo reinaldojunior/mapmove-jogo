@@ -2907,7 +2907,10 @@ function postosDaProva(rotulo) {
   return lista;
 }
 
-function prepararPercurso(escolha) {
+// montagem da corrida em etapas (o mesmo código, na mesma ordem): entre uma etapa e outra a tela de carregamento
+// pode se atualizar; cada pausa diz o que vem a seguir. prepararPercurso roda tudo de uma vez, como sempre
+let osmPronto = null; // ruas do mapa (chegam depois, de forma assíncrona)
+function* passosDoPercurso(escolha) {
   ultimaEscolha = escolha;
   limparEntidades();
   limparPlacas();
@@ -2923,12 +2926,17 @@ function prepararPercurso(escolha) {
     pista = new PistaReta();
     prova = null;
   }
+  yield 'Desenhando a pista…';
   definirFaixas(prova ? prova.nome : 'CORRIDA DE RUA');
   osm = null; zonas = null; duplas = [];
   construirVisual();
+  yield 'Colocando as ruas em volta…';
   construirOSM();
   definirTravessas([]);
+  yield 'Montando o cenário…';
   construirCenario();
+  yield 'Colocando pórticos e postos de água…';
+  osmPronto = null;
   if (prova) {
     // percurso em circuito (chegada no mesmo lugar da largada): um pórtico só, "LARGADA · CHEGADA"
     const ini = emEst(6), fim = emEst(pista.total), mesmoLugar = Math.hypot(ini.x - fim.x, ini.z - fim.z) < 40;
@@ -2941,13 +2949,14 @@ function prepararPercurso(escolha) {
     { const sa = pista.total * 0.5, du = duplaEm(duplas, sa); ambulancia(sa, du ? -du.lado : (Math.random() < 0.5 ? -1 : 1)); }
     for (const p of postosDaProva(prova.rotulo)) postoHidratacao(p.s, p.lado);
     desenharMapaBase();
-    carregarOSM(escolha.distancia, pista);
+    osmPronto = carregarOSM(escolha.distancia, pista);
   }
   $('#mapa').hidden = !prova;
 }
+function prepararPercurso(escolha) { for (const _ of passosDoPercurso(escolha)) { /* tudo de uma vez */ } }
 
-function reiniciar() {
-  prepararPercurso(ultimaEscolha);
+function reiniciar(jaMontado = false) {
+  if (!jaMontado) prepararPercurso(ultimaEscolha);
   const p = emEst(0);
   Object.assign(estado, {
     t: 0, tempoReal: 0, x: p.x, z: p.z, ang: p.ang, camAng: p.ang, s: 0, sMax: 0, d: 0, v: 0, y: 0, vy: 0,
@@ -3463,8 +3472,17 @@ async function largar(escolha, clima) {
   $('#carregandoCidade').textContent = ehProva ? `${info?.cidade || ''} · percurso e altimetria reais` : 'Reta livre para treinar o ritmo';
   const caixa = $('#carregandoImg'), mapa = $('#carregandoMapa');
   caixa.style.backgroundImage = img ? `url(${img})` : ''; caixa.classList.toggle('com-imagem', !!img);
-  mapa.hidden = !!img || !ehProva;
-  if (!mapa.hidden) { const g = mapa.getContext('2d'); g.clearRect(0, 0, mapa.width, mapa.height); try { g.drawImage($('#provaMapa'), 0, 0, mapa.width, mapa.height); } catch { /* sem mapa */ } }
+  mapa.hidden = !!img;
+  if (!mapa.hidden) {
+    const g = mapa.getContext('2d'), W = mapa.width, H = mapa.height; g.clearRect(0, 0, W, H);
+    if (ehProva) { try { g.drawImage($('#provaMapa'), 0, 0, W, H); } catch { /* sem mapa */ } }
+    else { // treino de reta: uma reta com largada e chegada, no estilo do traçado das provas
+      g.lineCap = 'round'; g.shadowColor = 'rgba(120, 180, 255, 0.9)'; g.shadowBlur = 14; g.strokeStyle = '#fff'; g.lineWidth = 7;
+      g.beginPath(); g.moveTo(W / 2, H * 0.85); g.lineTo(W / 2, H * 0.15); g.stroke(); g.shadowBlur = 0;
+      g.fillStyle = '#2fc15a'; g.beginPath(); g.arc(W / 2, H * 0.85, 11, 0, Math.PI * 2); g.fill();
+      for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) { g.fillStyle = (a + b) % 2 ? '#061440' : '#fff'; g.fillRect(W / 2 - 12 + a * 6, H * 0.15 - 12 + b * 6, 6, 6); }
+    }
+  }
   // progresso: 70% modelos 3D (cada um que termina conta), 20% montar o percurso, 10% gráficos
   const total = preparando.size;
   const mostrarProgresso = (p, etapa) => { const v = Math.round(Math.max(0, Math.min(1, p)) * 100); $('#carregandoBarra').style.width = v + '%'; $('#carregandoPct').textContent = v + '%'; if (etapa) $('#carregandoEtapa').textContent = etapa; };
@@ -3479,10 +3497,15 @@ async function largar(escolha, clima) {
       mostrarProgresso(total ? 0.7 * (total - preparando.size) / total : 0.7, `Carregando personagens 3D… ${total - preparando.size} de ${total}`);
       await quadro();
     }
-    mostrarProgresso(0.72, 'Montando o percurso…'); await quadro(); await quadro();
-    iniciar(escolha, clima);
+    // montagem do percurso em etapas (70% a 87%), com a tela se atualizando entre elas
+    if (escolha) ultimaEscolha = escolha;
+    const ETAPAS = 4; let n = 0;
+    mostrarProgresso(0.7, 'Traçando o percurso…'); await quadro(); await quadro();
+    for (const proxima of passosDoPercurso(ultimaEscolha)) { n++; mostrarProgresso(0.7 + 0.16 * Math.min(1, n / ETAPAS), proxima); await quadro(); await quadro(); }
+    if (osmPronto) { mostrarProgresso(0.87, 'Desenhando as ruas do mapa…'); await quadro(); await osmPronto.catch(() => {}); }
+    iniciar(escolha, clima, { jaMontado: true });
     estado.modo = 'carregando'; // segura a contagem até a tela sair
-    mostrarProgresso(0.9, 'Preparando os gráficos…'); await quadro();
+    mostrarProgresso(0.93, 'Preparando os gráficos…'); await quadro(); await quadro();
     try { renderer.compile(scene, camera); } catch { /* segue */ }
     mostrarProgresso(1, 'Tudo pronto! Largada em instantes…');
     const falta = 5000 - (performance.now() - inicio); // no mínimo 5 s: dá tempo de ver a foto mesmo em aparelho rápido
@@ -3499,13 +3522,13 @@ $('#btnClimaVoltar').addEventListener('click', () => {
   if (estado.modo === 'pausa') { aplicarClima(estado.clima); mostrar('telaPausa'); } else mostrarInicio();
 });
 
-function iniciar(escolha, clima) {
+function iniciar(escolha, clima, { jaMontado = false } = {}) {
   som.iniciar();
   som.pararLoops();
   som.pausar(false);
   tocarMusica(true);
   if (escolha) ultimaEscolha = escolha;
-  reiniciar();
+  reiniciar(jaMontado);
   preencherJogadorHud();
   estado.clima = clima || CL.sortearClima();
   aplicarClima(estado.clima);
