@@ -40,7 +40,9 @@ const SUPABASE_KEY = 'sb_publishable_s2yoUApfYl_ZvSUkqYYrVw_uXwKsybM';
 // O nome mostrado é genérico (sem o nome oficial do evento, para não usar a marca dos organizadores).
 const PROVAS = [
   { slug: '1-meia-maratona-de-indaiatuba-2026-12-13', cidade: 'Indaiatuba', nome: 'Meia de Indaiatuba', curto: 'Meia de Indaiatuba' },
-  { slug: 'corrida-upar-2026-11-28', cidade: 'Indaiatuba', nome: 'Corrida no Parque do Mirim', curto: 'Parque do Mirim' },
+  { slug: 'corrida-upar-2026-11-28', cidade: 'Indaiatuba', nome: 'Corrida no Parque do Mirim', curto: 'Parque do Mirim',
+    // prova dentro do parque (caminhos do parque, represa de captação): sem carros e sem pintura de rua
+    parque: true },
   // relevo: 0 = desenho plano (Sorocaba tem morros e trechos de ida e volta lado a lado: com o relevo desenhado
   // a rua ficava em barrancos e com placas flutuando). A subida/descida continua valendo no jogo e no HUD.
   { slug: '9-maratona-sorocaba-novembro-azul-2026-11-21', cidade: 'Sorocaba', relevo: 0, nome: 'Desafio 42K – Bora correr em Sorocaba', curto: 'Desafio 42K' }
@@ -734,7 +736,7 @@ const lideres = (() => {
 })();
 function desenharLideres() {
   const s = estado, L = lideres;
-  const ativo = !!prova && (s.modo === 'jogando' || s.modo === 'contagem');
+  const ativo = !!prova && !prova.parque && (s.modo === 'jogando' || s.modo === 'contagem'); // no parque não há carro líder nem moto
   const frente = ativo ? PL.lider(pelotao, s.s) : 0;
   if (ativo && !L.montado && PROPS['carro-picape']?.modelo) {
     const m = prop('carro-picape');
@@ -966,12 +968,14 @@ const matRua = new THREE.MeshStandardMaterial({ map: texAsfalto, roughness: 0.95
 const BORDA_AZUL = [3.48, 3.72];
 const matBordaAzul = new THREE.MeshStandardMaterial({ color: 0x1e88ff, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -3 });
 function ruaComBorda(amostras, grupo, opts) {
-  const [b0, b1] = BORDA_AZUL, M = R.MEIA_RUA, o = { ...opts, uDe: [-M, M] };
-  const partes = [[-b0, b0, matRua, o], [b1, M, matRua, o], [-M, -b1, matRua, o], [b0, b1, matBordaAzul, {}], [-b1, -b0, matBordaAzul, {}]];
+  const [b0, b1] = BORDA_AZUL, M = R.MEIA_RUA, o = { ...opts, uDe: [-M, M] }, mr = prova?.parque ? matTrilha : matRua;
+  const partes = [[-b0, b0, mr, o], [b1, M, mr, o], [-M, -b1, mr, o], [b0, b1, matBordaAzul, {}], [-b1, -b0, matBordaAzul, {}]];
   for (const [d0, d1, m, op] of partes) grupo.add(fita(amostras, d0, d1, m, op));
 }
 const matCalcada = new THREE.MeshStandardMaterial({ map: texCalcada, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
 const matGrama = new THREE.MeshStandardMaterial({ map: texGrama, roughness: 1, depthWrite: false });
+// prova no parque: caminho sem pintura de rua e grama no lugar da calçada (mesma geometria, só muda o material)
+const matBeiraParque = new THREE.MeshStandardMaterial({ map: texGrama, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
 const texChao = texGramado.clone(); texChao.repeat.set(9000 / 9, 9000 / 9);
 const matChao = new THREE.MeshStandardMaterial({ color: 0x7fc062, map: texChao, roughness: 1, depthWrite: false });
 // a grama repete a textura a cada 4 m nos dois sentidos
@@ -1004,7 +1008,7 @@ function construirVisual() {
   visual = new THREE.Group();
   // amostras a cada 4 m (sem o pedaço extra depois da chegada num circuito, que caía em cima da largada)
   const amostras = amostrasDoPercurso(pista);
-  const MATS = { rua: matRua, calcada: matCalcada, grama: matGrama };
+  const MATS = { rua: matRua, calcada: prova?.parque ? matBeiraParque : matCalcada, grama: matGrama };
   visual.userData.amostras = amostras;
   visual.userData.grama = [];
   const desenharFita = (amo) => {
@@ -1043,6 +1047,8 @@ const texAsfaltoLiso = textura(512, 512, (g, w, h) => {
   for (let i = 0; i < 6; i++) manchaAsfalto(g, w, h);
   for (let i = 0; i < 4000; i++) { const c = 55 + Math.random() * 50; g.fillStyle = `rgba(${c},${c},${c + 6},0.5)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
 });
+// prova no parque: o caminho usa o asfalto liso (sem faixas)
+const matTrilha = new THREE.MeshStandardMaterial({ map: texAsfaltoLiso, roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
 const matRuaOSM = new THREE.MeshStandardMaterial({ map: texAsfaltoLiso, roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
 const matCalcadaOSM = new THREE.MeshStandardMaterial({ map: texCalcada, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
 const ACIMA_RUA = 0.06; // = ACIMA em src/ruasOSM.js
@@ -2327,7 +2333,7 @@ async function carregarOSM(distancia, pistaAlvo) {
   const sob = viadutos.flatMap((v) => v.sob);
   const cruzamentos = encontrarTravessas(pistaAlvo, osm.vias).map((t) => ({ ...t, carro: false }))
     .filter((t) => pistaAlvo.elevacao(t.s) < 0.3 && !sob.some((v) => Math.abs(v - t.s) < 25));
-  definirTravessas(cruzamentos);
+  definirTravessas(prova?.parque ? [] : cruzamentos); // no parque não há rua cruzando nem carro
   definirPlacas(placasDoPercurso(osm, pistaAlvo, cruzamentos), semaforosDoPercurso());
 }
 
@@ -2539,6 +2545,7 @@ function prepararPercurso(escolha) {
       janela: escolha.distancia.ajustado ? JANELA_AJUSTADO : null }); // percurso ajustado (teste): projeção com janela curta
     const ruas = escolha.distancia.ruas;
     prova = { nome: dadosProva.nome, rotulo: escolha.distancia.rotulo, total: pista.total, ajustado: !!escolha.distancia.ajustado,
+      parque: !!PROVAS.find((p) => p.slug === PROVA_SLUG)?.parque,
       // desenho das ruas do mapa (teste): só se o arquivo foi feito para esta mesma pista
       ruasOSM: ruas && Math.abs(ruas.pistaTotal - pista.total) < 0.5 ? ruas : null };
   } else {
@@ -3577,7 +3584,7 @@ function passo(dt) {
   }
 
   // carro desgovernado: aparece uma vez em algumas provas, no meio do percurso
-  if (prova && s.festaEm && !festa && s.s > s.festaEm) {
+  if (prova && !prova.parque && s.festaEm && !festa && s.s > s.festaEm) { // no parque não entra carro
     // metade das vezes tenta a travessa (uma rua principal entre 80 e 300 m à frente); sem travessa, vem na contramão
     const t = (s.festaModo ? s.festaModo === 'travessa' : Math.random() < 0.5) && travessas.find((x) => x.principal && !x.carro && x.s > s.s + 80 && x.s < s.s + 300 && !(prova?.ajustado && pertoDeCurva(x.s)));
     if (t) { t.carro = true; festa = carroDesgovernadoTravessa(t); } else festa = carroDesgovernado(s.s + 230);
