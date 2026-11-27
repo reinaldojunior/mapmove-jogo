@@ -797,15 +797,17 @@ function desenharCaoJunto(chao, dt) {
 }
 
 // prova no parque: menos gente e mais espalhada. Boneco novo só aparece longe (a partir de 40 m à frente) e com
-// pelo menos 9 m de outro; quem já tem boneco continua até ficar ~10 m para trás (você vê chegar e ultrapassa)
+// pelo menos 9 m de outro, menos na largada (primeiros 150 m, quando todos saem juntos); quem já tem boneco continua até ficar ~10 m para trás (você vê chegar e ultrapassa)
 function escolherNoParque(s, n) {
   const ficam = [];
   for (const p of npcPool) if (p.npc && p.npc.s > s.s - 10 && p.npc.s < s.s + 190) ficam.push(p.npc);
   const lista = ficam.slice(0, n);
-  const novos = pelotao.filter((c) => c.s > s.s + 40 && c.s < s.s + 170 && !lista.includes(c)).sort((a, b) => a.s - b.s);
+  // na largada todo mundo sai junto: nos primeiros 150 m, quem está perto aparece (com 3 m entre um e outro)
+  const largada = s.s < 150, de = largada ? s.s - 8 : s.s + 40, folga = largada ? 3 : 9;
+  const novos = pelotao.filter((c) => c.s > de && c.s < s.s + 170 && !lista.includes(c)).sort((a, b) => Math.abs(a.s - s.s) - Math.abs(b.s - s.s));
   for (const c of novos) {
     if (lista.length >= n) break;
-    if (lista.some((o) => Math.abs(o.s - c.s) < 9)) continue;
+    if (lista.some((o) => Math.abs(o.s - c.s) < folga && Math.abs(o.d - c.d) < 1.2)) continue;
     lista.push(c);
   }
   return lista;
