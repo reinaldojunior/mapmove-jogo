@@ -128,3 +128,17 @@ export function refinarDistancias(distancias, { raio = 20, coberturaMin = 0.9 } 
     return d;
   });
 }
+
+// Percurso de N voltas de um circuito (ex.: 10K = 2 voltas do 5K). O GPS de uma volta costuma passar um pouco da
+// largada antes de terminar: cada volta é cortada no ponto em que passa mais perto da largada (no fim do traçado) e a
+// seguinte começa dali, sem meia-volta na emenda; a última termina nesse mesmo ponto. Pontos: [lat, lon, alt].
+export function repetirVolta(volta, n) {
+  if (!Array.isArray(volta) || volta.length < 2 || !(n >= 1)) return volta;
+  const pts = plano(volta, volta[0][0], volta[0][1]), m = pts.length;
+  let corte = m - 1, melhor = Infinity;
+  for (let i = Math.floor(m * 0.8); i < m; i++) { const d = Math.hypot(pts[i].x - pts[0].x, pts[i].y - pts[0].y); if (d < melhor) { melhor = d; corte = i; } }
+  const uma = volta.slice(0, corte + 1);
+  const out = [];
+  for (let k = 0; k < n; k++) out.push(...uma.map((p) => [...p]));
+  return out;
+}

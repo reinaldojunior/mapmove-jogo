@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { encaixar, refinarDistancias } from '../src/refino.js';
+import { encaixar, refinarDistancias, repetirVolta } from '../src/refino.js';
 
 // circuito detalhado (quadrado de ~400 m de lado, ponto a cada ~10 m) e um "42K" de 2 voltas com pontos a cada ~100 m
 const LAT = -23.47, LON = -47.44, DLAT = 1 / 110540, DLON = 1 / (111320 * Math.cos((LAT * Math.PI) / 180));
@@ -47,4 +47,14 @@ test('encaixar respeita o sentido: ida e volta em pistas lado a lado não se tro
   const alvo = [pt(590, 7), pt(450, 8), pt(300, 7), pt(150, 8), pt(10, 7)]; // só a volta, espaçado
   const r = encaixar(alvo, fonte);
   for (const q of r) assert.ok(Math.abs((q[0] - LAT) / DLAT - 8) < 0.5, 'saiu da pista de volta');
+});
+
+test('repetirVolta: N voltas do circuito, cortando a sobra que passa da largada', () => {
+  // quadrado de ~110 m de lado; o GPS termina 2 pontos depois de passar pela largada
+  const volta = [[-23, -47, 570], [-23.001, -47, 571], [-23.001, -47.001, 572], [-23, -47.001, 571], [-23.00001, -47.00001, 570], [-23, -46.9998, 570]];
+  const r = repetirVolta(volta, 2);
+  assert.equal(r.length, 10); // a sobra (último ponto) sai das duas voltas
+  assert.deepEqual(r[5], volta[0]); // a segunda volta começa na largada
+  assert.deepEqual(r[9], volta[4]); // termina no ponto mais perto da largada
+  assert.notEqual(r[0], volta[0]); // cópia: o percurso original não muda
 });

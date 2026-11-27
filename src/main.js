@@ -20,7 +20,7 @@ import { criarBandana } from './bandana.js';
 import { criarCeu } from './ceu.js';
 import * as CL from './clima.js';
 import { CEUS } from './ceus.js';
-import { refinarDistancias } from './refino.js';
+import { refinarDistancias, repetirVolta } from './refino.js';
 import { modoPercurso, aplicarPercursoAjustado, sufixo, JANELA as JANELA_AJUSTADO, modoRuas, aplicarRuasOSM } from './percursoAjustado.js';
 import { montarRuas, pinturaRuas, conesDosRetornos, eixoDaPista } from './ruasOSM.js';
 import * as PL from './pelotao.js';
@@ -42,6 +42,8 @@ const PROVAS = [
   { slug: '1-meia-maratona-de-indaiatuba-2026-12-13', cidade: 'Indaiatuba', nome: 'Meia de Indaiatuba', curto: 'Meia de Indaiatuba' },
   { slug: 'corrida-upar-2026-11-28', cidade: 'Indaiatuba', nome: 'Corrida no Parque do Mirim', curto: 'Parque do Mirim', relevo: 0, // plano: com relevo a grama cobria os lagos
     // prova dentro do parque (caminhos do parque, represa de captação): sem carros e sem pintura de rua
+    // o 10K são duas voltas do circuito do 5K (o GPX de 10K do Portal veio errado: outro começo e o fim cortado)
+    voltas: { '10K': ['5K', 2] },
     parque: true, ponte: [-23.03311, -47.18930], barragem: [-23.03088, -47.20423], mirante: [-23.03044, -47.20310],
     quiosques: [[-23.03287, -47.20011], [-23.03226, -47.19904], [-23.03337, -47.20155], [-23.03224, -47.19687], [-23.03212, -47.19804],
       [-23.03307, -47.19472], [-23.03263, -47.20355], [-23.03347, -47.20485]] },
@@ -4287,6 +4289,11 @@ async function carregarProva() {
     const brutas = (c?.corrida_distancias || []).filter((d) => Array.isArray(d.percurso) && d.percurso.length > 10).sort((a, b) => a.km - b.km).map((d) => ({ ...d, rotulo: d.rotulo.toUpperCase() }));
     // GPS espaçado (ex.: 42K = 2 voltas do 21K com metade dos pontos) é encaixado na distância mais detalhada da
     // mesma prova: voltas caem no mesmo lugar e as curvas não são cortadas (src/refino.js; nada muda no Portal)
+    // distância que é N voltas de outra (ver `voltas` em PROVAS): monta a partir da volta certa; o Portal não muda
+    for (const [alvo, [base, n]] of Object.entries(PROVAS.find((p) => p.slug === PROVA_SLUG)?.voltas || {})) {
+      const a = brutas.find((d) => d.rotulo === alvo), b = brutas.find((d) => d.rotulo === base);
+      if (a && b) Object.assign(a, { percurso: repetirVolta(b.percurso, n), subida_m: b.subida_m != null ? b.subida_m * n : a.subida_m });
+    }
     const refinadas = refinarDistancias(brutas);
     // modo de teste: troca o percurso pelo ajustado às ruas do OSM onde houver (as brutas do Portal não mudam)
     let dist = MODO_PERCURSO === 'ajustado' ? await aplicarPercursoAjustado(PROVA_SLUG, refinadas) : refinadas;
