@@ -20,7 +20,7 @@ import { criarBandana } from './bandana.js';
 import { criarCeu } from './ceu.js';
 import * as CL from './clima.js';
 import { CEUS } from './ceus.js';
-import { refinarDistancias, completarVolta } from './refino.js';
+import { refinarDistancias } from './refino.js';
 import { modoPercurso, aplicarPercursoAjustado, sufixo, JANELA as JANELA_AJUSTADO, modoRuas, aplicarRuasOSM } from './percursoAjustado.js';
 import { montarRuas, pinturaRuas, conesDosRetornos, eixoDaPista } from './ruasOSM.js';
 import * as PL from './pelotao.js';
@@ -4284,7 +4284,7 @@ async function carregarProva() {
     const r = await fetch(url, { headers: { apikey: SUPABASE_KEY } });
     const [c] = await r.json();
     // rótulos padronizados em maiúsculas (21k → 21K): XP, medalhas e recordes usam esse rótulo
-    const brutas = (c?.corrida_distancias || []).filter((d) => Array.isArray(d.percurso) && d.percurso.length > 10).sort((a, b) => a.km - b.km).map((d) => ({ ...d, rotulo: d.rotulo.toUpperCase(), percurso: completarVolta(d.percurso, d.km) }));
+    const brutas = (c?.corrida_distancias || []).filter((d) => Array.isArray(d.percurso) && d.percurso.length > 10).sort((a, b) => a.km - b.km).map((d) => ({ ...d, rotulo: d.rotulo.toUpperCase() }));
     // GPS espaçado (ex.: 42K = 2 voltas do 21K com metade dos pontos) é encaixado na distância mais detalhada da
     // mesma prova: voltas caem no mesmo lugar e as curvas não são cortadas (src/refino.js; nada muda no Portal)
     const refinadas = refinarDistancias(brutas);
