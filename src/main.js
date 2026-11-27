@@ -740,18 +740,22 @@ function desenharCaoJunto(chao, dt) {
   caoJunto.g.visible = caoJunto.guia.visible = quer;
   if (!quer) return;
   const [fx, fz] = frente(s.ang), [rx, rz] = direita(s.ang);
-  // o cachorro vai um pouco à frente e segue o corredor com atraso (não responde na hora a cada virada)
-  const tx = s.x + rx * 1.0 + fx * 1.4, tz = s.z + rz * 1.0 + fz * 1.4, c = caoJunto;
-  if (!c.pos || Math.hypot(tx - c.pos.x, tz - c.pos.z) > 8) c.pos = { x: tx, z: tz, ang: s.ang, y: 0 };
+  // o cachorro vai à frente, no ritmo do corredor (qualquer velocidade); só a posição em relação a ele se ajeita com
+  // atraso, então nas viradas ele demora um pouco a mudar de lado, mas nunca fica para trás
+  const ox = rx * 0.9 + fx * 2.6, oz = rz * 0.9 + fz * 2.6, c = caoJunto;
+  if (!c.pos || !c.off || Math.hypot(s.x + c.off.x - c.pos.x, s.z + c.off.z - c.pos.z) > 8) {
+    c.off = { x: ox, z: oz }; c.pos = { x: s.x + ox, z: s.z + oz, ang: s.ang, y: 0 };
+  }
   const k = Math.min(1, (dt || 0.016) * 3.5);
-  c.pos.x += (tx - c.pos.x) * k; c.pos.z += (tz - c.pos.z) * k;
+  c.off.x += (ox - c.off.x) * k; c.off.z += (oz - c.off.z) * k;
+  c.pos.x = s.x + c.off.x; c.pos.z = s.z + c.off.z;
   c.pos.ang += difAngulo(s.ang, c.pos.ang) * Math.min(1, (dt || 0.016) * 3);
   // pula junto: acompanha a altura do salto do corredor, um instante depois
   c.pos.y += (s.y - c.pos.y) * Math.min(1, (dt || 0.016) * 12);
   c.g.position.set(c.pos.x, chao + c.pos.y, c.pos.z); c.g.rotation.y = Math.PI / 2 - c.pos.ang;
   animarQuadrupede(c.malha, relogio.elapsedTime, s.modo === 'jogando' && s.v > 0.3 && c.pos.y < 0.1);
   const [cx, cz] = frente(c.pos.ang);
-  ligarGuia(c.guia, [s.x + rx * 0.22, chao + s.y + 1.0, s.z + rz * 0.22], [c.pos.x + cx * 0.35, chao + c.pos.y + 0.52, c.pos.z + cz * 0.35]);
+  ligarGuia(c.guia, [s.x + rx * 0.22, chao + s.y + 1.0, s.z + rz * 0.22], [c.pos.x + cx * 0.35, chao + c.pos.y + 0.52, c.pos.z + cz * 0.35], 2.8);
 }
 
 function desenharPelotao(dt) {
