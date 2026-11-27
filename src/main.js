@@ -2647,6 +2647,16 @@ function sinalizacaoDaCurva(c) {
   const sx = B.x + bx * fora, sz = B.z + bz * fora;
   if (longe(sx, sz, R.LIMITE_CALCADA + 0.2)) c.staffs.push({ x: sx, y: B.y, z: sz, ang: B.ang + Math.PI + lado * 0.5, lado: -lado });
 }
+// onde começa a próxima curva automática (retorno, > ~100°) até 120 m à frente; null se não houver
+let cacheAuto = { k: null, p: null, v: null };
+function inicioCurvaAuto(s0) {
+  const k = Math.round(s0 / 4);
+  if (cacheAuto.k === k && cacheAuto.p === pista) return cacheAuto.v;
+  let v = null;
+  for (let d = 4; d <= 120; d += 4) if (curvaEm(s0 + d) > RETORNO_AUTO) { v = s0 + d; break; }
+  cacheAuto = { k, p: pista, v };
+  return v;
+}
 // próxima curva forte até 150 m à frente (minimapa)
 function proximaCurva(s0) {
   const c = curvasDaPista().find((q) => q.s >= s0 - 5);
@@ -3446,9 +3456,15 @@ function passo(dt) {
         const d = s.d || 0, alvoAng = p.ang - Math.atan(0.3 * (d - Math.max(-1.5, Math.min(1.5, d))));
         const da = difAngulo(alvoAng, s.ang), max = GIRO_RAD_S * 2.5 * ader * dt;
         s.ang += Math.max(-max, Math.min(max, da));
-        if (!s.retornoAvisado) { s.retornoAvisado = true; aviso('↩️ Retorno: curva automática', '', 1400); }
+        if (!s.retornoAvisado) { s.retornoAvisado = true; aviso('↩️ Curva automática!', 'km', 1400); }
       }
       if (!s.retornoAuto) s.retornoAvisado = false;
+      // contagem antes da curva automática: 3, 2, 1 pelo tempo que falta para chegar nela
+      if (!s.retornoAuto) {
+        const sa = inicioCurvaAuto(s.s), n = sa == null ? 0 : Math.ceil((sa - s.s) / Math.max(1, s.v * escalaTempo()));
+        if (n >= 1 && n <= 3 && n !== s.contaRetorno) { s.contaRetorno = n; aviso(`↩️ Curva automática em ${n}`, 'km', 1100); bip(520, 0.12); }
+        if (n > 3 || n < 1) s.contaRetorno = 0;
+      }
     }
     s.gelAtivo = Math.max(0, s.gelAtivo - dt);
     s.freio = Math.max(0, (s.freio || 0) - dt);
@@ -3464,7 +3480,7 @@ function passo(dt) {
     // percurso ajustado: na curva automática (retorno) quase não freia
     if (prova?.ajustado && (s.retornoAuto || curvaEm(s.s) > RETORNO_AUTO)) fCurva = Math.max(fCurva, FREIO_RETORNO_AUTO);
     if (s.v > alvo * fCurva) s.v = Math.max(alvo * fCurva, s.v - R.CURVA.freio * dt);
-    if (fCurva < 0.8 && !s.curvaAvisada) { s.curvaAvisada = true; aviso('↪️ Curva fechada: tirando o pé', '', 900); }
+    if (fCurva < 0.8 && !s.curvaAvisada && !(prova?.ajustado && (s.retornoAuto || s.contaRetorno))) { s.curvaAvisada = true; aviso('↪️ Curva fechada: tirando o pé', '', 900); }
     if (fCurva > 0.97) s.curvaAvisada = false;
     const W = s.v * escalaTempo();
     const [fx, fz] = frente(s.ang);
