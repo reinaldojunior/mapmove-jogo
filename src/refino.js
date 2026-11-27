@@ -128,3 +128,27 @@ export function refinarDistancias(distancias, { raio = 20, coberturaMin = 0.9 } 
     return d;
   });
 }
+
+// Volta que não fecha: algumas distâncias chegam do Portal com o GPS cortado antes da chegada (ex.: 10K do Parque do
+// Mirim, duas voltas do circuito, termina a ~400 m da largada e mede 9,6 km). Se o próprio percurso já passou pelo
+// ponto onde o arquivo termina e dali seguiu até a largada (na volta anterior), repete esse trecho no fim: a chegada
+// volta a ser no pórtico da largada. Só completa quando a distância fica mais perto da oficial (`km`) e o trecho é
+// curto; caso contrário devolve o percurso como veio. Nada é gravado no Portal.
+export function completarVolta(percurso, km, { raio = 15, folgaMin = 60, maxTrecho = 1500 } = {}) {
+  if (!Array.isArray(percurso) || percurso.length < 20 || !km) return percurso;
+  const lat0 = percurso[0][0], lon0 = percurso[0][1], pts = plano(percurso, lat0, lon0), n = pts.length;
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  if (dist(pts[0], pts[n - 1]) < folgaMin) return percurso; // já termina na largada
+  const s = [0]; for (let i = 1; i < n; i++) s.push(s[i - 1] + dist(pts[i - 1], pts[i]));
+  const total = s[n - 1];
+  // passagem anterior pelo ponto final (longe do fim de verdade) e, depois dela, a passagem pela largada
+  let i0 = -1, melhor = raio;
+  for (let i = 0; i < n - 1; i++) { if (total - s[i] < 200) break; const d = dist(pts[i], pts[n - 1]); if (d < melhor) { melhor = d; i0 = i; } }
+  if (i0 < 0) return percurso;
+  let i1 = -1; melhor = raio;
+  for (let j = i0 + 1; j < n - 1 && s[j] - s[i0] <= maxTrecho; j++) { const d = dist(pts[j], pts[0]); if (d < melhor) { melhor = d; i1 = j; } }
+  if (i1 < 0) return percurso;
+  const novoTotal = total + (s[i1] - s[i0]) + dist(pts[i1], pts[0]);
+  if (Math.abs(novoTotal - km * 1000) >= Math.abs(total - km * 1000)) return percurso;
+  return [...percurso, ...percurso.slice(i0 + 1, i1 + 1), percurso[0]];
+}

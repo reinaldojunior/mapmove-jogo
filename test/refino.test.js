@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { encaixar, refinarDistancias } from '../src/refino.js';
+import { encaixar, refinarDistancias, completarVolta } from '../src/refino.js';
 
 // circuito detalhado (quadrado de ~400 m de lado, ponto a cada ~10 m) e um "42K" de 2 voltas com pontos a cada ~100 m
 const LAT = -23.47, LON = -47.44, DLAT = 1 / 110540, DLON = 1 / (111320 * Math.cos((LAT * Math.PI) / 180));
@@ -47,4 +47,22 @@ test('encaixar respeita o sentido: ida e volta em pistas lado a lado não se tro
   const alvo = [pt(590, 7), pt(450, 8), pt(300, 7), pt(150, 8), pt(10, 7)]; // só a volta, espaçado
   const r = encaixar(alvo, fonte);
   for (const q of r) assert.ok(Math.abs((q[0] - LAT) / DLAT - 8) < 0.5, 'saiu da pista de volta');
+});
+
+// volta que não fecha: duas voltas de um quadrado de ~1 km com o arquivo cortado 300 m antes da chegada
+test('completarVolta: repete o trecho da volta anterior até a largada quando o GPS corta antes da chegada', () => {
+  const lat0 = -23.03, lon0 = -47.19, k = Math.cos((lat0 * Math.PI) / 180);
+  const ponto = (x, y) => [lat0 + y / 110540, lon0 + x / (111320 * k), 570];
+  const volta = [];
+  for (let m = 0; m < 1000; m += 10) { const l = Math.floor(m / 250), t = m % 250; volta.push(ponto(...[[t, 0], [250, t], [250 - t, 250], [0, 250 - t]][l])); }
+  const duas = [...volta, ...volta, ponto(0, 0)];
+  const cortado = duas.slice(0, duas.length - 31); // termina 300 m antes da largada
+  const comp = (p) => { let t = 0; for (let i = 1; i < p.length; i++) t += Math.hypot((p[i][1] - p[i - 1][1]) * 111320 * k, (p[i][0] - p[i - 1][0]) * 110540); return t; };
+  const r = completarVolta(cortado, 2);
+  assert.ok(Math.abs(comp(r) - 2000) < 15, `comprimento ${comp(r)}`);
+  assert.deepEqual(r[r.length - 1], cortado[0]);
+  // já fechado ou sem passagem anterior: fica como veio
+  assert.equal(completarVolta(duas, 2), duas);
+  const parcial = volta.slice(0, 70);
+  assert.equal(completarVolta(parcial, 1), parcial);
 });
