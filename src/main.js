@@ -971,7 +971,8 @@ const BORDA_AZUL = [3.48, 3.72];
 const matBordaAzul = new THREE.MeshStandardMaterial({ color: 0x1e88ff, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -3 });
 function ruaComBorda(amostras, grupo, opts) {
   const [b0, b1] = BORDA_AZUL, M = R.MEIA_RUA, o = { ...opts, uDe: [-M, M] }, mr = prova?.parque ? matTrilha : matRua;
-  const partes = [[-b0, b0, mr, o], [b1, M, mr, o], [-M, -b1, mr, o], [b0, b1, matBordaAzul, {}], [-b1, -b0, matBordaAzul, {}]];
+  const mb = prova?.parque ? matMeioFio : matBordaAzul; // no parque, meio-fio verde no lugar da linha azul
+  const partes = [[-b0, b0, mr, o], [b1, M, mr, o], [-M, -b1, mr, o], [b0, b1, mb, {}], [-b1, -b0, mb, {}]];
   for (const [d0, d1, m, op] of partes) grupo.add(fita(amostras, d0, d1, m, op));
 }
 const matCalcada = new THREE.MeshStandardMaterial({ map: texCalcada, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
@@ -1050,15 +1051,19 @@ const texAsfaltoLiso = textura(512, 512, (g, w, h) => {
   for (let i = 0; i < 4000; i++) { const c = 55 + Math.random() * 50; g.fillStyle = `rgba(${c},${c},${c + 6},0.5)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
 });
 // prova no parque: pista de caminhada de asfalto avermelhado, sem faixas de rua
-// asfalto com a ciclovia vermelha de um lado e a faixa branca dividindo pedestres e ciclistas
+// pista do parque: ciclovia de mão dupla (asfalto, tracejado amarelo no meio), faixa vermelha e branca separando a
+// pista de pedestres (asfalto mais claro); o meio-fio verde fica na borda (matMeioFio)
 const texTrilha = textura(512, 512, (g, w, h) => {
   const px = (x) => ((x + 4) / 8) * w;
-  g.fillStyle = '#4f5359'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#55595f'; g.fillRect(0, 0, w, h);
   for (let i = 0; i < 6; i++) manchaAsfalto(g, w, h);
-  g.fillStyle = '#a2463a'; g.fillRect(px(0.6), 0, px(4) - px(0.6), h);
-  for (let i = 0; i < 5000; i++) { const c = 55 + Math.random() * 50; g.fillStyle = `rgba(${c},${c},${c + 6},0.35)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
-  g.fillStyle = 'rgba(255,255,255,0.9)'; g.fillRect(px(0.6) - 3, 0, 6, h);
+  g.fillStyle = 'rgba(150,150,145,0.35)'; g.fillRect(px(1.25), 0, px(4) - px(1.25), h); // lado dos pedestres
+  for (let i = 0; i < 5000; i++) { const c = 60 + Math.random() * 50; g.fillStyle = `rgba(${c},${c},${c + 6},0.35)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+  g.fillStyle = '#c8433a'; g.fillRect(px(0.75), 0, px(1.0) - px(0.75), h);
+  g.fillStyle = '#f2f2ee'; g.fillRect(px(1.0), 0, px(1.25) - px(1.0), h);
+  g.fillStyle = '#f0c22a'; for (let y = 0; y < h; y += 256) g.fillRect(px(-1.6) - 6, y + 40, 12, 120);
 });
+const matMeioFio = new THREE.MeshStandardMaterial({ color: 0x2f9e57, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -3 });
 const matTrilha = new THREE.MeshStandardMaterial({ map: texTrilha, roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
 const matRuaOSM = new THREE.MeshStandardMaterial({ map: texAsfaltoLiso, roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
 const matCalcadaOSM = new THREE.MeshStandardMaterial({ map: texCalcada, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
@@ -1946,8 +1951,8 @@ function marcosDoParque() {
   const juntar = (g) => { const m = achatar(g); m.position.copy(g.position); m.rotation.copy(g.rotation); grupoOSM.add(m); };
   const barragem = new THREE.Group();
   const caixa = (g, m, x, y, z, sx, sy, sz, rz = 0) => { const o = malha(G.caixa, m, x, y, z); o.scale.set(sx, sy, sz); o.rotation.z = rz; g.add(o); return o; };
-  // ponte de madeira (22 no mapa do parque, ponta leste da represa): tabuado por cima do caminho, guarda-corpo de
-  // madeira fora do limite da pista e água dos dois lados
+  // ponte de madeira (22 no mapa do parque, ponta leste da represa): estreita, só a largura do caminho, com
+  // guarda-corpo de madeira e água dos dois lados (enfeite: a regra da pista não muda)
   if (cfg.ponte) {
     const { x: px, z: pz } = pista.paraLocal(...cfg.ponte), ponte = new THREE.Group();
     const madeira = mat(0x8a5a32), tabua = mat(0x9c6a3c), escura = mat(0x6b4426), agua = mat(0x3f9fd6);
@@ -1961,13 +1966,13 @@ function marcosDoParque() {
     for (const { s } of passagens) {
       for (let ds = -40; ds <= 40; ds += 2) {
         const q = pista.em(s + ds), g = new THREE.Group(); g.position.set(q.x, q.y, q.z); g.rotation.y = -q.ang;
-        caixa(g, tabua, 0, 0.05, -0.5, 16.4, 0.1, 0.95); caixa(g, madeira, 0, 0.05, 0.5, 16.4, 0.1, 0.95); // tábuas
+        caixa(g, tabua, 0, 0.05, -0.5, 7.4, 0.1, 0.95); caixa(g, madeira, 0, 0.05, 0.5, 7.4, 0.1, 0.95); // tábuas (ponte estreita)
         for (const k of [-1, 1]) {
-          caixa(g, escura, k * 8.0, 1.0, 0, 0.18, 0.18, 2.6);        // corrimão
-          caixa(g, escura, k * 8.0, 0.5, 0, 0.12, 0.12, 2.6);        // travessa do meio
-          caixa(g, madeira, k * 8.0, 0.55, 1, 0.2, 1.1, 0.2);        // montante
-          caixa(g, madeira, k * 7.2, -1.2, 0, 0.35, 2.4, 0.35);      // pilar dentro d'água
-          caixa(g, agua, k * 20.3, 0.0, 0, 24, 0.06, 2.6);           // água dos dois lados (cobre a grama da beira)
+          caixa(g, escura, k * 3.75, 1.0, 0, 0.18, 0.18, 2.6);        // corrimão
+          caixa(g, escura, k * 3.75, 0.5, 0, 0.12, 0.12, 2.6);        // travessa do meio
+          caixa(g, madeira, k * 3.75, 0.55, 1, 0.2, 1.1, 0.2);        // montante
+          caixa(g, madeira, k * 3.3, -1.2, 0, 0.35, 2.4, 0.35);      // pilar dentro d'água
+          caixa(g, agua, k * 15.9, 0.0, 0, 24, 0.06, 2.6);           // água dos dois lados (cobre a grama da beira)
         }
         ponte.add(g);
       }
