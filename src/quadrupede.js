@@ -120,9 +120,10 @@ export function rigarQuadrupede(model, alturaFinal = 0.75) {
 }
 
 // galope (corre = true) ou parado; a frente do animal é +x
-export function animarQuadrupede(malha, t, corre) {
+// opções: rabo = false (animal sem rabo, ex.: capivara: o osso do rabo fica parado), ritmo = multiplica a passada
+export function animarQuadrupede(malha, t, corre, { rabo = true, ritmo = 1 } = {}) {
   const s = malha.skeleton, b = (nome) => s.getBoneByName(nome);
-  const f = corre ? 13 : 2.5, a = t * f, amp = corre ? 0.75 : 0.04;
+  const f = (corre ? 13 : 2.5) * ritmo, a = t * f, amp = corre ? 0.75 : 0.04;
   for (let k = 0; k < 4; k++) {
     const frente = k < 2, fase = a + (frente ? 0 : Math.PI * 0.85) + (k % 2) * 0.3;
     b(`coxa${k}`).rotation.z = Math.sin(fase) * amp;
@@ -133,5 +134,5 @@ export function animarQuadrupede(malha, t, corre) {
   raiz.position.y = raiz.userData.y0 + (corre ? Math.abs(Math.sin(a)) * 0.05 : 0);
   raiz.rotation.z = corre ? Math.sin(a) * 0.08 : 0;
   b('cabeca').rotation.z = corre ? Math.sin(a + 0.6) * 0.1 : Math.sin(t * 2) * 0.05;
-  b('rabo').rotation.y = Math.sin(t * 14) * 0.5;
+  b('rabo').rotation.y = rabo ? Math.sin(t * 14) * 0.5 : 0;
 }

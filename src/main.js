@@ -1276,7 +1276,7 @@ function atualizarCenario(sCorredor) {
 // ─── OBSTÁCULOS E ITENS (EM COORDENADAS DA PISTA: s AO LONGO, d PARA OS LADOS) ─
 
 let entidades = [];
-if (import.meta.env.DEV) window.__dbg = { pista: () => pista, prova: () => prova, renderer: () => renderer, passo: (dt) => passo(dt), curva: (s) => curvaEm(s), ents: () => entidades, carro: (...a) => carro(...a), estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString()]); } }; // só no modo de desenvolvimento, para testes
+if (import.meta.env.DEV) window.__dbg = { pista: () => pista, prova: () => prova, renderer: () => renderer, passo: (dt) => passo(dt), curva: (s) => curvaEm(s), ents: () => entidades, carro: (...a) => carro(...a), bicho: (s) => cachorro(s), capivaraPronta: () => !!capivaraModelo, estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString()]); } }; // só no modo de desenvolvimento, para testes
 let postos = [];
 let travessas = [];
 
@@ -1334,9 +1334,33 @@ emPreparo(gltfLoader.loadAsync('/modelos/cao-meshy.glb').catch(() => gltfLoader.
   caoModelo = rigarQuadrupede(g.scene, 0.95);
 }).catch(() => {}));
 
+// capivara 3D (Meshy, a partir da ficha de 3 vistas em docs/personagens/capivara/) com esqueleto montado pelo jogo;
+// enquanto não carrega (ou se falhar), a capivara de blocos abaixo
+// (só baixa quando a prova escolhida é no parque)
+let capivaraModelo = null, capivaraPedida = false;
+function carregarCapivara(slug) {
+  if (capivaraPedida || !PROVAS.find((p) => p.slug === slug)?.parque) return;
+  capivaraPedida = true;
+  emPreparo(gltfLoader.loadAsync('/modelos/capivara.glb').then((g) => {
+    prepararMalhaAtleta(g.scene); // tira o brilho de metal que vira mancha branca
+    capivaraModelo = rigarQuadrupede(g.scene, 0.72);
+  }).catch(() => {}));
+}
+carregarCapivara(PROVA_SLUG);
+
 // vira-lata caramelo atravessando a rua em galope (frente do cachorro para +x)
 // capivara (prova no parque, no lugar do cachorro): mesmo comportamento e a mesma caixa de colisão do cachorro
 function capivara(s) {
+  if (capivaraModelo) {
+    const malha = clonarComOssos(capivaraModelo), g = new THREE.Group(); g.add(malha);
+    const lado = Math.random() < 0.5 ? -1 : 1;
+    return addEntidade({
+      tipo: 'cachorro', motivo: 'Esbarrou na capivara', obj: g, s, d: lado * 6.2, rot: lado > 0 ? Math.PI : 0,
+      larg: 1.5, prof: 0.6, h: 0.95, malha, gatilho: 34,
+      // parada: quase imóvel, mastigando; atravessando: galope com as quatro patas (capivara não tem rabo)
+      anima(t) { animarQuadrupede(this.malha, t, !!this.vd, { rabo: false, ritmo: 0.85 }); }
+    });
+  }
   // cores e formas da ficha de 3 vistas (docs/personagens/capivara/): pelo laranja-ferrugem, focinho e patas marrons
   const g = new THREE.Group();
   const pelo = mat(0xc4682c), escuro = mat(0x6a4330), preto = mat(0x1a1210);
@@ -3443,7 +3467,7 @@ function abrirDesafioQuandoPronto() {
   if (!desafio) return;
   if (desafio.prova !== PROVA_SLUG) {
     if (!PROVAS.some((p) => p.slug === desafio.prova)) { aviso('Esse desafio é de uma prova que não está no jogo', 'alerta', 2400); desafio = null; return; }
-    PROVA_SLUG = desafio.prova; dadosProva = null; carregarProva();
+    PROVA_SLUG = desafio.prova; dadosProva = null; carregarProva(); carregarCapivara(PROVA_SLUG);
   }
   const d = dadosProva?.distancias?.find((x) => x.rotulo === desafio.rotulo);
   if (!d) { setTimeout(abrirDesafioQuandoPronto, 600); return; }
@@ -4075,7 +4099,7 @@ function mostrarAbasProvas() {
 function trocarProva(slug) {
   {
     if (slug === PROVA_SLUG) { mostrarAbasProvas(); return; }
-    PROVA_SLUG = slug; imagemCarregando(slug);
+    PROVA_SLUG = slug; imagemCarregando(slug); carregarCapivara(slug);
     try { localStorage.setItem('mapmove-prova', PROVA_SLUG); } catch { /* sem storage */ }
     dadosProva = null;
     $('#provaInfo').textContent = 'Carregando o percurso…';
