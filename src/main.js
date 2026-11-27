@@ -40,7 +40,7 @@ const SUPABASE_KEY = 'sb_publishable_s2yoUApfYl_ZvSUkqYYrVw_uXwKsybM';
 // O nome mostrado é genérico (sem o nome oficial do evento, para não usar a marca dos organizadores).
 const PROVAS = [
   { slug: '1-meia-maratona-de-indaiatuba-2026-12-13', cidade: 'Indaiatuba', nome: 'Meia de Indaiatuba', curto: 'Meia de Indaiatuba' },
-  { slug: 'corrida-upar-2026-11-28', cidade: 'Indaiatuba', nome: 'Corrida no Parque do Mirim', curto: 'Parque do Mirim',
+  { slug: 'corrida-upar-2026-11-28', cidade: 'Indaiatuba', nome: 'Corrida no Parque do Mirim', curto: 'Parque do Mirim', relevo: 0, // plano: com relevo a grama cobria os lagos
     // prova dentro do parque (caminhos do parque, represa de captação): sem carros e sem pintura de rua
     parque: true, ponte: [-23.03311, -47.18930], barragem: [-23.03088, -47.20423], mirante: [-23.03044, -47.20310],
     quiosques: [[-23.03287, -47.20011], [-23.03226, -47.19904], [-23.03337, -47.20155], [-23.03224, -47.19687], [-23.03212, -47.19804],
@@ -700,6 +700,41 @@ function prepararPelotao() {
   for (const p of npcPool) { p.npc = null; p.holder.visible = false; }
   estado.posicao = null;
 }
+// corrida de conscientização (prova no parque): cachorro correndo junto, preso na cintura por uma guia
+const matGuiaCao = new THREE.LineBasicMaterial({ color: 0xe53935 });
+function novoCaoJunto(escala) {
+  const malha = clonarComOssos(caoModelo), g = new THREE.Group(); g.add(malha); g.scale.setScalar(escala);
+  malha.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+  const guia = new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3)), matGuiaCao);
+  guia.frustumCulled = false;
+  return { g, malha, guia };
+}
+function ligarGuia(guia, a, b) { const p = guia.geometry.attributes.position; p.setXYZ(0, ...a); p.setXYZ(1, ...b); p.needsUpdate = true; }
+// um em cada três corredores do pelotão leva cachorro (no referencial do boneco: frente = -z, direita = +x)
+function caoDoNpc(p, k, dt) {
+  const quer = !!prova?.parque && !!caoModelo && k % 3 === 0;
+  if (quer && !p.cao) {
+    p.cao = novoCaoJunto(0.62); p.cao.g.position.set(0.85, 0, -0.55); p.cao.g.rotation.y = Math.PI / 2;
+    p.holder.add(p.cao.g, p.cao.guia); ligarGuia(p.cao.guia, [0.2, 1.0, 0], [0.85, 0.42, -0.85]);
+  }
+  if (!p.cao) return;
+  p.cao.g.visible = p.cao.guia.visible = quer;
+  if (quer) animarQuadrupede(p.cao.malha, relogio.elapsedTime + k, estado.modo === 'jogando');
+}
+let caoJunto = null;
+function desenharCaoJunto(chao) {
+  const s = estado, quer = !!prova?.parque && !!caoModelo && ['jogando', 'contagem', 'fim'].includes(s.modo);
+  if (quer && !caoJunto) { caoJunto = novoCaoJunto(0.66); scene.add(caoJunto.g, caoJunto.guia); }
+  if (!caoJunto) return;
+  caoJunto.g.visible = caoJunto.guia.visible = quer;
+  if (!quer) return;
+  const [fx, fz] = frente(s.ang), [rx, rz] = direita(s.ang);
+  const x = s.x + rx * 0.95 + fx * 0.7, z = s.z + rz * 0.95 + fz * 0.7;
+  caoJunto.g.position.set(x, chao, z); caoJunto.g.rotation.y = Math.PI / 2 - s.ang;
+  animarQuadrupede(caoJunto.malha, relogio.elapsedTime, s.modo === 'jogando' && s.v > 0.3);
+  ligarGuia(caoJunto.guia, [s.x + rx * 0.22, chao + s.y + 1.0, s.z + rz * 0.22], [x + fx * 0.28, chao + 0.42, z + fz * 0.28]);
+}
+
 function desenharPelotao(dt) {
   const s = estado, n = Math.min(npcPool.length, NPC_POR_NIVEL[nivel] || 3);
   // os mais perto do corredor (um pouco atrás até bem à frente) ganham um boneco
@@ -716,6 +751,7 @@ function desenharPelotao(dt) {
     p.holder.position.set(e.x + rx * c.d, e.y, e.z + rz * c.d);
     p.holder.rotation.y = -e.ang;
     p.holder.visible = true;
+    caoDoNpc(p, npcPool.indexOf(p), dt);
     p.mixer.update(s.modo === 'jogando' ? dt * rapidez() * (s.paceBase / c.pace) : 0);
   }
   desenharLideres();
@@ -1034,7 +1070,8 @@ function construirVisual() {
   const chao = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), matChao);
   chao.rotation.x = -Math.PI / 2;
   chao.position.set(cx / amostras.length, minY - 1.5, cz / amostras.length);
-  chao.renderOrder = -2;
+  // prova no parque (relevo plano): o chão vai antes das áreas do mapa, senão cobre os lagos
+  chao.renderOrder = prova?.parque ? -3 : -2;
   visual.add(chao);
   // morros ao fundo (Pão de Açúcar e Corcovado) só no treino
   fundo.visible = !Number.isFinite(pista.total);
@@ -1055,13 +1092,14 @@ const texAsfaltoLiso = textura(512, 512, (g, w, h) => {
 // pista de pedestres (asfalto mais claro); o meio-fio verde fica na borda (matMeioFio)
 const texTrilha = textura(512, 512, (g, w, h) => {
   const px = (x) => ((4 - x) / 8) * w; // espelhado: ciclovia à direita do corredor, pedestres à esquerda
+  // as duas metades com a mesma largura: ciclovia (x < 0, tracejado amarelo no meio dela) e pedestres (x > 0)
   g.fillStyle = '#55595f'; g.fillRect(0, 0, w, h);
   for (let i = 0; i < 6; i++) manchaAsfalto(g, w, h);
-  g.fillStyle = 'rgba(150,150,145,0.35)'; g.fillRect(px(1.25), 0, px(4) - px(1.25), h); // lado dos pedestres
+  g.fillStyle = 'rgba(150,150,145,0.35)'; g.fillRect(px(0.25), 0, px(4) - px(0.25), h);
   for (let i = 0; i < 5000; i++) { const c = 60 + Math.random() * 50; g.fillStyle = `rgba(${c},${c},${c + 6},0.35)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
-  g.fillStyle = '#c8433a'; g.fillRect(px(0.75), 0, px(1.0) - px(0.75), h);
-  g.fillStyle = '#f2f2ee'; g.fillRect(px(1.0), 0, px(1.25) - px(1.0), h);
-  g.fillStyle = '#f0c22a'; for (let y = 0; y < h; y += 256) g.fillRect(px(-1.6) - 6, y + 40, 12, 120);
+  g.fillStyle = '#c8433a'; g.fillRect(px(-0.25), 0, px(0) - px(-0.25), h);
+  g.fillStyle = '#f2f2ee'; g.fillRect(px(0), 0, px(0.25) - px(0), h);
+  g.fillStyle = '#f0c22a'; for (let y = 0; y < h; y += 256) g.fillRect(px(-1.85) - 6, y + 40, 12, 120);
 });
 const matMeioFio = new THREE.MeshStandardMaterial({ color: 0x2f9e57, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -3 });
 const matTrilha = new THREE.MeshStandardMaterial({ map: texTrilha, roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
@@ -1146,7 +1184,7 @@ const arvoreDaBeira = () => {
 const MOLDES = [
   { passo: 7, d: 7.75, criar: (lado) => segmentoTorcida(lado), folga: 7.4, vao: 8, densidade: { parque: 0.3, livre: 0.75, cidade: 1 } },
   { passo: 15, d: () => aleat(10.5, 12.5), criar: arvoreDaBeira, folga: 9.5, vao: 7, densidade: { parque: 1, livre: 0.9, cidade: 0.6 } },
-  { passo: 17, d: () => aleat(19, 24), criar: () => predio(!!prova), folga: 14, vao: 13, densidade: { parque: 0, livre: 0.12, cidade: 0.6 } },
+  { passo: 17, d: () => aleat(19, 24), criar: () => predio(!!prova), predio: true, folga: 14, vao: 13, densidade: { parque: 0, livre: 0.12, cidade: 0.6 } },
   { passo: 30, d: 8.6, criar: () => prop('poste'), folga: 8, vao: 4, densidade: { parque: 1, livre: 0.4, cidade: 0 }, rot: (lado) => lado * Math.PI / 2 },
   { passo: 44, d: 9.8, criar: () => prop('banco'), folga: 9, vao: 4, densidade: { parque: 1, livre: 0.3, cidade: 0 }, rot: (lado) => lado * Math.PI / 2 }
 ];
@@ -1179,7 +1217,7 @@ function posicionarCenario(item, s) {
   // prova no parque: nada de árvore, torcida ou banco dentro da água (lagos do mapa, ponte e barragem)
   const naAgua = !!prova?.parque && !fora && (trechosAgua.some(([a, b]) => s > a && s < b)
     || [0, 2.5].some((m) => { const xx = x + rx * Math.sign(item.d) * m, zz = z + rz * Math.sign(item.d) * m; return aguasCenario.some(({ caixa: [x0, z0, x1, z1], pts }) => xx >= x0 && xx <= x1 && zz >= z0 && zz <= z1 && pontoNoPoligono(xx, zz, pts)); }));
-  item.obj.visible = !fora && !invade && !naTravessa && combina && !naFrenteDeMarco && !naAvenida && !tampaVista && !noViaduto && !naAgua;
+  item.obj.visible = !fora && !invade && !naTravessa && combina && !naFrenteDeMarco && !naAvenida && !tampaVista && !noViaduto && !naAgua && !(prova?.parque && item.molde.predio);
   item.obj.position.set(x, p.y, z);
   item.obj.rotation.y = -p.ang + (item.rot || 0);
 }
@@ -1967,8 +2005,8 @@ function construirOSM() {
   const trilhas = malhaDeLinhas(osm.caminhos, 2.2, matCaminho, -0.03, -0.9);
   if (trilhas) grupoOSM.add(trilhas);
   // igrejas, escolas e comércios do mapa ganham fachada própria no lugar do prédio genérico
-  const locais = colocarLocais();
-  const predios = malhaDePredios(osm.predios.filter((b) => !locais.some((l) => pontoNoPoligono(l.x, l.z, b.pts))));
+  const locais = prova?.parque ? [] : colocarLocais(); // no parque não há prédio nem fachada
+  const predios = prova?.parque ? null : malhaDePredios(osm.predios.filter((b) => !locais.some((l) => pontoNoPoligono(l.x, l.z, b.pts))));
   colocarMarcos();
   if (predios) grupoOSM.add(predios);
   plantarArvores();
@@ -2062,14 +2100,28 @@ function marcosDoParque() {
     juntar(barragem);
   }
   // quiosques de madeira sobre a água, com telhado laranja de oito águas (decks de pesca do mapa do parque)
+  const naAguaMapa = (x, z) => osm.areas.some((a) => a.tipo === 'agua' && x >= a.caixa[0] && x <= a.caixa[2] && z >= a.caixa[1] && z <= a.caixa[3] && pontoNoPoligono(x, z, a.pts));
   for (const [la, lo] of cfg.quiosques || []) {
-    const { x, z } = pista.paraLocal(la, lo), y = pista.pertoDe(x, z, 200)?.y ?? 0;
+    let { x, z } = pista.paraLocal(la, lo); const x0 = x, z0 = z;
+    // sobre a água: afasta do caminho até entrar no lago desenhado (o contorno do mapa é simplificado) e mais 5 m
+    const perto = pista.pertoDe(x, z, 200), q = pista.em(perto.s), dx = x - q.x, dz = z - q.z, n = Math.hypot(dx, dz) || 1;
+    const ux = dx / n, uz = dz / n, fundo = (x, z) => naAguaMapa(x, z) && naAguaMapa(x + ux * 10, z + uz * 10) && (pista.pertoDe(x, z, 200)?.dist ?? 99) > 22; // além da grama da beira
+    for (let k = 0; k < 80 && !fundo(x, z); k++) { x += ux; z += uz; }
+    if (fundo(x, z)) { x += ux * 14; z += uz * 14; } else { x = x0; z = z0; }
+    const y = perto?.y ?? 0;
     const g = new THREE.Group(); g.position.set(x, y, z);
     const madeira = mat(0x8a5a32), laranja = mat(0xe0712f);
     const piso = malha(G.cilindro, madeira, 0, -0.2, 0); piso.scale.set(3.2, 0.25, 3.2); g.add(piso);
     for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2, p = malha(G.cilindro, madeira, Math.cos(a) * 2.8, 1.1, Math.sin(a) * 2.8); p.scale.set(0.09, 2.4, 0.09); g.add(p);
       const e = malha(G.cilindro, madeira, Math.cos(a) * 2.8, -1.3, Math.sin(a) * 2.8); e.scale.set(0.12, 2, 0.12); g.add(e); }
     const grade = malha(G.cilindro, madeira, 0, 0.55, 0); grade.scale.set(3.0, 0.08, 3.0); g.add(grade);
+    // passarela de madeira até a margem
+    const lx = x0 - x, lz = z0 - z, comp = Math.hypot(lx, lz);
+    if (comp > 3.5) {
+      const pas = new THREE.Group(); pas.rotation.y = Math.atan2(lx, lz); g.add(pas);
+      caixa(pas, madeira, 0, -0.2, (comp + 3) / 2, 1.8, 0.15, comp - 3);
+      for (const k of [-1, 1]) caixa(pas, madeira, k * 0.9, 0.5, (comp + 3) / 2, 0.08, 0.08, comp - 3);
+    }
     const teto = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 8), laranja); teto.position.y = 2.9; teto.scale.set(3.9, 1.6, 3.9); g.add(teto);
     juntar(g);
   }
@@ -3848,6 +3900,7 @@ function desenhar(dt) {
   const chao = emEst(s.s).y;
   corredor.g.position.set(s.x, chao + s.y, s.z);
   corredor.g.rotation.y = -s.ang;
+  desenharCaoJunto(chao);
   corredor.sombra.position.set(s.x, chao + 0.08, s.z);
   corredor.sombra.scale.setScalar(1 - Math.min(0.5, s.y / 4));
   const noAr = s.y > 0.05, agachado = s.agachado > 0;
