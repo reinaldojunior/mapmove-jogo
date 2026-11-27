@@ -1328,26 +1328,29 @@ gltfLoader.loadAsync('/modelos/cao-meshy.glb').catch(() => gltfLoader.loadAsync(
 // vira-lata caramelo atravessando a rua em galope (frente do cachorro para +x)
 // capivara (prova no parque, no lugar do cachorro): mesmo comportamento e a mesma caixa de colisão do cachorro
 function capivara(s) {
+  // cores e formas da ficha de 3 vistas (docs/personagens/capivara/): pelo laranja-ferrugem, focinho e patas marrons
   const g = new THREE.Group();
-  const pelo = mat(0x8a5a3a), escuro = mat(0x5e3c26), preto = mat(0x151515);
-  const corpo = new THREE.Group(); corpo.position.y = 0.42; g.add(corpo);
-  const tronco = malha(G.esfera, pelo, 0, 0.06, 0); tronco.scale.set(0.58, 0.36, 0.33); corpo.add(tronco); // corpo de barril
-  const lombo = malha(G.esfera, pelo, -0.18, 0.14, 0); lombo.scale.set(0.36, 0.3, 0.3); corpo.add(lombo);
-  const cabeca = new THREE.Group(); cabeca.position.set(0.5, 0.16, 0); corpo.add(cabeca);
-  const cranio = malha(G.caixa, pelo, 0.08, 0.02, 0); cranio.scale.set(0.36, 0.3, 0.26); cabeca.add(cranio);
-  const focinho = malha(G.caixa, escuro, 0.28, -0.03, 0); focinho.scale.set(0.12, 0.2, 0.22); cabeca.add(focinho);
+  const pelo = mat(0xc4682c), escuro = mat(0x6a4330), preto = mat(0x1a1210);
+  const corpo = new THREE.Group(); corpo.position.y = 0.46; g.add(corpo);
+  const tronco = malha(G.esfera, pelo, -0.04, 0.06, 0); tronco.scale.set(0.6, 0.38, 0.34); corpo.add(tronco); // barril
+  const anca = malha(G.esfera, pelo, -0.3, 0.08, 0); anca.scale.set(0.34, 0.36, 0.33); corpo.add(anca);
+  const peito = malha(G.esfera, pelo, 0.28, 0.06, 0); peito.scale.set(0.3, 0.34, 0.3); corpo.add(peito);
+  const cabeca = new THREE.Group(); cabeca.position.set(0.5, 0.26, 0); corpo.add(cabeca);
+  const cranio = malha(G.esfera, pelo, 0.06, 0.02, 0); cranio.scale.set(0.24, 0.2, 0.19); cabeca.add(cranio);
+  const cara = malha(G.caixa, pelo, 0.2, -0.02, 0); cara.scale.set(0.2, 0.24, 0.24); cabeca.add(cara);
+  const focinho = malha(G.esfera, escuro, 0.32, -0.04, 0); focinho.scale.set(0.09, 0.13, 0.13); cabeca.add(focinho);
   const orelhas = [];
   for (const lado of [-1, 1]) {
-    const olho = malha(G.esfera, preto, 0.16, 0.08, lado * 0.12); olho.scale.setScalar(0.025); cabeca.add(olho);
-    const narina = malha(G.esfera, preto, 0.34, 0.02, lado * 0.05); narina.scale.setScalar(0.018); cabeca.add(narina);
-    const orelha = new THREE.Group(); orelha.position.set(-0.04, 0.14, lado * 0.09); cabeca.add(orelha);
-    const aba = malha(G.esfera, escuro, 0, 0.02, 0); aba.scale.set(0.04, 0.04, 0.025); orelha.add(aba); orelhas.push(orelha);
+    const olho = malha(G.esfera, preto, 0.18, 0.08, lado * 0.115); olho.scale.setScalar(0.03); cabeca.add(olho);
+    const narina = malha(G.esfera, preto, 0.4, 0.0, lado * 0.045); narina.scale.setScalar(0.016); cabeca.add(narina);
+    const orelha = new THREE.Group(); orelha.position.set(-0.06, 0.17, lado * 0.11); cabeca.add(orelha);
+    const aba = malha(G.esfera, escuro, 0, 0.02, 0); aba.scale.set(0.05, 0.055, 0.03); orelha.add(aba); orelhas.push(orelha);
   }
   const rabo = new THREE.Group(); corpo.add(rabo); // capivara não tem rabo (o grupo fica para a animação comum)
   const patas = [];
   for (const [px, pz, frente] of [[0.3, 0.15, 1], [0.3, -0.15, 1], [-0.3, 0.15, 0], [-0.3, -0.15, 0]]) {
-    const coxa = membro(0.16, 0.07, pelo); coxa.position.set(px, -0.12, pz); corpo.add(coxa);
-    const canela = membro(0.14, 0.05, escuro); canela.position.y = -0.16; coxa.add(canela);
+    const coxa = membro(0.18, 0.08, pelo); coxa.position.set(px, -0.12, pz); corpo.add(coxa);
+    const canela = membro(0.17, 0.055, escuro); canela.position.y = -0.18; coxa.add(canela);
     patas.push({ coxa, canela, frente });
   }
   const lado = Math.random() < 0.5 ? -1 : 1;
@@ -1357,7 +1360,7 @@ function capivara(s) {
     anima(t) {
       const corre = !!this.vd, a = t * (corre ? 11 : 2);
       this.patas.forEach((p, i) => { const fase = a + (p.frente ? 0 : Math.PI) + (i % 2) * 0.4, amp = corre ? 0.7 : 0.05; p.coxa.rotation.z = Math.sin(fase) * amp; p.canela.rotation.z = Math.max(0, Math.sin(fase + 1.2)) * amp * 0.6; });
-      this.corpo.position.y = 0.42 + (corre ? Math.abs(Math.sin(a)) * 0.04 : 0);
+      this.corpo.position.y = 0.46 + (corre ? Math.abs(Math.sin(a)) * 0.04 : 0);
       this.cabeca.rotation.z = corre ? Math.sin(a + 0.6) * 0.06 : Math.sin(t * 1.3) * 0.08; // mastigando
     }
   });
