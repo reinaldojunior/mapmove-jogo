@@ -1366,7 +1366,7 @@ function atualizarCenario(sCorredor) {
 // ─── OBSTÁCULOS E ITENS (EM COORDENADAS DA PISTA: s AO LONGO, d PARA OS LADOS) ─
 
 let entidades = [];
-if (import.meta.env.DEV) window.__dbg = { pista: () => pista, prova: () => prova, renderer: () => renderer, passo: (dt) => passo(dt), curva: (s) => curvaEm(s), ents: () => entidades, carro: (...a) => carro(...a), bicho: (s) => cachorro(s), caoJunto: () => caoJunto?.pos, npcs: () => npcPool.filter((p) => p.holder.visible).length, desenharPelotao: (dt) => desenharPelotao(dt), npcDist: () => npcPool.filter((p) => p.holder.visible).map((p) => Math.round(p.npc.s - estado.s)), capivaraPronta: () => !!capivaraModelo, estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString(), h.object.receiveShadow, h.object.material?.type]); } }; // só no modo de desenvolvimento, para testes
+if (import.meta.env.DEV) window.__dbg = { pista: () => pista, prova: () => prova, renderer: () => renderer, passo: (dt) => passo(dt), curva: (s) => curvaEm(s), ents: () => entidades, carro: (...a) => carro(...a), bicho: (s) => cachorro(s), caoJunto: () => caoJunto?.pos, npcs: () => npcPool.filter((p) => p.holder.visible).length, desenharPelotao: (dt) => desenharPelotao(dt), curvas: () => curvasDaPista(), npcDist: () => npcPool.filter((p) => p.holder.visible).map((p) => Math.round(p.npc.s - estado.s)), capivaraPronta: () => !!capivaraModelo, estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString(), h.object.receiveShadow, h.object.material?.type]); } }; // só no modo de desenvolvimento, para testes
 let postos = [];
 let travessas = [];
 
@@ -3842,9 +3842,9 @@ function penalizar() {
 // ─── LOOP ─────────────────────────────────────────────────────────────────────
 
 const GIRO_RAD_S = 1.8;
-// percurso ajustado (teste): o jogo corre 1,5x mais rápido (prova mais curta em minutos de verdade). O relógio da
-// prova acompanha, então pace e tempo final continuam os mesmos; sede e energia gastam igual por km
-const RAPIDO_AJUSTADO = 1.5;
+// percurso ajustado (teste): multiplicador da velocidade do jogo (o relógio da prova acompanha, então pace e tempo
+// final continuam os mesmos). Testado 1,5x e não ficou bom: voltou a 1 (igual ao jogo padrão)
+const RAPIDO_AJUSTADO = 1;
 const rapidez = () => (prova?.ajustado ? RAPIDO_AJUSTADO : 1);
 const escalaTempo = () => R.ESCALA_TEMPO * rapidez();
 const RETORNO_AUTO = 1.75;
@@ -3994,8 +3994,11 @@ function passo(dt) {
     const nivel = prova ? 0.5 : Math.min(1, s.t / 150);
     const dentro = !prova || (s.proximoSpawn > 60 && s.proximoSpawn < pista.total - 60);
     const longeDeTravessa = !travessas.some((t) => Math.abs(t.s - s.proximoSpawn) < 14 + (t.vao || 0) / 2);
+    // modo novo: nada de cone/obstáculo perto das curvas com staff e cones fechando a rua (os dois cones laranja
+    // juntos confundiam qual era o caminho); de 70 m antes a 40 m depois da curva, só a sinalização
+    const longeDeCurva = !prova?.ajustado || !curvasDaPista().some((c) => s.proximoSpawn > c.s - 70 - 30 && s.proximoSpawn < c.s + 40);
     let extra = 0;
-    if (dentro && livre(s.proximoSpawn, 40) && longeDeTravessa) extra = gerarPadrao(s.proximoSpawn, nivel);
+    if (dentro && livre(s.proximoSpawn, 40) && longeDeTravessa && longeDeCurva) extra = gerarPadrao(s.proximoSpawn, nivel);
     s.proximoSpawn += extra + aleat(75, 120) - nivel * 15;
   }
   if (!prova) {
