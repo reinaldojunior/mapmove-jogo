@@ -732,6 +732,7 @@ const matGuiaCao = new THREE.LineBasicMaterial({ color: 0xe53935 });
 const CORES_CAO = [0xffffff, 0x3a3a3a, 0xd9a066, 0x9a6a40, 0xb8b8b8]; // mesmo modelo, pelagens diferentes (reserva)
 // raças da corrida do parque (Meshy, reduzidas a ~10 mil triângulos com a textura refeita); só baixam na prova do parque
 const RACAS_CAO = [
+  { id: 'border-collie', nome: 'Border Collie', mesmoDoJogo: true }, // o cachorro 3D principal do jogo (cao-meshy.glb)
   { id: 'cao-1', nome: 'Caramelo', altura: 0.88 },
   { id: 'cao-2', nome: 'Dobermann', altura: 1.0 },
   { id: 'cao-3', nome: 'Labrador', altura: 0.95 },
@@ -742,19 +743,19 @@ let racasPedidas = false;
 function carregarRacas() {
   if (racasPedidas) return;
   racasPedidas = true;
-  for (const r of RACAS_CAO) emPreparo(gltfLoader.loadAsync(`/modelos/${r.id}.glb`).then((g) => {
+  for (const r of RACAS_CAO) emPreparo(r.mesmoDoJogo ? caoPronto.then(() => { if (caoModelo) racasModelo[r.id] = caoModelo; }) : gltfLoader.loadAsync(`/modelos/${r.id}.glb`).then((g) => {
     prepararMalhaAtleta(g.scene);
     racasModelo[r.id] = rigarQuadrupede(g.scene, r.altura, { inverter: !!r.inverter });
   }).catch((e) => console.warn('cachorro', r.id, e)));
 }
 const racasProntas = () => RACAS_CAO.filter((r) => racasModelo[r.id]).map((r) => r.id);
-// parceiro de corrida (prova do parque): 'aleatorio', um id de RACAS_CAO ou 'nenhum'
-let parceiroCao = (() => { try { return localStorage.getItem('mapmove-parceiro') || 'aleatorio'; } catch { return 'aleatorio'; } })();
+// parceiro de corrida (prova do parque): um id de RACAS_CAO ou 'nenhum'; começa com o border collie
+let parceiroCao = (() => { try { const v = localStorage.getItem('mapmove-parceiro'); return v && v !== 'aleatorio' ? v : 'border-collie'; } catch { return 'border-collie'; } })();
 function sortearParceiro() {
   if (parceiroCao === 'nenhum') return null;
   const prontas = racasProntas();
   if (prontas.includes(parceiroCao)) return parceiroCao;
-  return prontas.length ? prontas[Math.floor(Math.random() * prontas.length)] : (caoModelo ? 'reserva' : null);
+  return prontas[0] || (caoModelo ? 'reserva' : null); // a raça escolhida não carregou: a primeira pronta
 }
 const PONTOS_GUIA = 12;
 function novoCaoJunto(escala, cor = 0xffffff, modelo = caoModelo) {
@@ -1406,7 +1407,7 @@ function barreira(s, d) {
 // border collie 3D (Higgsfield) com esqueleto montado pelo jogo; enquanto não carrega, o caramelo de blocos
 let caoModelo = null;
 // o do Meshy (feito a partir das fotos) é o principal; o do Higgsfield fica de reserva
-emPreparo(gltfLoader.loadAsync('/modelos/cao-meshy.glb').catch(() => gltfLoader.loadAsync('/modelos/border-collie.glb')).then((g) => {
+const caoPronto = emPreparo(gltfLoader.loadAsync('/modelos/cao-meshy.glb').catch(() => gltfLoader.loadAsync('/modelos/border-collie.glb')).then((g) => {
   prepararMalhaAtleta(g.scene); // tira o brilho de metal que vira mancha branca
   caoModelo = rigarQuadrupede(g.scene, 0.95);
 }).catch(() => {}));
@@ -3379,11 +3380,11 @@ function indicadoresClima(c) {
   const pis = c.chuva ? ['i-pista-molhada', 'Pista', 'Molhada', 'curvas e pulo menores', 'ruim'] : ['i-pista', 'Pista', 'Seca', 'aderência normal', 'bom'];
   return [hid, ene, ven, pis];
 }
-// escolha do parceiro de corrida (prova do parque): sorteado, uma das raças ou sem cachorro
+// escolha do parceiro de corrida (prova do parque): uma das raças ou sem cachorro
 function desenharParceiros() {
-  const ops = [{ id: 'aleatorio', nome: 'Sortear', ic: '🎲' }, ...RACAS_CAO.map((r) => ({ id: r.id, nome: r.nome, img: `/ui/caes/${r.id}.png` })), { id: 'nenhum', nome: 'Sem cão', ic: '🚫' }];
+  const ops = [...RACAS_CAO.map((r) => ({ id: r.id, nome: r.nome, img: `/ui/caes/${r.id}.png` })), { id: 'nenhum', nome: 'Sem cão', ic: '🚫' }];
   $('#parceiros').innerHTML = ops.map((o) => `<button class="parceiro${o.id === parceiroCao ? ' ativo' : ''}" data-id="${o.id}" aria-pressed="${o.id === parceiroCao}">`
-    + (o.img ? `<img src="${o.img}" alt="" draggable="false">` : `<span class="ic">${o.ic}</span>`) + `<small>${o.nome}</small></button>`).join('');
+    + (o.img ? `<img src="${o.img}" alt="" draggable="false">` : `<span class="ic">${o.ic}</span>`) + `<small${o.nome.length > 11 ? ' class="duas"' : ''}>${o.nome}</small></button>`).join('');
 }
 $('#parceiros').addEventListener('click', (ev) => {
   const b = ev.target.closest('.parceiro'); if (!b) return;
