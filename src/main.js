@@ -3418,7 +3418,7 @@ function abrirClima(escolha) {
 }
 $('#btnLargar').addEventListener('click', () => largar(escolhaDaLargada, climaDaLargada));
 
-// imagem da tela de carregamento de cada prova (sem imagem: fundo de céu e grama)
+// imagem da tela de carregamento de cada prova (sem imagem: o traçado da prova, como no cartão do menu)
 const IMAGEM_CARREGANDO = { 'corrida-upar-2026-11-28': '/ui/carregando-parque-do-mirim.jpg' };
 const imagensCarregando = {}; // já baixadas antes da largada, para a tela aparecer com a imagem na hora
 function imagemCarregando(slug) {
@@ -3427,25 +3427,62 @@ function imagemCarregando(slug) {
   return imagensCarregando[url];
 }
 imagemCarregando(PROVA_SLUG);
+const DICAS_CARREGANDO = [
+  'Toque ou arraste para os lados para virar nas curvas',
+  'Deslize para cima ou toque no botão para pular cones e cavaletes',
+  'Deslize para baixo para segurar o ritmo e poupar energia nas subidas',
+  'Pegue água nos postos antes da sede apertar',
+  'Use o gel antes da energia ficar baixa, não espere o alerta',
+  'Os staffs de colete e os cones mostram o caminho certo nas curvas',
+  'Ultrapassar corredores do pelotão vale pontos'
+];
 const quadro = () => new Promise((ok) => requestAnimationFrame(() => ok()));
+const esperar = (ms) => new Promise((ok) => setTimeout(ok, ms));
 let largando = false;
-// mostra "Carregando mapa" (imagem parada) enquanto os modelos terminam de preparar e o cenário da corrida é
-// montado e compilado na placa de vídeo; a contagem 3, 2, 1 só começa depois
+// tela "Preparando a corrida": aparece no toque em LARGAR, mostra o progresso real (modelos 3D que ainda faltam,
+// montagem do percurso e preparo dos gráficos) e larga sozinha quando termina; fica pelo menos ~2 s para não piscar
 async function largar(escolha, clima) {
   if (largando) return;
   largando = true;
+  const inicio = performance.now();
   const ehProva = escolha?.tipo === 'prova', tela = $('#telaCarregando'), img = ehProva && IMAGEM_CARREGANDO[PROVA_SLUG];
-  if (img) { tela.style.setProperty('--img', `url(${img})`); await Promise.race([imagemCarregando(PROVA_SLUG), new Promise((ok) => setTimeout(ok, 1500))]); }
-  tela.classList.toggle('com-imagem', !!img);
-  $('#carregandoProva').textContent = ehProva && dadosProva ? `${escolha.distancia.rotulo} · ${dadosProva.nome}` : '';
+  const info = PROVAS.find((p) => p.slug === PROVA_SLUG);
+  $('#carregandoProva').textContent = ehProva ? `${escolha.distancia.rotulo} · ${info?.curto || dadosProva?.nome || 'Prova'}` : 'Treino de reta';
+  $('#carregandoNome').textContent = ehProva ? (dadosProva?.nome || info?.curto || '') : 'Treino de reta';
+  $('#carregandoCidade').textContent = ehProva ? `${info?.cidade || ''} · percurso e altimetria reais` : 'Reta livre para treinar o ritmo';
+  const caixa = $('#carregandoImg'), mapa = $('#carregandoMapa');
+  caixa.style.backgroundImage = img ? `url(${img})` : ''; caixa.classList.toggle('com-imagem', !!img);
+  mapa.hidden = !!img || !ehProva;
+  if (!mapa.hidden) { const g = mapa.getContext('2d'); g.clearRect(0, 0, mapa.width, mapa.height); try { g.drawImage($('#provaMapa'), 0, 0, mapa.width, mapa.height); } catch { /* sem mapa */ } }
+  let d = Math.floor(Math.random() * DICAS_CARREGANDO.length);
+  const trocarDica = () => { $('#carregandoDica').textContent = DICAS_CARREGANDO[d++ % DICAS_CARREGANDO.length]; };
+  trocarDica(); const relogioDica = setInterval(trocarDica, 3500);
+  // progresso: 70% modelos 3D (cada um que termina conta), 20% montar o percurso, 10% gráficos
+  const total = preparando.size;
+  const mostrarProgresso = (p, etapa) => { const v = Math.round(Math.max(0, Math.min(1, p)) * 100); $('#carregandoBarra').style.width = v + '%'; $('#carregandoPct').textContent = v + '%'; if (etapa) $('#carregandoEtapa').textContent = etapa; };
+  mostrarProgresso(total ? 0 : 0.7, total ? 'Carregando personagens 3D…' : 'Personagens prontos');
   tela.hidden = false;
   try {
+    if (img) await Promise.race([imagemCarregando(PROVA_SLUG), esperar(1500)]);
     await quadro(); await quadro(); // a tela aparece antes de qualquer trabalho pesado
-    while (preparando.size) await Promise.all([...preparando].map((p) => p.catch(() => {})));
+    while (preparando.size) {
+      const lista = [...preparando];
+      await Promise.race(lista.map((p) => p.catch(() => {})));
+      mostrarProgresso(total ? 0.7 * (total - preparando.size) / total : 0.7, `Carregando personagens 3D… ${total - preparando.size} de ${total}`);
+      await quadro();
+    }
+    mostrarProgresso(0.72, 'Montando o percurso…'); await quadro(); await quadro();
     iniciar(escolha, clima);
-    try { renderer.compile(scene, camera); } catch {}
-    await quadro(); await quadro();
+    estado.modo = 'carregando'; // segura a contagem até a tela sair
+    mostrarProgresso(0.9, 'Preparando os gráficos…'); await quadro();
+    try { renderer.compile(scene, camera); } catch { /* segue */ }
+    mostrarProgresso(1, 'Tudo pronto! Largada em instantes…');
+    const falta = 2000 - (performance.now() - inicio);
+    if (falta > 0) await esperar(falta);
+    await quadro();
+    estado.modo = 'contagem';
   } finally {
+    clearInterval(relogioDica);
     tela.hidden = true;
     largando = false;
   }

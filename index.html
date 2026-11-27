@@ -271,7 +271,20 @@
     </section>
 
     <section id="telaCarregando" class="tela-carregando" hidden aria-live="polite">
-      <div class="carregando-rodape"><b id="carregandoProva"></b><span>Carregando mapa…</span></div>
+      <div class="carr-topo">
+        <h2>PREPARANDO A CORRIDA...</h2>
+        <small id="carregandoProva"></small>
+      </div>
+      <div class="carr-cartao painel-3d">
+        <div class="carr-imagem" id="carregandoImg"><canvas id="carregandoMapa" width="600" height="340" hidden></canvas></div>
+        <h3 id="carregandoNome"></h3>
+        <p class="carr-sub" id="carregandoCidade"></p>
+      </div>
+      <div class="carr-progresso painel-3d">
+        <div class="carr-linha"><div class="carr-barra"><i id="carregandoBarra"></i></div><b id="carregandoPct">0%</b></div>
+        <small id="carregandoEtapa">Preparando…</small>
+      </div>
+      <div class="carr-dica"><span class="ic">💡</span><span id="carregandoDica"></span></div>
     </section>
 
     <section id="telaClima" class="tela tela-clima" hidden>

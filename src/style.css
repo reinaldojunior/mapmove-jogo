@@ -1138,28 +1138,34 @@ kbd {
 #hud .dist-chegada:empty { display: none; }
 /* percurso ajustado (teste): aviso da próxima curva forte, embaixo do minimapa */
 
-/* tela de carregamento do mapa (imagem parada: o celular pode travar alguns instantes preparando os modelos 3D).
-   A imagem da prova aparece inteira, sem corte, encostada no topo; o que sobrar da tela (celular mais alto embaixo,
-   computador dos lados) é a mesma imagem desfocada. O aviso fica no rodapé. */
+/* tela de carregamento da corrida: mesmo jeito dos menus (título, cartão azul, barra amarela como o JOGAR) */
 .tela-carregando {
-  position: absolute; inset: 0; z-index: 50; overflow: hidden;
-  background: linear-gradient(180deg, #9fd6ff 0%, #5fb3ff 45%, #2e7d32 100%);
-  display: flex; flex-direction: column; justify-content: flex-end;
+  position: absolute; inset: 0; z-index: 50; overflow: hidden; color: #fff;
+  display: flex; flex-direction: column; align-items: stretch; gap: clamp(10px, 2dvh, 16px);
+  padding: max(16px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
+  background: radial-gradient(circle at 70% 12%, rgba(80, 140, 255, 0.35), rgba(0, 0, 0, 0) 55%), repeating-linear-gradient(28deg, rgba(255, 255, 255, 0.04) 0 2px, transparent 2px 26px), linear-gradient(180deg, #1d56c8 0%, #0c2a6e 55%, #061440 100%);
 }
 .tela-carregando[hidden] { display: none; }
-.tela-carregando::before, .tela-carregando::after { content: ''; position: absolute; inset: 0; pointer-events: none; }
-.tela-carregando.com-imagem::before { inset: -24px; background: var(--img) bottom center / cover no-repeat; filter: blur(18px) brightness(0.85); }
-.tela-carregando.com-imagem::after { background: var(--img) top center / contain no-repeat; }
-.carregando-rodape {
-  position: relative; z-index: 1;
-  display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; color: #fff;
-  padding: 26px 16px max(18px, calc(env(safe-area-inset-bottom) + 12px));
-  background: linear-gradient(180deg, rgba(6, 20, 64, 0) 0%, rgba(6, 20, 64, 0.78) 55%);
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
-}
-.carregando-rodape b { font-size: 19px; font-weight: 800; color: var(--mm-amarelo, #ffd21f); }
-.carregando-rodape b:empty { display: none; }
-.carregando-rodape span { font-size: 16px; font-weight: 700; }
+.tela-carregando > * { width: min(440px, 100%); align-self: center; }
+.carr-topo { text-align: center; margin-top: 6px; }
+.carr-topo h2 { margin: 0; font-family: 'Barlow Condensed', 'Baloo 2', sans-serif; font-style: italic; font-weight: 900; font-size: clamp(26px, 7.7cqw, 30px); letter-spacing: 1px; line-height: 1; text-shadow: 0 3px 0 #0f2a78; }
+.carr-topo small { display: block; margin-top: 6px; font-size: 14px; font-weight: 800; color: var(--mm-amarelo, #ffd21f); text-shadow: 0 1.5px 0 rgba(0, 0, 0, 0.35); }
+.carr-cartao { padding: 10px; border-radius: 22px; }
+.carr-imagem { position: relative; height: clamp(190px, 38dvh, 330px); border-radius: 15px; overflow: hidden; border: 1.5px solid rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.45); background: linear-gradient(180deg, #0c2a6e, #081c4e) center / cover no-repeat; }
+.carr-imagem.com-imagem { background-position: center 42%; }
+.carr-imagem canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.carr-cartao h3 { margin: 10px 4px 0; font-family: 'Barlow Condensed', 'Baloo 2', sans-serif; font-style: italic; font-weight: 900; font-size: clamp(22px, 7cqw, 28px); line-height: 0.95; letter-spacing: 0.5px; text-transform: uppercase; text-shadow: 0 2px 0 #0f2a78; }
+.carr-sub { margin: 4px 4px 2px; font-size: 12.5px; font-weight: 700; opacity: 0.9; }
+.carr-progresso { padding: 12px 14px 10px; border-radius: 18px; }
+.carr-linha { display: flex; align-items: center; gap: 10px; }
+.carr-barra { flex: 1; height: 16px; border-radius: 999px; background: rgba(6, 20, 64, 0.7); border: 1.5px solid rgba(255, 255, 255, 0.25); box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.45); overflow: hidden; }
+.carr-barra i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(180deg, #ffe066 0%, #ffbf1f 55%, #f2a400 100%); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.55); transition: width 0.25s ease-out; }
+.carr-linha b { min-width: 44px; text-align: right; font-family: 'Barlow Condensed', 'Baloo 2', sans-serif; font-style: italic; font-weight: 900; font-size: 22px; font-variant-numeric: tabular-nums; text-shadow: 0 2px 0 #0f2a78; }
+.carr-progresso small { display: block; margin-top: 6px; font-size: 12.5px; font-weight: 700; opacity: 0.9; }
+.carr-dica { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: rgba(6, 20, 64, 0.55); border: 1.5px solid rgba(255, 255, 255, 0.2); font-size: 13px; font-weight: 700; line-height: 1.25; min-height: 48px; }
+.carr-dica .ic { flex: none; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: linear-gradient(180deg, #ffe066, #ffb800); border: 1.5px solid var(--mm-noite); font-size: 15px; }
+
 
 /* parceiro de corrida (prova do parque): mesmos blocos azuis dos indicadores; o escolhido com borda amarela */
 .clima-parceiro[hidden] { display: none; }
