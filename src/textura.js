@@ -29,15 +29,27 @@ function mascaraUV(geometrias, w, h) {
   return m;
 }
 
-// estende as peças para fora, `passos` pixels, usando a média dos vizinhos que já têm cor
+// estende as peças para fora, `passos` pixels, usando a média dos vizinhos que já têm cor. Cada passo só olha a
+// "beirada" (pixels vazios encostados numa peça), em vez da imagem inteira: o resultado é o mesmo, bem mais rápido
 function dilatar(px, mascara, w, h, passos) {
   let m = mascara;
-  for (let p = 0; p < passos; p++) {
-    const nova = m.slice();
-    let mudou = false;
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const i = y * w + x;
-      if (m[i]) continue;
+  const marcado = new Uint8Array(w * h);
+  let beirada = [];
+  const vizinhosVazios = (i, lista) => {
+    const x = i % w, y = (i - x) / w;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const xx = x + dx, yy = y + dy;
+      if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+      const j = yy * w + xx;
+      if (!m[j] && !marcado[j]) { marcado[j] = 1; lista.push(j); }
+    }
+  };
+  for (let i = 0; i < w * h; i++) if (m[i]) vizinhosVazios(i, beirada);
+  for (let p = 0; p < passos && beirada.length; p++) {
+    beirada.sort((a, b) => a - b);
+    const nova = m.slice(), pintados = [];
+    for (const i of beirada) {
+      const x = i % w, y = (i - x) / w;
       let r = 0, g = 0, b = 0, n = 0;
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
         const xx = x + dx, yy = y + dy;
@@ -48,16 +60,18 @@ function dilatar(px, mascara, w, h, passos) {
       }
       if (!n) continue;
       px[i * 4] = r / n; px[i * 4 + 1] = g / n; px[i * 4 + 2] = b / n; px[i * 4 + 3] = 255;
-      nova[i] = 1; mudou = true;
+      nova[i] = 1; pintados.push(i);
     }
     m = nova;
-    if (!mudou) break;
+    beirada = [];
+    for (const i of pintados) vizinhosVazios(i, beirada);
   }
 }
 
 const feitas = new WeakMap();
 // corrige as texturas de um material (cor, relevo, brilho) usando as UVs das geometrias que o usam
 export function preencherBordas(texturas, geometrias, passos = 12) {
+  const mascaras = new Map(); // cor, relevo e brilho do mesmo material usam as mesmas UVs: desenha a máscara uma vez
   for (const t of texturas) {
     if (!t?.image || feitas.has(t)) continue;
     const img = t.image, W = img.width, H = img.height;
@@ -67,7 +81,9 @@ export function preencherBordas(texturas, geometrias, passos = 12) {
     const g = c.getContext('2d', { willReadFrequently: true });
     g.drawImage(img, 0, 0, w, h);
     const dados = g.getImageData(0, 0, w, h);
-    dilatar(dados.data, mascaraUV(geometrias, w, h), w, h, passos);
+    const chave = w + 'x' + h;
+    if (!mascaras.has(chave)) mascaras.set(chave, mascaraUV(geometrias, w, h));
+    dilatar(dados.data, mascaras.get(chave), w, h, passos);
     g.putImageData(dados, 0, 0);
     t.image = c;
     t.needsUpdate = true;
