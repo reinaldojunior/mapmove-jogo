@@ -42,7 +42,7 @@ const PROVAS = [
   { slug: '1-meia-maratona-de-indaiatuba-2026-12-13', cidade: 'Indaiatuba', nome: 'Meia de Indaiatuba', curto: 'Meia de Indaiatuba' },
   { slug: 'corrida-upar-2026-11-28', cidade: 'Indaiatuba', nome: 'Corrida no Parque do Mirim', curto: 'Parque do Mirim',
     // prova dentro do parque (caminhos do parque, represa de captação): sem carros e sem pintura de rua
-    parque: true, barragem: [-23.03088, -47.20423], mirante: [-23.03044, -47.20310],
+    parque: true, ponte: [-23.03311, -47.18930], barragem: [-23.03088, -47.20423], mirante: [-23.03044, -47.20310],
     quiosques: [[-23.03287, -47.20011], [-23.03226, -47.19904], [-23.03337, -47.20155], [-23.03224, -47.19687], [-23.03212, -47.19804],
       [-23.03307, -47.19472], [-23.03263, -47.20355], [-23.03347, -47.20485]] },
   // relevo: 0 = desenho plano (Sorocaba tem morros e trechos de ida e volta lado a lado: com o relevo desenhado
@@ -1050,9 +1050,14 @@ const texAsfaltoLiso = textura(512, 512, (g, w, h) => {
   for (let i = 0; i < 4000; i++) { const c = 55 + Math.random() * 50; g.fillStyle = `rgba(${c},${c},${c + 6},0.5)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
 });
 // prova no parque: pista de caminhada de asfalto avermelhado, sem faixas de rua
+// asfalto com a ciclovia vermelha de um lado e a faixa branca dividindo pedestres e ciclistas
 const texTrilha = textura(512, 512, (g, w, h) => {
-  g.fillStyle = '#9a5446'; g.fillRect(0, 0, w, h);
-  for (let i = 0; i < 5000; i++) { const c = Math.random(); g.fillStyle = `rgba(${120 + c * 70},${60 + c * 40},${50 + c * 30},0.45)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+  const px = (x) => ((x + 4) / 8) * w;
+  g.fillStyle = '#4f5359'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 6; i++) manchaAsfalto(g, w, h);
+  g.fillStyle = '#a2463a'; g.fillRect(px(0.6), 0, px(4) - px(0.6), h);
+  for (let i = 0; i < 5000; i++) { const c = 55 + Math.random() * 50; g.fillStyle = `rgba(${c},${c},${c + 6},0.35)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+  g.fillStyle = 'rgba(255,255,255,0.9)'; g.fillRect(px(0.6) - 3, 0, 6, h);
 });
 const matTrilha = new THREE.MeshStandardMaterial({ map: texTrilha, roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
 const matRuaOSM = new THREE.MeshStandardMaterial({ map: texAsfaltoLiso, roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
@@ -1941,6 +1946,34 @@ function marcosDoParque() {
   const juntar = (g) => { const m = achatar(g); m.position.copy(g.position); m.rotation.copy(g.rotation); grupoOSM.add(m); };
   const barragem = new THREE.Group();
   const caixa = (g, m, x, y, z, sx, sy, sz, rz = 0) => { const o = malha(G.caixa, m, x, y, z); o.scale.set(sx, sy, sz); o.rotation.z = rz; g.add(o); return o; };
+  // ponte de madeira (22 no mapa do parque, ponta leste da represa): tabuado por cima do caminho, guarda-corpo de
+  // madeira fora do limite da pista e água dos dois lados
+  if (cfg.ponte) {
+    const { x: px, z: pz } = pista.paraLocal(...cfg.ponte), ponte = new THREE.Group();
+    const madeira = mat(0x8a5a32), tabua = mat(0x9c6a3c), escura = mat(0x6b4426), agua = mat(0x3f9fd6);
+    const passagens = [];
+    for (let s = 0; s < pista.total; s += 2) {
+      const q = pista.em(s), d = Math.hypot(q.x - px, q.z - pz);
+      if (d > 25) continue;
+      const ult = passagens[passagens.length - 1];
+      if (ult && s - ult.s < 150) { if (d < ult.d) Object.assign(ult, { s, d }); } else passagens.push({ s, d });
+    }
+    for (const { s } of passagens) {
+      for (let ds = -40; ds <= 40; ds += 2) {
+        const q = pista.em(s + ds), g = new THREE.Group(); g.position.set(q.x, q.y, q.z); g.rotation.y = -q.ang;
+        caixa(g, tabua, 0, 0.05, -0.5, 16.4, 0.1, 0.95); caixa(g, madeira, 0, 0.05, 0.5, 16.4, 0.1, 0.95); // tábuas
+        for (const k of [-1, 1]) {
+          caixa(g, escura, k * 8.0, 1.0, 0, 0.18, 0.18, 2.6);        // corrimão
+          caixa(g, escura, k * 8.0, 0.5, 0, 0.12, 0.12, 2.6);        // travessa do meio
+          caixa(g, madeira, k * 8.0, 0.55, 1, 0.2, 1.1, 0.2);        // montante
+          caixa(g, madeira, k * 7.2, -1.2, 0, 0.35, 2.4, 0.35);      // pilar dentro d'água
+          caixa(g, agua, k * 20.3, 0.0, 0, 24, 0.06, 2.6);           // água dos dois lados (cobre a grama da beira)
+        }
+        ponte.add(g);
+      }
+    }
+    juntar(ponte);
+  }
   if (cfg.barragem) {
     const { x: bx, z: bz } = pista.paraLocal(...cfg.barragem);
     // centro da represa (a maior área de água): o lado de cima da barragem é o lado dela
