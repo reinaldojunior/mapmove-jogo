@@ -3427,15 +3427,6 @@ function imagemCarregando(slug) {
   return imagensCarregando[url];
 }
 imagemCarregando(PROVA_SLUG);
-const DICAS_CARREGANDO = [
-  'Toque ou arraste para os lados para virar nas curvas',
-  'Deslize para cima ou toque no botão para pular cones e cavaletes',
-  'Deslize para baixo para segurar o ritmo e poupar energia nas subidas',
-  'Pegue água nos postos antes da sede apertar',
-  'Use o gel antes da energia ficar baixa, não espere o alerta',
-  'Os staffs de colete e os cones mostram o caminho certo nas curvas',
-  'Ultrapassar corredores do pelotão vale pontos'
-];
 const quadro = () => new Promise((ok) => requestAnimationFrame(() => ok()));
 const esperar = (ms) => new Promise((ok) => setTimeout(ok, ms));
 let largando = false;
@@ -3454,9 +3445,6 @@ async function largar(escolha, clima) {
   caixa.style.backgroundImage = img ? `url(${img})` : ''; caixa.classList.toggle('com-imagem', !!img);
   mapa.hidden = !!img || !ehProva;
   if (!mapa.hidden) { const g = mapa.getContext('2d'); g.clearRect(0, 0, mapa.width, mapa.height); try { g.drawImage($('#provaMapa'), 0, 0, mapa.width, mapa.height); } catch { /* sem mapa */ } }
-  let d = Math.floor(Math.random() * DICAS_CARREGANDO.length);
-  const trocarDica = () => { $('#carregandoDica').textContent = DICAS_CARREGANDO[d++ % DICAS_CARREGANDO.length]; };
-  trocarDica(); const relogioDica = setInterval(trocarDica, 3500);
   // progresso: 70% modelos 3D (cada um que termina conta), 20% montar o percurso, 10% gráficos
   const total = preparando.size;
   const mostrarProgresso = (p, etapa) => { const v = Math.round(Math.max(0, Math.min(1, p)) * 100); $('#carregandoBarra').style.width = v + '%'; $('#carregandoPct').textContent = v + '%'; if (etapa) $('#carregandoEtapa').textContent = etapa; };
@@ -3482,7 +3470,6 @@ async function largar(escolha, clima) {
     await quadro();
     estado.modo = 'contagem';
   } finally {
-    clearInterval(relogioDica);
     tela.hidden = true;
     largando = false;
   }
