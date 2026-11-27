@@ -30,14 +30,22 @@ test('colocação e ultrapassagens', () => {
   assert.equal(PL.lider(l, 120), 120);
 });
 
-test('resultado final: geral, faixa, prêmio e mensagens', () => {
+test('resultado final: pódio geral 1º a 3º; pódio por idade a partir do 4º', () => {
+  // 3º geral: pódio geral (sem pódio por idade)
   const l = [{ s: 100, faixa: 1 }, { s: 90, faixa: 2 }, { s: 80, faixa: 1 }, { s: 10, faixa: 1 }];
   const r = PL.resultadoFinal(l, 85, 1);
-  assert.deepEqual(r, { geral: 3, total: 5, faixa: 2, totalFaixa: 4 });
-  const p = PL.premioColocacao(r, '10K');
-  assert.deepEqual(p.map((i) => i.xp), [105, 53]);
-  assert.ok(PL.mensagemFinal(r).some((t) => t.includes('pódio por idade')));
+  assert.deepEqual(r, { geral: 3, total: 5, faixa: null, totalFaixa: 4 });
+  assert.deepEqual(PL.premioColocacao(r, '10K').map((i) => i.xp), [105]);
+  assert.ok(PL.mensagemFinal(r).some((t) => t.includes('Pódio geral')));
+  // 5º geral, faixa 1: os da faixa 1 que estão no pódio geral (1º e 3º) não contam; só o 4º (faixa 1) está na frente
+  const l2 = [{ s: 100, faixa: 1 }, { s: 95, faixa: 2 }, { s: 90, faixa: 1 }, { s: 80, faixa: 1 }, { s: 10, faixa: 1 }];
+  const r2 = PL.resultadoFinal(l2, 70, 1);
+  assert.deepEqual(r2, { geral: 5, total: 6, faixa: 2, totalFaixa: 5 });
+  const p2 = PL.premioColocacao(r2, '10K');
+  assert.deepEqual(p2.map((i) => i.xp), [53]);
+  assert.ok(PL.mensagemFinal(r2).some((t) => t.includes('pódio por idade')));
   const longe = PL.mensagemFinal({ geral: 80, total: 121, faixa: 5, totalFaixa: 15 });
   assert.ok(longe.some((t) => t.includes('quase pegou pódio')));
   assert.equal(PL.premioColocacao({ geral: 30, faixa: 6 }, '21K').length, 0);
+  assert.deepEqual(PL.premioColocacao({ geral: 4, faixa: 1 }, "21K").map((i) => i.rotulo), ["Pódio por idade (1º na faixa)"]); // 4º geral: entra no pódio da faixa
 });
