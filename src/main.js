@@ -40,6 +40,7 @@ const SUPABASE_KEY = 'sb_publishable_s2yoUApfYl_ZvSUkqYYrVw_uXwKsybM';
 // O nome mostrado é genérico (sem o nome oficial do evento, para não usar a marca dos organizadores).
 const PROVAS = [
   { slug: '1-meia-maratona-de-indaiatuba-2026-12-13', cidade: 'Indaiatuba', nome: 'Meia de Indaiatuba', curto: 'Meia de Indaiatuba' },
+  { slug: 'corrida-upar-2026-11-28', cidade: 'Indaiatuba', nome: 'Corrida no Parque do Mirim', curto: 'Parque do Mirim' },
   // relevo: 0 = desenho plano (Sorocaba tem morros e trechos de ida e volta lado a lado: com o relevo desenhado
   // a rua ficava em barrancos e com placas flutuando). A subida/descida continua valendo no jogo e no HUD.
   { slug: '9-maratona-sorocaba-novembro-azul-2026-11-21', cidade: 'Sorocaba', relevo: 0, nome: 'Desafio 42K – Bora correr em Sorocaba', curto: 'Desafio 42K' }

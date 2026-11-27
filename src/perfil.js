@@ -43,9 +43,9 @@ export function situacao(xp) {
 
 // ── ganho de uma corrida ──
 export const XP_POR_KM = 10;
-export const BONUS_PROVA = { '6K': 40, '10K': 80, '21K': 200, '42K': 450 };
+export const BONUS_PROVA = { '5K': 35, '6K': 40, '10K': 80, '21K': 200, '42K': 450 };
 export const MOVES_POR_KM = 1;
-export const MOVES_PROVA = { '6K': 10, '10K': 20, '21K': 50, '42K': 120 };
+export const MOVES_PROVA = { '5K': 8, '6K': 10, '10K': 20, '21K': 50, '42K': 120 };
 export const XP_MISSAO = 30;
 
 // missões de cada corrida (só valem em prova concluída, menos "correr 1 km" no treino)
