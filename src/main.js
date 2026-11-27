@@ -92,6 +92,25 @@ sol.shadow.bias = -0.0006;
 sol.shadow.normalBias = 0.03;
 scene.add(sol, sol.target);
 
+// sombra de contato: mancha oval de borda suave sob quem pisa no chão (corredor, pelotão, cachorros, capivaras).
+// Funciona em qualquer qualidade; com a sombra de verdade ligada fica mais clara (só "assenta" no chão)
+const matSombraContato = new THREE.MeshBasicMaterial({
+  color: 0x000000, transparent: true, opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+  alphaMap: (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    r.addColorStop(0, '#fff'); r.addColorStop(0.5, '#d0d0d0'); r.addColorStop(0.8, '#555'); r.addColorStop(1, '#000');
+    g.fillStyle = r; g.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(c);
+  })()
+});
+const GEO_SOMBRA = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+function sombraContato(x, z) { // tamanho em x (lado) e z (frente/trás) no referencial de quem a usa
+  const m = new THREE.Mesh(GEO_SOMBRA, matSombraContato);
+  m.scale.set(x, 1, z); m.position.y = 0.03; m.renderOrder = 1; m.castShadow = false; m.receiveShadow = false;
+  return m;
+}
+
 // qualidade gráfica: começa alta e desce sozinha se o celular não aguentar
 const NIVEIS = [
   { nome: 'alta', pr: Math.min(window.devicePixelRatio, 1.75), sombra: true },
@@ -429,8 +448,8 @@ function criarCorredor() {
     bracos.push(ombro); cotovelos.push(ante);
   }
 
-  const sombra = new THREE.Mesh(new THREE.CircleGeometry(0.6, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25, depthWrite: false }));
-  sombra.rotation.x = -Math.PI / 2;
+  // sombra de contato oval, mais comprida no sentido da corrida (o grupo gira com o corredor)
+  const sombra = new THREE.Group(); sombra.add(sombraContato(1.1, 1.5));
   scene.add(sombra);
 
   g.scale.setScalar(0.92);
@@ -673,8 +692,9 @@ function emPreparo(p) { preparando.add(p); const fim = () => preparando.delete(p
 // ─── PELOTÃO: OUTROS CORREDORES (NPCs), MOTO BATEDORA E CARRO LÍDER ─────────────
 const NPC_POR_NIVEL = [14, 9, 5];
 const NPC_TOTAL = 120; // inscritos virtuais na prova (só os perto de você aparecem)
-// bonecos desenhados perto do corredor; na prova do parque (caminho estreito, com cachorros), metade
-const npcVisiveis = () => { const n = NPC_POR_NIVEL[nivel] || 3; return prova?.parque ? Math.ceil(n / 2) : n; };
+// bonecos desenhados perto do corredor
+const npcVisiveis = () => NPC_POR_NIVEL[nivel] || 3;
+const NPC_PARQUE = 40; // prova do parque: menos inscritos (mais leve e mais espalhado)
 const npcModelos = [];
 let pelotao = [], npcPool = [];
 emPreparo((async () => {
@@ -695,13 +715,13 @@ function criarNpc(k) {
   model.traverse((o) => { if (o.isMesh) { o.castShadow = nivel === 0; o.frustumCulled = false; } });
   const grp = new THREE.Group(); grp.add(model);
   grp.scale.setScalar((ALTURA_ATLETA * aleat(0.92, 1.03)) / h); grp.rotation.y = Math.PI;
-  const holder = new THREE.Group(); holder.add(grp); holder.visible = false; scene.add(holder);
+  const holder = new THREE.Group(); holder.add(grp, sombraContato(0.75, 0.95)); holder.visible = false; scene.add(holder);
   const mixer = new THREE.AnimationMixer(model), acao = mixer.clipAction(m.clip);
   acao.play(); mixer.update(Math.random() * m.clip.duration);
   return { holder, mixer, npc: null };
 }
 function prepararPelotao() {
-  pelotao = prova ? PL.criarPelotao(NPC_TOTAL, estado.paceBase || R.PACE_BASE) : [];
+  pelotao = prova ? PL.criarPelotao(prova.parque ? NPC_PARQUE : NPC_TOTAL, estado.paceBase || R.PACE_BASE) : [];
   const n = npcModelos.length ? npcVisiveis() : 0;
   while (npcPool.length < n) npcPool.push(criarNpc(npcPool.length));
   for (const p of npcPool) { p.npc = null; p.holder.visible = false; }
@@ -742,7 +762,8 @@ function novoCaoJunto(escala, cor = 0xffffff, modelo = caoModelo) {
   malha.traverse((o) => { if (!o.isMesh) return; o.castShadow = true; o.frustumCulled = false; if (cor !== 0xffffff) { o.material = o.material.clone(); o.material.color.multiply(new THREE.Color(cor)); } });
   const guia = new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(PONTOS_GUIA * 3), 3)), matGuiaCao);
   guia.frustumCulled = false;
-  return { g, malha, guia };
+  const sombra = sombraContato(1.15, 0.5); g.add(sombra); // frente do cachorro = +x
+  return { g, malha, guia, sombra };
 }
 // guia frouxa: barriga para baixo no meio, maior quando o cachorro chega perto
 function ligarGuia(guia, a, b, comp = 1.9) {
@@ -791,25 +812,29 @@ function desenharCaoJunto(chao, dt) {
   // pula junto: acompanha a altura do salto do corredor, um instante depois
   c.pos.y += (s.y - c.pos.y) * Math.min(1, (dt || 0.016) * 12);
   c.g.position.set(c.pos.x, chao + c.pos.y, c.pos.z); c.g.rotation.y = Math.PI / 2 - c.pos.ang;
+  c.sombra.position.y = 0.03 - c.pos.y / c.g.scale.y; // a sombra fica no chão quando ele pula
   animarQuadrupede(c.malha, relogio.elapsedTime, s.modo === 'jogando' && s.v > 0.3 && c.pos.y < 0.1);
   const [cx, cz] = frente(c.pos.ang);
   ligarGuia(c.guia, [s.x + rx * 0.22, chao + s.y + 1.0, s.z + rz * 0.22], [c.pos.x + cx * 0.35, chao + c.pos.y + 0.52, c.pos.z + cz * 0.35], 2.8);
 }
 
-// prova no parque: menos gente e mais espalhada. Boneco novo só aparece longe (a partir de 40 m à frente) e com
-// pelo menos 9 m de outro, menos na largada (primeiros 150 m, quando todos saem juntos); quem já tem boneco continua até ficar ~10 m para trás (você vê chegar e ultrapassa)
+// prova no parque (40 inscritos): metade dos bonecos para quem está perto (até 60 m) e metade para quem está longe
+// (até 300 m, espalhados), para ver os dois; quem já tem boneco continua enquanto estiver no alcance (não pisca)
 function escolherNoParque(s, n) {
-  const ficam = [];
-  for (const p of npcPool) if (p.npc && p.npc.s > s.s - 10 && p.npc.s < s.s + 190) ficam.push(p.npc);
-  const lista = ficam.slice(0, n);
-  // na largada todo mundo sai junto: nos primeiros 150 m, quem está perto aparece (com 3 m entre um e outro)
-  const largada = s.s < 150, de = largada ? s.s - 8 : s.s + 40, folga = largada ? 3 : 9;
-  const novos = pelotao.filter((c) => c.s > de && c.s < s.s + 170 && !lista.includes(c)).sort((a, b) => Math.abs(a.s - s.s) - Math.abs(b.s - s.s));
-  for (const c of novos) {
+  const noAlcance = (c) => c.s > s.s - 12 && c.s < s.s + 300, perto = (c) => c.s - s.s < 60;
+  const lista = [];
+  for (const p of npcPool) if (p.npc && noAlcance(p.npc) && lista.length < n) lista.push(p.npc);
+  const vagasPerto = Math.ceil(n / 2);
+  const cand = pelotao.filter((c) => noAlcance(c) && !lista.includes(c));
+  const pertos = cand.filter(perto).sort((a, b) => Math.abs(a.s - s.s) - Math.abs(b.s - s.s));
+  const longes = cand.filter((c) => !perto(c)).sort((a, b) => a.s - b.s);
+  for (const c of pertos) { if (lista.length >= n || lista.filter(perto).length >= vagasPerto) break; lista.push(c); }
+  for (const c of longes) {
     if (lista.length >= n) break;
-    if (lista.some((o) => Math.abs(o.s - c.s) < folga && Math.abs(o.d - c.d) < 1.2)) continue;
+    if (lista.some((o) => !perto(o) && Math.abs(o.s - c.s) < 15)) continue; // longe: espalhados
     lista.push(c);
   }
+  for (const c of pertos) { if (lista.length >= n) break; if (!lista.includes(c)) lista.push(c); } // sobrou vaga
   return lista;
 }
 
@@ -1328,7 +1353,7 @@ function atualizarCenario(sCorredor) {
 // ─── OBSTÁCULOS E ITENS (EM COORDENADAS DA PISTA: s AO LONGO, d PARA OS LADOS) ─
 
 let entidades = [];
-if (import.meta.env.DEV) window.__dbg = { pista: () => pista, prova: () => prova, renderer: () => renderer, passo: (dt) => passo(dt), curva: (s) => curvaEm(s), ents: () => entidades, carro: (...a) => carro(...a), bicho: (s) => cachorro(s), caoJunto: () => caoJunto?.pos, npcs: () => npcPool.filter((p) => p.holder.visible).length, desenharPelotao: (dt) => desenharPelotao(dt), npcDist: () => npcPool.filter((p) => p.holder.visible).map((p) => Math.round(p.npc.s - estado.s)), capivaraPronta: () => !!capivaraModelo, estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString()]); } }; // só no modo de desenvolvimento, para testes
+if (import.meta.env.DEV) window.__dbg = { pista: () => pista, prova: () => prova, renderer: () => renderer, passo: (dt) => passo(dt), curva: (s) => curvaEm(s), ents: () => entidades, carro: (...a) => carro(...a), bicho: (s) => cachorro(s), caoJunto: () => caoJunto?.pos, npcs: () => npcPool.filter((p) => p.holder.visible).length, desenharPelotao: (dt) => desenharPelotao(dt), npcDist: () => npcPool.filter((p) => p.holder.visible).map((p) => Math.round(p.npc.s - estado.s)), capivaraPronta: () => !!capivaraModelo, estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString(), h.object.receiveShadow, h.object.material?.type]); } }; // só no modo de desenvolvimento, para testes
 let postos = [];
 let travessas = [];
 
@@ -1405,7 +1430,7 @@ carregarCapivara(PROVA_SLUG);
 // capivara (prova no parque, no lugar do cachorro): mesmo comportamento e a mesma caixa de colisão do cachorro
 function capivara(s) {
   if (capivaraModelo) {
-    const malha = clonarComOssos(capivaraModelo), g = new THREE.Group(); g.add(malha);
+    const malha = clonarComOssos(capivaraModelo), g = new THREE.Group(); g.add(malha, sombraContato(1.05, 0.55));
     const lado = Math.random() < 0.5 ? -1 : 1;
     return addEntidade({
       tipo: 'cachorro', motivo: 'Esbarrou na capivara', obj: g, s, d: lado * 6.2, rot: lado > 0 ? Math.PI : 0,
@@ -1456,7 +1481,7 @@ function cachorro(s) {
   if (prova?.parque) return capivara(s);
   if (caoModelo) {
     const malha = clonarComOssos(caoModelo);
-    const g = new THREE.Group(); g.add(malha);
+    const g = new THREE.Group(); g.add(malha, sombraContato(1.15, 0.5));
     const lado = Math.random() < 0.5 ? -1 : 1;
     return addEntidade({
       tipo: 'cachorro', motivo: 'Esbarrou no cachorro', obj: g, s, d: lado * 6.2, rot: lado > 0 ? Math.PI : 0,
@@ -4077,8 +4102,10 @@ function desenhar(dt) {
     else if (s.modo === 'inicio') { s.fase += dt * 6; animarCorredor(corredor, s.fase); }
     else if (s.modo === 'contagem') animarCorredor(corredor, 0, { parado: true });
   }
-  // sombra de verdade na qualidade alta/média; mancha redonda na baixa
-  corredor.sombra.visible = !sol.castShadow;
+  // sombra de verdade na qualidade alta/média; a de contato fica sempre (mais forte na baixa, sem a de verdade)
+  corredor.sombra.visible = true;
+  corredor.sombra.rotation.y = -s.ang;
+  matSombraContato.opacity = sol.castShadow ? 0.3 : 0.45;
   sol.target.position.set(s.x, chao, s.z);
   sol.position.copy(sol.target.position).add(SOL_OFFSET);
 
