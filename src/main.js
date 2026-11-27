@@ -792,6 +792,13 @@ function caoDoNpc(p, k, dt) {
   if (quer) animarQuadrupede(p.cao.malha, relogio.elapsedTime + k, estado.modo === 'jogando');
 }
 let caoJunto = null;
+const _quadril = new THREE.Vector3();
+function quadrilDoCorredor() {
+  const m = corredor.atleta?.atual?.model;
+  if (!m) return null;
+  if (m.userData.quadril === undefined) { let b = null; m.traverse((o) => { if (!b && o.isBone && /hips|pelvis/i.test(o.name)) b = o; }); m.userData.quadril = b; }
+  return m.userData.quadril ? m.userData.quadril.getWorldPosition(_quadril) : null;
+}
 function desenharCaoJunto(chao, dt) {
   const s = estado, id = s.parceiro, modelo = id === 'reserva' ? caoModelo : racasModelo[id];
   const quer = !!prova?.parque && !!modelo && ['jogando', 'contagem', 'fim'].includes(s.modo);
@@ -817,7 +824,11 @@ function desenharCaoJunto(chao, dt) {
   c.sombra.position.y = 0.03 - c.pos.y / c.g.scale.y; // a sombra fica no chão quando ele pula
   animarQuadrupede(c.malha, relogio.elapsedTime, s.modo === 'jogando' && s.v > 0.3 && c.pos.y < 0.1);
   const [cx, cz] = frente(c.pos.ang);
-  ligarGuia(c.guia, [s.x + rx * 0.22, chao + s.y + 1.0, s.z + rz * 0.22], [c.pos.x + cx * 0.35, chao + c.pos.y + 0.52, c.pos.z + cz * 0.35], 2.8);
+  // a guia sai da cintura do corredor (osso do quadril do boneco, que acompanha a passada), um pouco à frente e à
+  // direita, colada ao corpo; sem o boneco 3D, um ponto fixo na altura da cintura
+  const q = quadrilDoCorredor();
+  const cintura = q ? [q.x + rx * 0.1 + fx * 0.08, q.y - 0.02, q.z + rz * 0.1 + fz * 0.08] : [s.x + rx * 0.12 + fx * 0.08, chao + s.y + 0.98, s.z + rz * 0.12 + fz * 0.08];
+  ligarGuia(c.guia, cintura, [c.pos.x + cx * 0.35, chao + c.pos.y + 0.52, c.pos.z + cz * 0.35], 2.8);
 }
 
 // prova no parque (40 inscritos): metade dos bonecos para quem está perto (até 60 m) e metade para quem está longe
@@ -4117,7 +4128,6 @@ function desenhar(dt) {
   const chao = emEst(s.s).y;
   corredor.g.position.set(s.x, chao + s.y, s.z);
   corredor.g.rotation.y = -s.ang;
-  desenharCaoJunto(chao, dt);
   corredor.sombra.position.set(s.x, chao + 0.08, s.z);
   corredor.sombra.scale.setScalar(1 - Math.min(0.5, s.y / 4));
   const noAr = s.y > 0.05, agachado = s.agachado > 0;
@@ -4135,6 +4145,7 @@ function desenhar(dt) {
     else if (s.modo === 'inicio') { s.fase += dt * 6; animarCorredor(corredor, s.fase); }
     else if (s.modo === 'contagem') animarCorredor(corredor, 0, { parado: true });
   }
+  desenharCaoJunto(chao, dt); // depois da passada do boneco: a guia sai da cintura na pose deste quadro
   // sombra de verdade na qualidade alta/média; a de contato fica sempre (mais forte na baixa, sem a de verdade)
   corredor.sombra.visible = true;
   corredor.sombra.rotation.y = -s.ang;
