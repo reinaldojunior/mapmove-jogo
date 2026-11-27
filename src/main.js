@@ -673,6 +673,8 @@ function emPreparo(p) { preparando.add(p); const fim = () => preparando.delete(p
 // ─── PELOTÃO: OUTROS CORREDORES (NPCs), MOTO BATEDORA E CARRO LÍDER ─────────────
 const NPC_POR_NIVEL = [14, 9, 5];
 const NPC_TOTAL = 120; // inscritos virtuais na prova (só os perto de você aparecem)
+// bonecos desenhados perto do corredor; na prova do parque (caminho estreito, com cachorros), metade
+const npcVisiveis = () => { const n = NPC_POR_NIVEL[nivel] || 3; return prova?.parque ? Math.ceil(n / 2) : n; };
 const npcModelos = [];
 let pelotao = [], npcPool = [];
 emPreparo((async () => {
@@ -700,7 +702,7 @@ function criarNpc(k) {
 }
 function prepararPelotao() {
   pelotao = prova ? PL.criarPelotao(NPC_TOTAL, estado.paceBase || R.PACE_BASE) : [];
-  const n = npcModelos.length ? NPC_POR_NIVEL[nivel] || 3 : 0;
+  const n = npcModelos.length ? npcVisiveis() : 0;
   while (npcPool.length < n) npcPool.push(criarNpc(npcPool.length));
   for (const p of npcPool) { p.npc = null; p.holder.visible = false; }
   estado.posicao = null;
@@ -764,7 +766,7 @@ function desenharCaoJunto(chao, dt) {
 }
 
 function desenharPelotao(dt) {
-  const s = estado, n = Math.min(npcPool.length, NPC_POR_NIVEL[nivel] || 3);
+  const s = estado, n = Math.min(npcPool.length, npcVisiveis());
   // os mais perto do corredor (um pouco atrás até bem à frente) ganham um boneco
   // quem vem à frente ganha boneco primeiro e de longe (até ~170 m), para não "brotar" perto; atrás, só os colados
   const atras = pelotao.filter((c) => c.s <= s.s && c.s > s.s - 12).sort((a, b) => b.s - a.s).slice(0, Math.max(1, Math.floor(n / 4)));
@@ -1276,7 +1278,7 @@ function atualizarCenario(sCorredor) {
 // ─── OBSTÁCULOS E ITENS (EM COORDENADAS DA PISTA: s AO LONGO, d PARA OS LADOS) ─
 
 let entidades = [];
-if (import.meta.env.DEV) window.__dbg = { pista: () => pista, prova: () => prova, renderer: () => renderer, passo: (dt) => passo(dt), curva: (s) => curvaEm(s), ents: () => entidades, carro: (...a) => carro(...a), bicho: (s) => cachorro(s), capivaraPronta: () => !!capivaraModelo, estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString()]); } }; // só no modo de desenvolvimento, para testes
+if (import.meta.env.DEV) window.__dbg = { pista: () => pista, prova: () => prova, renderer: () => renderer, passo: (dt) => passo(dt), curva: (s) => curvaEm(s), ents: () => entidades, carro: (...a) => carro(...a), bicho: (s) => cachorro(s), npcs: () => npcPool.filter((p) => p.holder.visible).length, capivaraPronta: () => !!capivaraModelo, estado: () => estado, cena: () => scene, em: (s) => emEst(s), clima: (id) => { estado.clima = { ...CL.CLIMAS.find((c) => c.id === id), ventoDe: 0 }; aplicarClima(estado.clima); }, desafio: (d) => { desafio = d; abrirDesafioQuandoPronto(); }, festa: (modo) => { estado.festaEm = estado.s + 1; estado.festaModo = modo; }, trav: () => travessas, chao: (x, z) => { const r = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0)); return r.intersectObjects(scene.children, true).filter((h) => h.object.isMesh).slice(0, 6).map((h) => [+h.point.y.toFixed(2), h.object.name || h.object.material?.name || h.object.material?.color?.getHexString()]); } }; // só no modo de desenvolvimento, para testes
 let postos = [];
 let travessas = [];
 
