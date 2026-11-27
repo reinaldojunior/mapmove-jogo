@@ -702,37 +702,56 @@ function prepararPelotao() {
 }
 // corrida de conscientização (prova no parque): cachorro correndo junto, preso na cintura por uma guia
 const matGuiaCao = new THREE.LineBasicMaterial({ color: 0xe53935 });
-function novoCaoJunto(escala) {
+const CORES_CAO = [0xffffff, 0x3a3a3a, 0xd9a066, 0x9a6a40, 0xb8b8b8]; // mesmo modelo, pelagens diferentes
+const PONTOS_GUIA = 12;
+function novoCaoJunto(escala, cor = 0xffffff) {
   const malha = clonarComOssos(caoModelo), g = new THREE.Group(); g.add(malha); g.scale.setScalar(escala);
-  malha.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
-  const guia = new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3)), matGuiaCao);
+  malha.traverse((o) => { if (!o.isMesh) return; o.castShadow = true; o.frustumCulled = false; if (cor !== 0xffffff) { o.material = o.material.clone(); o.material.color.multiply(new THREE.Color(cor)); } });
+  const guia = new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(PONTOS_GUIA * 3), 3)), matGuiaCao);
   guia.frustumCulled = false;
   return { g, malha, guia };
 }
-function ligarGuia(guia, a, b) { const p = guia.geometry.attributes.position; p.setXYZ(0, ...a); p.setXYZ(1, ...b); p.needsUpdate = true; }
-// um em cada três corredores do pelotão leva cachorro (no referencial do boneco: frente = -z, direita = +x)
+// guia frouxa: barriga para baixo no meio, maior quando o cachorro chega perto
+function ligarGuia(guia, a, b, comp = 1.9) {
+  const p = guia.geometry.attributes.position, d = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+  const barriga = 0.12 + Math.max(0, comp - d) * 0.45;
+  for (let i = 0; i < PONTOS_GUIA; i++) {
+    const k = i / (PONTOS_GUIA - 1);
+    p.setXYZ(i, a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k - Math.sin(Math.PI * k) * barriga, a[2] + (b[2] - a[2]) * k);
+  }
+  p.needsUpdate = true;
+}
+// um em cada quatro corredores do pelotão leva cachorro, cada um de uma cor (referencial do boneco: frente = -z)
 function caoDoNpc(p, k, dt) {
-  const quer = !!prova?.parque && !!caoModelo && k % 3 === 0;
+  const quer = !!prova?.parque && !!caoModelo && k % 4 === 1;
   if (quer && !p.cao) {
-    p.cao = novoCaoJunto(0.62); p.cao.g.position.set(0.85, 0, -0.55); p.cao.g.rotation.y = Math.PI / 2;
-    p.holder.add(p.cao.g, p.cao.guia); ligarGuia(p.cao.guia, [0.2, 1.0, 0], [0.85, 0.42, -0.85]);
+    p.cao = novoCaoJunto(0.78, CORES_CAO[(k >> 2) % CORES_CAO.length]); p.cao.g.position.set(0.9, 0, -1.2); p.cao.g.rotation.y = Math.PI / 2;
+    p.holder.add(p.cao.g, p.cao.guia); ligarGuia(p.cao.guia, [0.2, 1.0, 0], [0.9, 0.5, -1.55]);
   }
   if (!p.cao) return;
   p.cao.g.visible = p.cao.guia.visible = quer;
   if (quer) animarQuadrupede(p.cao.malha, relogio.elapsedTime + k, estado.modo === 'jogando');
 }
 let caoJunto = null;
-function desenharCaoJunto(chao) {
+function desenharCaoJunto(chao, dt) {
   const s = estado, quer = !!prova?.parque && !!caoModelo && ['jogando', 'contagem', 'fim'].includes(s.modo);
-  if (quer && !caoJunto) { caoJunto = novoCaoJunto(0.66); scene.add(caoJunto.g, caoJunto.guia); }
+  if (quer && !caoJunto) { caoJunto = novoCaoJunto(0.82, 0xd9a066); scene.add(caoJunto.g, caoJunto.guia); }
   if (!caoJunto) return;
   caoJunto.g.visible = caoJunto.guia.visible = quer;
   if (!quer) return;
   const [fx, fz] = frente(s.ang), [rx, rz] = direita(s.ang);
-  const x = s.x + rx * 0.95 + fx * 0.7, z = s.z + rz * 0.95 + fz * 0.7;
-  caoJunto.g.position.set(x, chao, z); caoJunto.g.rotation.y = Math.PI / 2 - s.ang;
-  animarQuadrupede(caoJunto.malha, relogio.elapsedTime, s.modo === 'jogando' && s.v > 0.3);
-  ligarGuia(caoJunto.guia, [s.x + rx * 0.22, chao + s.y + 1.0, s.z + rz * 0.22], [x + fx * 0.28, chao + 0.42, z + fz * 0.28]);
+  // o cachorro vai um pouco à frente e segue o corredor com atraso (não responde na hora a cada virada)
+  const tx = s.x + rx * 1.0 + fx * 1.4, tz = s.z + rz * 1.0 + fz * 1.4, c = caoJunto;
+  if (!c.pos || Math.hypot(tx - c.pos.x, tz - c.pos.z) > 8) c.pos = { x: tx, z: tz, ang: s.ang, y: 0 };
+  const k = Math.min(1, (dt || 0.016) * 3.5);
+  c.pos.x += (tx - c.pos.x) * k; c.pos.z += (tz - c.pos.z) * k;
+  c.pos.ang += difAngulo(s.ang, c.pos.ang) * Math.min(1, (dt || 0.016) * 3);
+  // pula junto: acompanha a altura do salto do corredor, um instante depois
+  c.pos.y += (s.y - c.pos.y) * Math.min(1, (dt || 0.016) * 12);
+  c.g.position.set(c.pos.x, chao + c.pos.y, c.pos.z); c.g.rotation.y = Math.PI / 2 - c.pos.ang;
+  animarQuadrupede(c.malha, relogio.elapsedTime, s.modo === 'jogando' && s.v > 0.3 && c.pos.y < 0.1);
+  const [cx, cz] = frente(c.pos.ang);
+  ligarGuia(c.guia, [s.x + rx * 0.22, chao + s.y + 1.0, s.z + rz * 0.22], [c.pos.x + cx * 0.35, chao + c.pos.y + 0.52, c.pos.z + cz * 0.35]);
 }
 
 function desenharPelotao(dt) {
@@ -3900,7 +3919,7 @@ function desenhar(dt) {
   const chao = emEst(s.s).y;
   corredor.g.position.set(s.x, chao + s.y, s.z);
   corredor.g.rotation.y = -s.ang;
-  desenharCaoJunto(chao);
+  desenharCaoJunto(chao, dt);
   corredor.sombra.position.set(s.x, chao + 0.08, s.z);
   corredor.sombra.scale.setScalar(1 - Math.min(0.5, s.y / 4));
   const noAr = s.y > 0.05, agachado = s.agachado > 0;
