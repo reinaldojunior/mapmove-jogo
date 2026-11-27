@@ -1054,7 +1054,7 @@ const texAsfaltoLiso = textura(512, 512, (g, w, h) => {
 // pista do parque: ciclovia de mão dupla (asfalto, tracejado amarelo no meio), faixa vermelha e branca separando a
 // pista de pedestres (asfalto mais claro); o meio-fio verde fica na borda (matMeioFio)
 const texTrilha = textura(512, 512, (g, w, h) => {
-  const px = (x) => ((x + 4) / 8) * w;
+  const px = (x) => ((4 - x) / 8) * w; // espelhado: ciclovia à direita do corredor, pedestres à esquerda
   g.fillStyle = '#55595f'; g.fillRect(0, 0, w, h);
   for (let i = 0; i < 6; i++) manchaAsfalto(g, w, h);
   g.fillStyle = 'rgba(150,150,145,0.35)'; g.fillRect(px(1.25), 0, px(4) - px(1.25), h); // lado dos pedestres
@@ -1153,6 +1153,7 @@ const MOLDES = [
 // sorteio fixo por posição: o mesmo trecho mostra sempre a mesma coisa
 const sorteio = (s, k) => { const v = Math.sin(s * 12.9898 + k * 78.233) * 43758.5453; return v - Math.floor(v); };
 
+let aguasCenario = [], trechosAgua = []; // lagos do mapa e trechos de ponte/barragem (prova no parque)
 function posicionarCenario(item, s) {
   item.s = s;
   const fora = Number.isFinite(pista.total) && (s > pista.total + 60 || s < -40);
@@ -1175,7 +1176,10 @@ function posicionarCenario(item, s) {
   const naAvenida = du && Math.sign(item.d) === du.lado && Math.abs(item.d) < du.dist + 7;
   const tampaVista = item.molde.criar === arvoreDaBeira && naVistaLivre(s, Math.sign(item.d));
   const noViaduto = pista.elevacao?.(s) > 0.3;
-  item.obj.visible = !fora && !invade && !naTravessa && combina && !naFrenteDeMarco && !naAvenida && !tampaVista && !noViaduto;
+  // prova no parque: nada de árvore, torcida ou banco dentro da água (lagos do mapa, ponte e barragem)
+  const naAgua = !!prova?.parque && !fora && (trechosAgua.some(([a, b]) => s > a && s < b)
+    || [0, 2.5].some((m) => { const xx = x + rx * Math.sign(item.d) * m, zz = z + rz * Math.sign(item.d) * m; return aguasCenario.some(({ caixa: [x0, z0, x1, z1], pts }) => xx >= x0 && xx <= x1 && zz >= z0 && zz <= z1 && pontoNoPoligono(xx, zz, pts)); }));
+  item.obj.visible = !fora && !invade && !naTravessa && combina && !naFrenteDeMarco && !naAvenida && !tampaVista && !noViaduto && !naAgua;
   item.obj.position.set(x, p.y, z);
   item.obj.rotation.y = -p.ang + (item.rot || 0);
 }
@@ -1265,7 +1269,45 @@ gltfLoader.loadAsync('/modelos/cao-meshy.glb').catch(() => gltfLoader.loadAsync(
 }).catch(() => {});
 
 // vira-lata caramelo atravessando a rua em galope (frente do cachorro para +x)
+// capivara (prova no parque, no lugar do cachorro): mesmo comportamento e a mesma caixa de colisão do cachorro
+function capivara(s) {
+  const g = new THREE.Group();
+  const pelo = mat(0x8a5a3a), escuro = mat(0x5e3c26), preto = mat(0x151515);
+  const corpo = new THREE.Group(); corpo.position.y = 0.42; g.add(corpo);
+  const tronco = malha(G.esfera, pelo, 0, 0.06, 0); tronco.scale.set(0.58, 0.36, 0.33); corpo.add(tronco); // corpo de barril
+  const lombo = malha(G.esfera, pelo, -0.18, 0.14, 0); lombo.scale.set(0.36, 0.3, 0.3); corpo.add(lombo);
+  const cabeca = new THREE.Group(); cabeca.position.set(0.5, 0.16, 0); corpo.add(cabeca);
+  const cranio = malha(G.caixa, pelo, 0.08, 0.02, 0); cranio.scale.set(0.36, 0.3, 0.26); cabeca.add(cranio);
+  const focinho = malha(G.caixa, escuro, 0.28, -0.03, 0); focinho.scale.set(0.12, 0.2, 0.22); cabeca.add(focinho);
+  const orelhas = [];
+  for (const lado of [-1, 1]) {
+    const olho = malha(G.esfera, preto, 0.16, 0.08, lado * 0.12); olho.scale.setScalar(0.025); cabeca.add(olho);
+    const narina = malha(G.esfera, preto, 0.34, 0.02, lado * 0.05); narina.scale.setScalar(0.018); cabeca.add(narina);
+    const orelha = new THREE.Group(); orelha.position.set(-0.04, 0.14, lado * 0.09); cabeca.add(orelha);
+    const aba = malha(G.esfera, escuro, 0, 0.02, 0); aba.scale.set(0.04, 0.04, 0.025); orelha.add(aba); orelhas.push(orelha);
+  }
+  const rabo = new THREE.Group(); corpo.add(rabo); // capivara não tem rabo (o grupo fica para a animação comum)
+  const patas = [];
+  for (const [px, pz, frente] of [[0.3, 0.15, 1], [0.3, -0.15, 1], [-0.3, 0.15, 0], [-0.3, -0.15, 0]]) {
+    const coxa = membro(0.16, 0.07, pelo); coxa.position.set(px, -0.12, pz); corpo.add(coxa);
+    const canela = membro(0.14, 0.05, escuro); canela.position.y = -0.16; coxa.add(canela);
+    patas.push({ coxa, canela, frente });
+  }
+  const lado = Math.random() < 0.5 ? -1 : 1;
+  return addEntidade({
+    tipo: 'cachorro', motivo: 'Esbarrou na capivara', obj: g, s, d: lado * 6.2, rot: lado > 0 ? Math.PI : 0,
+    larg: 1.5, prof: 0.6, h: 0.95, corpo, cabeca, rabo, orelhas, patas, gatilho: 34,
+    anima(t) {
+      const corre = !!this.vd, a = t * (corre ? 11 : 2);
+      this.patas.forEach((p, i) => { const fase = a + (p.frente ? 0 : Math.PI) + (i % 2) * 0.4, amp = corre ? 0.7 : 0.05; p.coxa.rotation.z = Math.sin(fase) * amp; p.canela.rotation.z = Math.max(0, Math.sin(fase + 1.2)) * amp * 0.6; });
+      this.corpo.position.y = 0.42 + (corre ? Math.abs(Math.sin(a)) * 0.04 : 0);
+      this.cabeca.rotation.z = corre ? Math.sin(a + 0.6) * 0.06 : Math.sin(t * 1.3) * 0.08; // mastigando
+    }
+  });
+}
+
 function cachorro(s) {
+  if (prova?.parque) return capivara(s);
   if (caoModelo) {
     const malha = clonarComOssos(caoModelo);
     const g = new THREE.Group(); g.add(malha);
@@ -1908,6 +1950,7 @@ function construirOSM() {
   grupoOSM = new THREE.Group();
   chunksArvores = []; pedalinhos = [];
   scene.add(grupoOSM);
+  aguasCenario = []; trechosAgua = [];
   if (!osm) return;
   const porTipo = {};
   for (const a of osm.areas) (porTipo[a.tipo] ||= []).push(a.pts);
@@ -1939,7 +1982,9 @@ function construirOSM() {
     visual.add(gr);
   }
   construirAvenidas();
+  aguasCenario = osm.areas.filter((a) => a.tipo === 'agua'); trechosAgua = [];
   if (prova?.parque) marcosDoParque();
+  for (const it of cenario) posicionarCenario(it, it.s);
 }
 
 // prova no parque: a barragem de captação (o caminho passa por cima dela) e a torre do mirante, nas posições do mapa
@@ -1964,6 +2009,7 @@ function marcosDoParque() {
       if (ult && s - ult.s < 150) { if (d < ult.d) Object.assign(ult, { s, d }); } else passagens.push({ s, d });
     }
     for (const { s } of passagens) {
+      trechosAgua.push([s - 42, s + 42]);
       for (let ds = -40; ds <= 40; ds += 2) {
         const q = pista.em(s + ds), g = new THREE.Group(); g.position.set(q.x, q.y, q.z); g.rotation.y = -q.ang;
         caixa(g, tabua, 0, 0.05, -0.5, 7.4, 0.1, 0.95); caixa(g, madeira, 0, 0.05, 0.5, 7.4, 0.1, 0.95); // tábuas (ponte estreita)
@@ -1994,6 +2040,7 @@ function marcosDoParque() {
       if (ult && s - ult.s < 150) { if (d < ult.d) Object.assign(ult, { s, d }); } else passagens.push({ s, d });
     }
     for (const { s } of passagens) {
+      trechosAgua.push([s - 26, s + 26]);
       // muro e face da barragem em pedaços de 4 m que seguem o caminho (na curva antes dela o muro não cruza a pista)
       const q0 = pista.em(s), [r0x, r0z] = direita(q0.ang), lado = (cx - q0.x) * r0x + (cz - q0.z) * r0z > 0 ? -1 : 1; // lado de baixo
       const H = 7, W = 9, ang = Math.atan2(H, W), comp = Math.hypot(H, W), L = 24;
