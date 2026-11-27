@@ -3451,7 +3451,7 @@ const quadro = () => new Promise((ok) => requestAnimationFrame(() => ok()));
 const esperar = (ms) => new Promise((ok) => setTimeout(ok, ms));
 let largando = false;
 // tela "Preparando a corrida": aparece no toque em LARGAR, mostra o progresso real (modelos 3D que ainda faltam,
-// montagem do percurso e preparo dos gráficos) e larga sozinha quando termina; fica pelo menos ~2 s para não piscar
+// montagem do percurso e preparo dos gráficos) e larga sozinha quando termina; fica pelo menos 5 s (dá tempo de ver a foto)
 async function largar(escolha, clima) {
   if (largando) return;
   largando = true;
@@ -3485,7 +3485,7 @@ async function largar(escolha, clima) {
     mostrarProgresso(0.9, 'Preparando os gráficos…'); await quadro();
     try { renderer.compile(scene, camera); } catch { /* segue */ }
     mostrarProgresso(1, 'Tudo pronto! Largada em instantes…');
-    const falta = 2000 - (performance.now() - inicio);
+    const falta = 5000 - (performance.now() - inicio); // no mínimo 5 s: dá tempo de ver a foto mesmo em aparelho rápido
     if (falta > 0) await esperar(falta);
     await quadro();
     estado.modo = 'contagem';
