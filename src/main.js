@@ -377,6 +377,7 @@ const aleat = (a, b) => a + Math.random() * (b - a);
 
 // junta as peças sem textura num único mesh com cores por vértice: 1 desenho por objeto
 const matVertice = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 });
+const matVerticePiso = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -12 }); // piso da ponte, por cima do caminho
 const matArvore = balancoDeArvore(matVertice.clone()); // copa balançando com o vento
 function achatar(grupo) {
   grupo.updateMatrixWorld(true);
@@ -2173,7 +2174,7 @@ function marcosDoParque() {
   if (cfg.ponte) {
     const { x: px, z: pz } = pista.paraLocal(...cfg.ponte), ponte = new THREE.Group();
     const madeira = mat(0x8a5a32), tabua = mat(0x9c6a3c), escura = mat(0x6b4426), agua = mat(0x3f9fd6);
-    const passagens = [];
+    const passagens = [], piso = new THREE.Group(); // tábuas e água: desenhadas por cima do caminho (ver abaixo)
     for (let s = 0; s < pista.total; s += 2) {
       const q = pista.em(s), d = Math.hypot(q.x - px, q.z - pz);
       if (d > 25) continue;
@@ -2184,18 +2185,25 @@ function marcosDoParque() {
       trechosAgua.push([s - 42, s + 42]);
       for (let ds = -40; ds <= 40; ds += 2) {
         const q = pista.em(s + ds), g = new THREE.Group(); g.position.set(q.x, q.y, q.z); g.rotation.y = -q.ang;
-        caixa(g, tabua, 0, 0.05, -0.5, 7.4, 0.1, 0.95); caixa(g, madeira, 0, 0.05, 0.5, 7.4, 0.1, 0.95); // tábuas (ponte estreita)
+        const gp = new THREE.Group(); gp.position.copy(g.position); gp.rotation.copy(g.rotation);
+        caixa(gp, tabua, 0, 0.05, -0.5, 7.4, 0.1, 0.95); caixa(gp, madeira, 0, 0.05, 0.5, 7.4, 0.1, 0.95); // tábuas (ponte estreita)
+        for (const k of [-1, 1]) caixa(gp, agua, k * 15.9, 0.0, 0, 24, 0.06, 2.6); // água dos dois lados (cobre a grama da beira)
+        piso.add(gp);
         for (const k of [-1, 1]) {
           caixa(g, escura, k * 3.75, 1.0, 0, 0.18, 0.18, 2.6);        // corrimão
           caixa(g, escura, k * 3.75, 0.5, 0, 0.12, 0.12, 2.6);        // travessa do meio
           caixa(g, madeira, k * 3.75, 0.55, 1, 0.2, 1.1, 0.2);        // montante
           caixa(g, madeira, k * 3.3, -1.2, 0, 0.35, 2.4, 0.35);      // pilar dentro d'água
-          caixa(g, agua, k * 15.9, 0.0, 0, 24, 0.06, 2.6);           // água dos dois lados (cobre a grama da beira)
         }
         ponte.add(g);
       }
     }
     juntar(ponte);
+    // o caminho do parque é puxado para a frente (polygonOffset) para ganhar da grama; de longe, olhando rasante,
+    // isso passava os 10 cm das tábuas e o asfalto aparecia por cima da ponte. As tábuas e a água ganham um puxão maior
+    const mp = achatar(piso);
+    mp.traverse((o) => { if (o.isMesh) { o.material = matVerticePiso; o.castShadow = false; o.receiveShadow = true; } });
+    grupoOSM.add(mp);
   }
   if (cfg.barragem) {
     const { x: bx, z: bz } = pista.paraLocal(...cfg.barragem);
