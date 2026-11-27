@@ -42,7 +42,9 @@ const PROVAS = [
   { slug: '1-meia-maratona-de-indaiatuba-2026-12-13', cidade: 'Indaiatuba', nome: 'Meia de Indaiatuba', curto: 'Meia de Indaiatuba' },
   { slug: 'corrida-upar-2026-11-28', cidade: 'Indaiatuba', nome: 'Corrida no Parque do Mirim', curto: 'Parque do Mirim',
     // prova dentro do parque (caminhos do parque, represa de captação): sem carros e sem pintura de rua
-    parque: true },
+    parque: true, barragem: [-23.03088, -47.20423], mirante: [-23.03044, -47.20310],
+    quiosques: [[-23.03287, -47.20011], [-23.03226, -47.19904], [-23.03337, -47.20155], [-23.03224, -47.19687], [-23.03212, -47.19804],
+      [-23.03307, -47.19472], [-23.03263, -47.20355], [-23.03347, -47.20485]] },
   // relevo: 0 = desenho plano (Sorocaba tem morros e trechos de ida e volta lado a lado: com o relevo desenhado
   // a rua ficava em barrancos e com placas flutuando). A subida/descida continua valendo no jogo e no HUD.
   { slug: '9-maratona-sorocaba-novembro-azul-2026-11-21', cidade: 'Sorocaba', relevo: 0, nome: 'Desafio 42K – Bora correr em Sorocaba', curto: 'Desafio 42K' }
@@ -1047,8 +1049,12 @@ const texAsfaltoLiso = textura(512, 512, (g, w, h) => {
   for (let i = 0; i < 6; i++) manchaAsfalto(g, w, h);
   for (let i = 0; i < 4000; i++) { const c = 55 + Math.random() * 50; g.fillStyle = `rgba(${c},${c},${c + 6},0.5)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
 });
-// prova no parque: o caminho usa o asfalto liso (sem faixas)
-const matTrilha = new THREE.MeshStandardMaterial({ map: texAsfaltoLiso, roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
+// prova no parque: pista de caminhada de asfalto avermelhado, sem faixas de rua
+const texTrilha = textura(512, 512, (g, w, h) => {
+  g.fillStyle = '#9a5446'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 5000; i++) { const c = Math.random(); g.fillStyle = `rgba(${120 + c * 70},${60 + c * 40},${50 + c * 30},0.45)`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+});
+const matTrilha = new THREE.MeshStandardMaterial({ map: texTrilha, roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
 const matRuaOSM = new THREE.MeshStandardMaterial({ map: texAsfaltoLiso, roughness: 0.95, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
 const matCalcadaOSM = new THREE.MeshStandardMaterial({ map: texCalcada, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 });
 const ACIMA_RUA = 0.06; // = ACIMA em src/ruasOSM.js
@@ -1923,6 +1929,81 @@ function construirOSM() {
     visual.add(gr);
   }
   construirAvenidas();
+  if (prova?.parque) marcosDoParque();
+}
+
+// prova no parque: a barragem de captação (o caminho passa por cima dela) e a torre do mirante, nas posições do mapa
+// do parque. Só enfeite, sem colisão; o muro fica fora do limite da pista (7,6 m)
+function marcosDoParque() {
+  const cfg = PROVAS.find((p) => p.slug === PROVA_SLUG) || {};
+  const concreto = mat(0xbdbcb4), face = mat(0xa3a39a), espuma = mat(0xeef6fb), aguaM = mat(0x3f9fd6);
+  // tudo junto numa malha só por objeto (achatar): leve no celular
+  const juntar = (g) => { const m = achatar(g); m.position.copy(g.position); m.rotation.copy(g.rotation); grupoOSM.add(m); };
+  const barragem = new THREE.Group();
+  const caixa = (g, m, x, y, z, sx, sy, sz, rz = 0) => { const o = malha(G.caixa, m, x, y, z); o.scale.set(sx, sy, sz); o.rotation.z = rz; g.add(o); return o; };
+  if (cfg.barragem) {
+    const { x: bx, z: bz } = pista.paraLocal(...cfg.barragem);
+    // centro da represa (a maior área de água): o lado de cima da barragem é o lado dela
+    let lago = null, maior = 0;
+    for (const a of osm.areas) if (a.tipo === 'agua' && a.pts.length > maior) { maior = a.pts.length; lago = a.pts; }
+    const cx = lago ? lago.reduce((t, p) => t + p[0], 0) / lago.length : bx + 100, cz = lago ? lago.reduce((t, p) => t + p[1], 0) / lago.length : bz;
+    // cada passagem do percurso pela barragem
+    const passagens = [];
+    for (let s = 0; s < pista.total; s += 2) {
+      const q = pista.em(s), d = Math.hypot(q.x - bx, q.z - bz);
+      if (d > 25) continue;
+      const ult = passagens[passagens.length - 1];
+      if (ult && s - ult.s < 150) { if (d < ult.d) Object.assign(ult, { s, d }); } else passagens.push({ s, d });
+    }
+    for (const { s } of passagens) {
+      // muro e face da barragem em pedaços de 4 m que seguem o caminho (na curva antes dela o muro não cruza a pista)
+      const q0 = pista.em(s), [r0x, r0z] = direita(q0.ang), lado = (cx - q0.x) * r0x + (cz - q0.z) * r0z > 0 ? -1 : 1; // lado de baixo
+      const H = 7, W = 9, ang = Math.atan2(H, W), comp = Math.hypot(H, W), L = 24;
+      for (let ds = -L; ds <= L; ds += 2) {
+        const q = pista.em(s + ds), Z = 5, g = new THREE.Group(); // pedaços de 2 m com 5 m de comprimento: sem fresta na curva
+        g.position.set(q.x, q.y, q.z); g.rotation.y = -q.ang;
+        for (const k of [-1, 1]) { caixa(g, concreto, k * 7.95, 0.5, 0, 0.35, 1.0, Z); caixa(g, concreto, k * 7.95, 0.55, 2, 0.5, 1.1, 0.5); }
+        // crista de concreto (por cima da grama da beira) e a face descendo até o rio
+        caixa(g, concreto, lado * 10.6, 0.03, 0, 5.2, 0.1, Z);
+        caixa(g, face, lado * (13.2 + W / 2), -H / 2, 0, comp, 0.6, Z, lado * ang);
+        if (Math.abs(ds) <= 8) caixa(g, espuma, lado * (13.2 + W / 2), -H / 2 + 0.35, 0, comp, 0.2, Z, lado * ang); // vertedouro
+        const rio = malha(G.caixa, aguaM, lado * 35, -H - 0.1, 0); rio.scale.set(26, 0.1, Z); g.add(rio);
+        if (Math.abs(ds) <= 8) { const o = malha(G.caixa, espuma, lado * 24, -H, 0); o.scale.set(5, 0.12, Z); g.add(o); }
+        // do outro lado, a represa encostada no muro, na altura do caminho
+        const represa = malha(G.caixa, aguaM, -lado * 26, 0.02, 0); represa.scale.set(36, 0.06, Z); g.add(represa);
+        barragem.add(g);
+      }
+    }
+    juntar(barragem);
+  }
+  // quiosques de madeira sobre a água, com telhado laranja de oito águas (decks de pesca do mapa do parque)
+  for (const [la, lo] of cfg.quiosques || []) {
+    const { x, z } = pista.paraLocal(la, lo), y = pista.pertoDe(x, z, 200)?.y ?? 0;
+    const g = new THREE.Group(); g.position.set(x, y, z);
+    const madeira = mat(0x8a5a32), laranja = mat(0xe0712f);
+    const piso = malha(G.cilindro, madeira, 0, -0.2, 0); piso.scale.set(3.2, 0.25, 3.2); g.add(piso);
+    for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2, p = malha(G.cilindro, madeira, Math.cos(a) * 2.8, 1.1, Math.sin(a) * 2.8); p.scale.set(0.09, 2.4, 0.09); g.add(p);
+      const e = malha(G.cilindro, madeira, Math.cos(a) * 2.8, -1.3, Math.sin(a) * 2.8); e.scale.set(0.12, 2, 0.12); g.add(e); }
+    const grade = malha(G.cilindro, madeira, 0, 0.55, 0); grade.scale.set(3.0, 0.08, 3.0); g.add(grade);
+    const teto = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 8), laranja); teto.position.y = 2.9; teto.scale.set(3.9, 1.6, 3.9); g.add(teto);
+    juntar(g);
+  }
+  if (cfg.mirante) {
+    // torre do mirante: estrutura de madeira aberta, oito lados, cinco pisos com guarda-corpo e um telhado no alto
+    const { x, z } = pista.paraLocal(...cfg.mirante), y = pista.pertoDe(x, z, 200)?.y ?? 0;
+    const g = new THREE.Group(); g.position.set(x, y, z);
+    const madeira = mat(0xc9922e), escura = mat(0x7a4a22), telhado = mat(0x4a3424);
+    const R0 = 3.2, ANDAR = 3.6, N = 5, oito = new THREE.CylinderGeometry(1, 1, 1, 8);
+    for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2 + Math.PI / 8, p = malha(G.cilindro, madeira, Math.cos(a) * R0, (N * ANDAR + 1) / 2, Math.sin(a) * R0); p.scale.set(0.16, N * ANDAR + 1, 0.16); g.add(p); }
+    for (let i = 1; i <= N; i++) {
+      const piso = new THREE.Mesh(oito, escura); piso.position.y = i * ANDAR; piso.scale.set(R0 + 0.5, 0.25, R0 + 0.5); g.add(piso);
+      const grade = new THREE.Mesh(oito, madeira); grade.position.y = i * ANDAR + 1.0; grade.scale.set(R0 + 0.55, 0.12, R0 + 0.55); g.add(grade);
+      // diagonais (mãos-francesas) entre os pisos
+      for (let k = 0; k < 4; k++) { const a = (k / 4) * Math.PI * 2, d = malha(G.caixa, madeira, Math.cos(a) * R0, i * ANDAR - ANDAR / 2, Math.sin(a) * R0); d.scale.set(0.12, ANDAR * 1.1, 0.12); d.rotation.set(0, -a, 0.6); g.add(d); }
+    }
+    const teto = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 8), telhado); teto.position.y = N * ANDAR + 2.2; teto.scale.set(R0 + 1.4, 1.8, R0 + 1.4); teto.rotation.y = Math.PI / 8; g.add(teto);
+    juntar(g);
+  }
 }
 
 // ─── AVENIDAS DE PISTA DUPLA: 3 FAIXAS, CANTEIRO DE GRAMA COM GUIAS E POSTES, A OUTRA PISTA AO LADO ──
