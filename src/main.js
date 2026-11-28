@@ -2156,6 +2156,9 @@ function construirOSM() {
   const locais = prova?.parque ? [] : colocarLocais(); // no parque não há prédio nem fachada
   const predios = prova?.parque ? null : malhaDePredios(osm.predios.filter((b) => !locais.some((l) => pontoNoPoligono(l.x, l.z, b.pts))));
   colocarMarcos();
+  // a torre do mirante fica na beira do caminho: nenhuma árvore nasce em cima dela
+  const mir = prova?.parque && PROVAS.find((p) => p.slug === PROVA_SLUG)?.mirante;
+  if (mir) { const { x, z } = posMirante(mir); areasSemArvore.push([x, z, 14]); }
   if (predios) grupoOSM.add(predios);
   plantarArvores();
   colocarPedalinhos();
@@ -2171,6 +2174,18 @@ function construirOSM() {
   aguasCenario = osm.areas.filter((a) => a.tipo === 'agua'); trechosAgua = [];
   if (prova?.parque) marcosDoParque();
   for (const it of cenario) posicionarCenario(it, it.s);
+}
+
+// torre do mirante: no mapa fica a ~55 m do caminho; o jogo a puxa para a beira, a 12 m do meio do caminho (a base,
+// com 3,8 m de raio, fica fora do limite da pista de 7,6 m: nada de torre no meio do caminho), do mesmo lado e fora da água
+function posMirante(ll) {
+  let { x, z } = pista.paraLocal(...ll);
+  const BEIRA = 12, perto = pista.pertoDe(x, z, 400), q = pista.em(perto.s);
+  const dx = x - q.x, dz = z - q.z, n = Math.hypot(dx, dz) || 1, ux = dx / n, uz = dz / n;
+  const naAgua = (px, pz) => osm?.areas.some((a) => a.tipo === 'agua' && px >= a.caixa[0] && px <= a.caixa[2] && pz >= a.caixa[1] && pz <= a.caixa[3] && pontoNoPoligono(px, pz, a.pts));
+  const livre = (px, pz) => (pista.pertoDe(px, pz, 60)?.dist ?? 99) >= BEIRA - 0.3 && !naAgua(px, pz);
+  if (n > BEIRA) for (let d = BEIRA; d < n; d += 1) { const px = q.x + ux * d, pz = q.z + uz * d; if (livre(px, pz)) { x = px; z = pz; break; } }
+  return { x, z };
 }
 
 // prova no parque: a barragem de captação (o caminho passa por cima dela) e a torre do mirante, nas posições do mapa
@@ -2282,7 +2297,8 @@ function marcosDoParque() {
   }
   if (cfg.mirante) {
     // torre do mirante: estrutura de madeira aberta, oito lados, cinco pisos com guarda-corpo e um telhado no alto
-    const { x, z } = pista.paraLocal(...cfg.mirante), y = pista.pertoDe(x, z, 200)?.y ?? 0;
+    const { x, z } = posMirante(cfg.mirante);
+    const y = pista.pertoDe(x, z, 200)?.y ?? 0;
     const g = new THREE.Group(); g.position.set(x, y, z);
     const madeira = mat(0xc9922e), escura = mat(0x7a4a22), telhado = mat(0x4a3424);
     const R0 = 3.2, ANDAR = 3.6, N = 5, oito = new THREE.CylinderGeometry(1, 1, 1, 8);
